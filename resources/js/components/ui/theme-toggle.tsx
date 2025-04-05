@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Moon, Sun } from 'lucide-react';
 
+// Event custom untuk perubahan tema
+const themeChangeEvent = new Event('themeChange');
+
 export default function ThemeToggle() {
   const [theme, setTheme] = useState('light');
 
@@ -15,6 +18,9 @@ export default function ThemeToggle() {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    
+    // Trigger event saat tema berubah
+    document.dispatchEvent(themeChangeEvent);
   };
 
   return (

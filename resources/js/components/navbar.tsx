@@ -1,8 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import ThemeToggle from '@/components/ui/theme-toggle';
+import { type SharedData, type User } from '@/types';
 
 // Definisikan tipe untuk item navigasi
 type NavItem = {
@@ -13,24 +14,55 @@ type NavItem = {
 
 export default function Navbar({ items = [] }: { items: NavItem[] }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
   const page = usePage();
+  const { auth } = usePage<SharedData>().props;
+  
+  // Mendeteksi scroll untuk menambahkan shadow
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setHasScrolled(scrollPosition > 0);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // Menutup menu saat ukuran layar berubah ke desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isMenuOpen]);
   
   // Contoh item navigasi, bisa diubah sesuai kebutuhan
   const navItems: NavItem[] = items.length > 0 ? items : [
-    { title: 'Beranda', href: '/' },
-    { title: 'Tentang', href: '/tentang' },
-    { title: 'Layanan', href: '/layanan' },
-    { title: 'Kontak', href: '/kontak' }
+    { title: 'Home', href: '/' },
+    {title: 'How to use', href: '/how-to-use'},
+    { title: 'About', href: '/about' },
   ];
   
   return (
-    <nav className="bg-white shadow-md dark:bg-gray-800">
+    <nav className={`bg-white dark:bg-gray-800 sticky top-0 z-50 transition-shadow duration-300 ${hasScrolled ? 'shadow-md' : ''}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-14 md:h-16">
           <div className="flex items-center">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0 flex items-center">
-              <span className="text-xl font-bold text-gray-900 dark:text-white">CV Generator</span>
+              <span className="text-lg md:text-xl font-bold text-red-600 dark:text-white">CV</span><span className="text-lg md:text-xl font-bold text-gray-900 dark:text-red-600"> Generator</span>
             </Link>
           </div>
           
@@ -51,15 +83,38 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
                 {item.title}
               </Link>
             ))}
+            
+            {auth.user ? (
+              <span className="px-3 py-2 rounded-md text-sm font-medium text-gray-900 dark:text-white">
+                {(auth.user as User).name}
+              </span>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Register
+                </Link>
+                <Link
+                  href="/login"
+                  className="px-3 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors gradient-button"
+                >
+                  Login
+                </Link>
+              </>
+            )}
+            
             <ThemeToggle />
           </div>
           
           {/* Tombol menu mobile */}
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center space-x-1 md:hidden">
             <ThemeToggle />
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 relative"
+              className="inline-flex items-center justify-center p-2 ml-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              aria-expanded={isMenuOpen}
             >
               <span className="sr-only">Buka menu utama</span>
               <div className="relative w-6 h-6">
@@ -83,19 +138,19 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
       
       {/* Menu Mobile */}
       <div 
-        className={`md:hidden overflow-hidden transition-all duration-600 ease-in-out ${
+        className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${
           isMenuOpen 
-            ? 'max-h-96 opacity-100' 
+            ? 'max-h-screen opacity-100' 
             : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        <div className="px-2 pt-2 pb-3 space-y-2 sm:px-3">
           {navItems.map((item) => (
             <Link
               key={item.title}
               href={item.href}
               className={cn(
-                "block px-3 py-2 rounded-md text-base font-medium",
+                "block px-3 py-3 rounded-md text-base font-medium transition-colors",
                 page.url === item.href
                   ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
                   : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -106,6 +161,29 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
               {item.title}
             </Link>
           ))}
+          
+          {auth.user ? (
+            <div className="block px-3 py-3 rounded-md text-base font-medium text-gray-900 dark:text-white">
+              {(auth.user as User).name}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <Link
+                href="/register"
+                className="flex justify-center items-center px-3 py-3 rounded-md text-base font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Register
+              </Link>
+              <Link
+                href="/login"
+                className="flex justify-center items-center px-3 py-3 rounded-md text-base font-medium text-white bg-red-600 hover:bg-red-700 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Login
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </nav>
