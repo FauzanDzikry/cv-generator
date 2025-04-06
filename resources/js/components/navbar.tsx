@@ -10,11 +10,13 @@ type NavItem = {
   title: string;
   href: string;
   isExternal?: boolean;
+  isSection?: boolean;
 };
 
 export default function Navbar({ items = [] }: { items: NavItem[] }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const page = usePage();
   const { auth } = usePage<SharedData>().props;
   
@@ -23,9 +25,33 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
       setHasScrolled(scrollPosition > 0);
+      
+      // Deteksi section mana yang sedang aktif
+      const sections = document.querySelectorAll('section[id], div[id]');
+      
+      // Jika tidak ada section, jangan lakukan apa-apa
+      if (sections.length === 0) return;
+      
+      // Loop melalui semua section untuk menemukan yang sedang terlihat
+      let currentSection: string | null = null;
+      
+      sections.forEach((section) => {
+        const sectionTop = section.getBoundingClientRect().top;
+        const sectionId = section.getAttribute('id');
+        
+        // Jika section ini terlihat pada viewport (dengan offset untuk navbar)
+        if (sectionTop <= 100 && sectionId) {
+          currentSection = sectionId;
+        }
+      });
+      
+      setActiveSection(currentSection);
     };
     
     window.addEventListener('scroll', handleScroll);
+    
+    // Initial call to set active section on load
+    handleScroll();
     
     // Cleanup event listener
     return () => {
@@ -48,12 +74,75 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
     };
   }, [isMenuOpen]);
   
+  // Fungsi untuk melakukan scroll ke elemen dengan ID tertentu
+  const scrollToSection = (sectionId: string) => {
+    setIsMenuOpen(false);
+    
+    // Periksa apakah ada elemen dengan ID tersebut
+    const element = document.getElementById(sectionId);
+    if (element) {
+      // Scroll ke elemen dengan animasi smooth
+      element.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Jika tidak ada di halaman ini, arahkan ke halaman home + id elemen
+      window.location.href = `/#${sectionId}`;
+    }
+  };
+  
   // Contoh item navigasi, bisa diubah sesuai kebutuhan
   const navItems: NavItem[] = items.length > 0 ? items : [
-    { title: 'Home', href: '/' },
-    {title: 'How to use', href: '/how-to-use'},
-    { title: 'About', href: '/about' },
+    { title: 'Home', href: '#cvgen', isSection: true },
+    { title: 'How to use', href: '/how-to-use' },
+    { title: 'About', href: '#about', isSection: true },
   ];
+
+  // Fungsi untuk menentukan class button/link berdasarkan status aktif
+  const getItemClass = (item: NavItem) => {
+    // Untuk section item
+    if (item.isSection) {
+      const sectionId = item.href.substring(1); // Menghilangkan # dari href
+      const isActive = activeSection === sectionId;
+      
+      return cn(
+        "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+        isActive
+          ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+          : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+      );
+    }
+    
+    // Untuk link biasa
+    return cn(
+      "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+      page.url === item.href
+        ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+        : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+    );
+  };
+  
+  // Fungsi untuk menentukan class mobile button/link berdasarkan status aktif
+  const getMobileItemClass = (item: NavItem) => {
+    // Untuk section item
+    if (item.isSection) {
+      const sectionId = item.href.substring(1); // Menghilangkan # dari href
+      const isActive = activeSection === sectionId;
+      
+      return cn(
+        "block w-full text-left px-3 py-3 rounded-md text-base font-medium transition-colors",
+        isActive
+          ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+          : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+      );
+    }
+    
+    // Untuk link biasa
+    return cn(
+      "block px-3 py-3 rounded-md text-base font-medium transition-colors",
+      page.url === item.href
+        ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+        : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+    );
+  };
   
   return (
     <nav className={`bg-white dark:bg-gray-800 sticky top-0 z-50 transition-shadow duration-300 ${hasScrolled ? 'shadow-md' : ''}`}>
@@ -69,19 +158,24 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
           {/* Menu Desktop */}
           <div className="hidden md:flex items-center space-x-4">
             {navItems.map((item) => (
-              <Link
-                key={item.title}
-                href={item.href}
-                className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  page.url === item.href
-                    ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
-                )}
-                {...(item.isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              >
-                {item.title}
-              </Link>
+              item.isSection ? (
+                <button
+                  key={item.title}
+                  onClick={() => scrollToSection(item.href.substring(1))}
+                  className={getItemClass(item)}
+                >
+                  {item.title}
+                </button>
+              ) : (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className={getItemClass(item)}
+                  {...(item.isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                >
+                  {item.title}
+                </Link>
+              )
             ))}
             
             {auth.user ? (
@@ -109,7 +203,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
           </div>
           
           {/* Tombol menu mobile */}
-          <div className="flex items-center space-x-1 md:hidden">
+          <div className="md:hidden flex items-center">
             <ThemeToggle />
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -137,7 +231,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
       </div>
       
       {/* Menu Mobile */}
-      <div 
+      <div
         className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${
           isMenuOpen 
             ? 'max-h-screen opacity-100' 
@@ -146,20 +240,25 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
       >
         <div className="px-2 pt-2 pb-3 space-y-2 sm:px-3">
           {navItems.map((item) => (
-            <Link
-              key={item.title}
-              href={item.href}
-              className={cn(
-                "block px-3 py-3 rounded-md text-base font-medium transition-colors",
-                page.url === item.href
-                  ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                  : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
-              )}
-              {...(item.isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {item.title}
-            </Link>
+            item.isSection ? (
+              <button
+                key={item.title}
+                onClick={() => scrollToSection(item.href.substring(1))}
+                className={getMobileItemClass(item)}
+              >
+                {item.title}
+              </button>
+            ) : (
+              <Link
+                key={item.title}
+                href={item.href}
+                className={getMobileItemClass(item)}
+                {...(item.isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {item.title}
+              </Link>
+            )
           ))}
           
           {auth.user ? (
