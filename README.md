@@ -1,2 +1,2 @@
 # cv-generator
-Web App to generate CV automatically
+Kolab bersama aku haris
