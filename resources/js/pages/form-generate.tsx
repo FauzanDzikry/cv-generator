@@ -337,6 +337,7 @@ export default function CvForm() {
                                     <FormProgress
                                         formData={formData}
                                         fieldGroups={fieldGroups}
+                                        addOnSections={addOnSections}
                                     />
                                 )}
 
@@ -600,6 +601,12 @@ export default function CvForm() {
                                                                     ...newWorkExperience[index],
                                                                     is_current: e.target.checked
                                                                 };
+                                                                
+                                                                // Jika checkbox dicentang, hapus nilai end_date
+                                                                if (e.target.checked) {
+                                                                    newWorkExperience[index].end_date = '';
+                                                                }
+                                                                
                                                                 setFormData({
                                                                     ...formData,
                                                                     work_experience: newWorkExperience
