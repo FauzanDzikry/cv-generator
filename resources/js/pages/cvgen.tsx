@@ -158,7 +158,7 @@ export default function CvGen() {
             </div>
             {isTypingFeaturesComplete ? 
               <a 
-                href="/buat-cv" 
+                href="/generate-cv" 
                 className="inline-block bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 md:px-8 rounded-md transition-all duration-500 text-sm md:text-base w-40 md:w-48 text-center"
                 style={{
                   opacity: buttonVisible ? 1 : 0,

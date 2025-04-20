@@ -15,7 +15,7 @@ export default function Home() {
       <div className="py-16 md:py-24 lg:py-32"></div>
 
       {/* About Section */}
-      <About />
+      {/*    */}
     </AppLayout>
   );
 }

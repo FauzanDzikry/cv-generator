@@ -11,6 +11,10 @@ Route::get('/welcome', function () {
     return Inertia::render('welcome');
 })->name('welcome');
 
+Route::get('/generate-cv', function () {
+    return Inertia::render('form-generate');
+})->name('form-generate');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
