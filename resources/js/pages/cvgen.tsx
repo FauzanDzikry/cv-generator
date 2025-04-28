@@ -85,7 +85,7 @@ export default function CvGen() {
     }, 70);
 
     return () => clearInterval(typingInterval);
-  }, [themeChanged]);
+  }, []);
 
   // Fungsi untuk menghitung posisi teks
   const getTextPosition = (partIndex: number): number => {
