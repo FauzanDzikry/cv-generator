@@ -5,7 +5,7 @@ import FormProgress from '@/components/percentage';
 import CV from '@/components/cv-format';
 
 export default function CvForm() {
-    // State untuk data form
+    // State untuk form
     const [formData, setFormData] = useState({
         name: '',
         address: '',
@@ -13,6 +13,8 @@ export default function CvForm() {
         email: '',
         linkedin: '',
         summary: '',
+        photo: null as File | null,
+        is_use_photo: false,
         work_experience: [{
             company: '',
             company_location: '',
@@ -33,7 +35,7 @@ export default function CvForm() {
         }],
         skills: [{
             name: ''
-        }], //hard skill & soft skill
+        }],
         portfolios: [{
             title: '',
             link: '',
@@ -53,8 +55,6 @@ export default function CvForm() {
             level: ''
         }],
         accomplishments: [{
-            // title: '',
-            // date: '',
             description: ''
         }],
         organizations: [{
@@ -72,7 +72,7 @@ export default function CvForm() {
     const [showPreview, setShowPreview] = useState(false);
     // State untuk animasi
     const [pageLoaded, setPageLoaded] = useState(false);
-    // State untuk add-on sections
+    // State untuk add-on
     const [addOnSections, setAddOnSections] = useState({
         portfolios: false,
         certifications: false,
@@ -81,11 +81,13 @@ export default function CvForm() {
         languages: false,
         additional_info: false
     });
+    // State untuk preview foto
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
     const fieldGroups = {
         personal: {
             label: 'Personal Information',
-            fields: ['name', 'address', 'phone', 'email', 'linkedin', 'summary'],
+            fields: ['name', 'address', 'phone', 'email', 'linkedin', 'summary', 'photo', 'is_use_photo'],
             requiredFields: ['name', 'address', 'phone', 'email', 'summary']
         },
         work_experience: {
@@ -145,7 +147,6 @@ export default function CvForm() {
     const [formTouched, setFormTouched] = useState(false);
 
     useEffect(() => {
-        // Mengatur animasi saat halaman dimuat
         setTimeout(() => {
             setPageLoaded(true);
         }, 100);
@@ -168,6 +169,78 @@ export default function CvForm() {
         });
     };
 
+    const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const { name, checked } = e.target;
+        setFormData({
+            ...formData,
+            [name]: checked
+        });
+    };
+
+    const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            
+            // Validasi tipe file
+            const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+            if (!validTypes.includes(file.type)) {
+                alert('Please select a valid image file (JPEG, PNG, JPG)');
+                return;
+            }
+            
+            // Simpan file ke state
+            setFormData({
+                ...formData,
+                photo: file
+            });
+            
+            // Buat URL untuk preview dengan rasio 3x4
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    if (ctx) {
+                        let width, height;
+                        const targetRatio = 3/4; // rasio 3:4
+                        
+                        if (img.width / img.height > targetRatio) {
+                            height = img.height;
+                            width = height * targetRatio;
+                        } else {
+                            width = img.width;
+                            height = width / targetRatio;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        // Posisi gambar di tengah canvas
+                        const offsetX = (img.width - width) / 2;
+                        const offsetY = (img.height - height) / 2;
+                        
+                        ctx.drawImage(
+                            img, 
+                            offsetX, offsetY, width, height, 
+                            0, 0, width, height
+                        );
+                        
+                        // Konversi canvas ke URL data
+                        const dataUrl = canvas.toDataURL(file.type);
+                        setPhotoPreview(dataUrl);
+                    } else {
+                        // Fallback jika canvas tidak didukung
+                        setPhotoPreview(reader.result as string);
+                    }
+                };
+                img.src = reader.result as string;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleArrayChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, index: number, arrayName: keyof typeof formData) => {
         const { name, value } = e.target;
         const updatedArray = [...formData[arrayName] as any[]];
@@ -183,7 +256,7 @@ export default function CvForm() {
     };
 
     const addArrayItem = (arrayName: keyof typeof formData, emptyItem: any) => {
-        const currentArray = [...formData[arrayName]] as any[];
+        const currentArray = [...(formData[arrayName] as any[])] as any[];
         setFormData({
             ...formData,
             [arrayName]: [...currentArray, emptyItem]
@@ -203,10 +276,8 @@ export default function CvForm() {
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         console.log('Form data:', formData);
-        // Implementasi submit form
     };
 
-    // Toggle preview
     const togglePreview = () => {
         setShowPreview(!showPreview);
     };
@@ -458,6 +529,74 @@ export default function CvForm() {
                                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
                                                 required
                                             />
+                                        </div>
+                                        <div className="mb-4">
+                                            <div className="flex items-center mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="is_use_photo"
+                                                    name="is_use_photo"
+                                                    checked={formData.is_use_photo}
+                                                    onChange={handleCheckboxChange}
+                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                />
+                                                <label htmlFor="is_use_photo" className="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Include Profile Photo
+                                                </label>
+                                            </div>
+                                            
+                                            {formData.is_use_photo && (
+                                                <div>
+                                                    <label htmlFor="photo" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        Profile Photo
+                                                    </label>
+                                                    <div className="flex items-start space-x-4">
+                                                        <div className="flex-1">
+                                                            <input
+                                                                type="file"
+                                                                id="photo"
+                                                                name="photo"
+                                                                accept="image/png, image/jpeg, image/jpg"
+                                                                onChange={handlePhotoChange}
+                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            />
+                                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                                Accepted formats: JPG, JPEG, PNG. Max size: 2MB
+                                                            </p>
+                                                        </div>
+                                                        {photoPreview && (
+                                                            <div className="flex-shrink-0">
+                                                                <div className="relative h-32 w-32 overflow-hidden rounded-full border border-gray-300 dark:border-gray-600">
+                                                                    <img 
+                                                                        src={photoPreview} 
+                                                                        alt="Profile preview" 
+                                                                        className="h-full w-full object-cover"
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setPhotoPreview(null);
+                                                                            setFormData({
+                                                                                ...formData,
+                                                                                photo: null
+                                                                            });
+                                                                        }}
+                                                                        className="absolute top-0 right-0 bg-red-600 text-white rounded-bl-md p-1"
+                                                                        title="Remove photo"
+                                                                    >
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-center">
+                                                                    Profile photo
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 

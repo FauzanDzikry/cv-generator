@@ -43,6 +43,8 @@ interface CVData {
     email: string;
     linkedin: string;
     summary: string;
+    is_use_photo: boolean;
+    photo: File | null;
     work_experience: WorkExperience[];
     education: Education[];
     skills: Skill[];
@@ -85,13 +87,29 @@ const CV: React.FC<CVProps> = ({ data }) => {
             }}>
                 {/* Header / Informasi Pribadi */}
                 <div className="cv-header mb-6 pb-4 border-b-2 border-gray-200">
-                    <h1 className="text-3xl font-bold text-gray-900">{data.name || 'Nama Lengkap'}</h1>
-                    
-                    <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1">
-                        {data.address && <p className="flex items-center gap-2"><span>📍</span>{data.address}</p>}
-                        {data.phone && <p className="flex items-center gap-2"><span>📱</span>{data.phone}</p>}
-                        {data.email && <p className="flex items-center gap-2"><span>✉️</span>{data.email}</p>}
-                        {data.linkedin && <p className="flex items-center gap-2"><span>🔗</span>{data.linkedin}</p>}
+                    <div className="flex items-start justify-between">
+                        <div className={`${data.is_use_photo && data.photo ? 'w-3/4' : 'w-full'}`}>
+                            <h1 className={`text-3xl font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`}>{data.name}</h1>
+
+                            <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1">
+                                {data.address && <p className="flex items-center gap-2"><span>📍</span>{data.address}</p>}
+                                {data.phone && <p className="flex items-center gap-2"><span>📱</span>{data.phone}</p>}
+                                {data.email && <p className="flex items-center gap-2"><span>✉️</span>{data.email}</p>}
+                                {data.linkedin && <p className="flex items-center gap-2"><span>🔗</span>{data.linkedin}</p>}
+                            </div>
+                        </div>
+
+                        {data.is_use_photo && data.photo && (
+                            <div className="w-1/4 flex justify-end">
+                                <div className="h-32 w-32 rounded-full overflow-hidden border-2 border-gray-300">
+                                    <img
+                                        src={URL.createObjectURL(data.photo)}
+                                        alt={`${data.name}'s photo`}
+                                        className="h-full w-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -146,9 +164,9 @@ const CV: React.FC<CVProps> = ({ data }) => {
                 )}
 
                 {/* Keahlian */}
-                {data.skills && data.skills.length > 0 && (
+                {data.skills && data.skills.length > 0 && data.skills[0].name && (
                     <div className="cv-skills mb-6">
-                        <h2 className="text-xl font-semibold text-gray-800 mb-3">Keahlian</h2>
+                        <h2 className="text-xl font-semibold text-gray-800 mb-3">Skills</h2>
                         <div className="grid grid-cols-3 gap-2">
                             {data.skills.map((skill, index) => (
                                 <div key={index} className="flex items-center">
