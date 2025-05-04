@@ -1,8 +1,10 @@
-import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent, FormEvent, useEffect, useRef } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/layouts';
 import FormProgress from '@/components/percentage';
 import CV from '@/components/cv-format';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 export default function CvForm() {
     // State untuk form
@@ -83,6 +85,8 @@ export default function CvForm() {
     });
     // State untuk preview foto
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    // State untuk modal preview foto
+    const [showPhotoModal, setShowPhotoModal] = useState(false);
 
     const fieldGroups = {
         personal: {
@@ -146,6 +150,8 @@ export default function CvForm() {
     };
     const [formTouched, setFormTouched] = useState(false);
 
+    const cvRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         setTimeout(() => {
             setPageLoaded(true);
@@ -203,28 +209,32 @@ export default function CvForm() {
                     const ctx = canvas.getContext('2d');
                     
                     if (ctx) {
-                        let width, height;
-                        const targetRatio = 3/4; // rasio 3:4
+                        // Mengubah untuk memastikan gambar berbentuk bulat sempurna
+                        const size = Math.min(img.width, img.height);
                         
-                        if (img.width / img.height > targetRatio) {
-                            height = img.height;
-                            width = height * targetRatio;
-                        } else {
-                            width = img.width;
-                            height = width / targetRatio;
-                        }
+                        // Ukuran canvas dibuat persegi
+                        canvas.width = size;
+                        canvas.height = size;
                         
-                        canvas.width = width;
-                        canvas.height = height;
+                        // Menghitung posisi tengah gambar
+                        const offsetX = (img.width - size) / 2;
+                        const offsetY = (img.height - size) / 2;
                         
-                        // Posisi gambar di tengah canvas
-                        const offsetX = (img.width - width) / 2;
-                        const offsetY = (img.height - height) / 2;
+                        // Isi background dengan putih (opsional)
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, size, size);
                         
+                        // Membuat mask lingkaran
+                        ctx.beginPath();
+                        ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2, true);
+                        ctx.closePath();
+                        ctx.clip();
+                        
+                        // Gambar foto dalam mask lingkaran
                         ctx.drawImage(
                             img, 
-                            offsetX, offsetY, width, height, 
-                            0, 0, width, height
+                            offsetX, offsetY, size, size, 
+                            0, 0, size, size
                         );
                         
                         // Konversi canvas ke URL data
@@ -273,9 +283,50 @@ export default function CvForm() {
         });
     };
 
+    const handleGeneratePDF = () => {
+        if (!cvRef.current) return;
+
+        const element = cvRef.current;
+        const options = {
+            margin: 0,
+            filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Tampilkan indikator loading
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        loadingOverlay.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg text-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-700 mx-auto mb-3"></div>
+                <p class="text-gray-800 dark:text-gray-200">Menghasilkan PDF...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
+
+        // Buat PDF
+        html2pdf().from(element).set(options).save().then(() => {
+            // Hapus overlay loading ketika selesai
+            document.body.removeChild(loadingOverlay);
+        });
+    };
+
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         console.log('Form data:', formData);
+        
+        // Tampilkan preview jika belum muncul
+        if (!showPreview) {
+            setShowPreview(true);
+            // Berikan waktu untuk render preview sebelum generate PDF
+            setTimeout(() => {
+                handleGeneratePDF();
+            }, 500);
+        } else {
+            handleGeneratePDF();
+        }
     };
 
     const togglePreview = () => {
@@ -399,7 +450,7 @@ export default function CvForm() {
                                         onClick={togglePreview}
                                         className="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:border-red-700 focus:ring ring-red-300 disabled:opacity-25 transition"
                                     >
-                                        {showPreview ? 'Tutup Preview' : 'Preview CV'}
+                                        {showPreview ? 'Close Preview' : 'Preview CV'}
                                     </button>
                                 </div>
 
@@ -529,6 +580,11 @@ export default function CvForm() {
                                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
                                                 required
                                             />
+                                            <div className="flex justify-end mt-1">
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    words : {formData.summary.trim() ? formData.summary.trim().split(/\s+/).length : 0}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="mb-4">
                                             <div className="flex items-center mb-2">
@@ -566,32 +622,13 @@ export default function CvForm() {
                                                         </div>
                                                         {photoPreview && (
                                                             <div className="flex-shrink-0">
-                                                                <div className="relative h-32 w-32 overflow-hidden rounded-full border border-gray-300 dark:border-gray-600">
-                                                                    <img 
-                                                                        src={photoPreview} 
-                                                                        alt="Profile preview" 
-                                                                        className="h-full w-full object-cover"
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setPhotoPreview(null);
-                                                                            setFormData({
-                                                                                ...formData,
-                                                                                photo: null
-                                                                            });
-                                                                        }}
-                                                                        className="absolute top-0 right-0 bg-red-600 text-white rounded-bl-md p-1"
-                                                                        title="Remove photo"
-                                                                    >
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                                        </svg>
-                                                                    </button>
-                                                                </div>
-                                                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-center">
-                                                                    Profile photo
-                                                                </p>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setShowPhotoModal(true)}
+                                                                    className="w-full text-sm bg-green-600 dark:bg-green-600 text-white dark:text-gray-200 py-2 px-3 rounded-md hover:bg-green-300 dark:hover:bg-green-500 transition-colors"
+                                                                >
+                                                                    See Photo
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -608,7 +645,7 @@ export default function CvForm() {
                                                 <div className="relative ml-1 group">
                                                     <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
                                                     <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
-                                                        Pro tip: Always arrange work experience with your current/most recent position at the first
+                                                        Tip: Always arrange work experience with your current/most recent position at the first
                                                     </div>
                                                 </div>
                                             </span>
@@ -820,7 +857,7 @@ export default function CvForm() {
                                                 <div className="relative ml-1 group">
                                                     <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
                                                     <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
-                                                        Pro tip: List your education in reverse chronological order (most recent degree first)
+                                                        Tip: List your education in reverse chronological order (most recent degree first)
                                                     </div>
                                                 </div>
                                             </span>
@@ -935,7 +972,7 @@ export default function CvForm() {
                                                         <div className="relative ml-1 group">
                                                             <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
                                                             <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
-                                                                Pro tip :
+                                                                Tip :
                                                                 <ul className="mt-1 pl-4 list-disc">
                                                                     <li>Only include GPA if it's impressive (typically 3.5/4.0 or higher)</li>
                                                                     <li>Include relevant coursework and academic projects that showcase skills applicable to the job</li>
@@ -998,7 +1035,7 @@ export default function CvForm() {
                                                 <div className="relative ml-1 group">
                                                     <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
                                                     <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
-                                                        Pro tip: List your skills from the most relevant first
+                                                        Tip: List your skills from the most relevant first
                                                     </div>
                                                 </div>
                                             </span>
@@ -1267,7 +1304,7 @@ export default function CvForm() {
                                                 <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-gray-600 rounded-md">
                                                     <div className="flex justify-between mb-2">
                                                         <h3 className="text-lg font-medium text-gray-800 dark:text-white">
-                                                            Certification #{index + 1}
+                                                            License / Certification #{index + 1}
                                                         </h3>
                                                         {formData.certifications.length > 1 && (
                                                             <button
@@ -1397,7 +1434,7 @@ export default function CvForm() {
                                                 <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                                                 </svg>
-                                                Add Certification
+                                                Add License / Certification
                                             </button>
                                         </div>
                                     )}
@@ -1784,14 +1821,14 @@ export default function CvForm() {
                                             type="submit"
                                             className="inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:border-red-700 focus:ring ring-red-300 disabled:opacity-25 transition w-full"
                                         >
-                                            Buat CV Saya
+                                            Generate CV ke PDF
                                         </button>
                                         <button
                                             type="button"
                                             onClick={togglePreview}
                                             className="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-gray-900 dark:text-white uppercase tracking-widest hover:bg-gray-300 dark:hover:bg-gray-500 active:bg-gray-400 dark:active:bg-gray-700 focus:outline-none focus:ring ring-gray-300 disabled:opacity-25 transition w-full"
                                         >
-                                            {showPreview ? 'Tutup Preview' : 'Preview CV'}
+                                            {showPreview ? 'Close Preview' : 'Preview CV'}
                                         </button>
                                     </div>
                                 </form>
@@ -1816,8 +1853,10 @@ export default function CvForm() {
                                             </svg>
                                         </button>
                                     </div>
-                                    <div className="overflow-auto max-h-[800px] bg-gray-50 rounded p-3">
-                                        <CV data={formData} />
+                                    <div className="overflow-auto max-h-[800px] bg-gray-50 rounded p-1">
+                                        <div ref={cvRef} className="shadow-lg cv-for-pdf" id="cv-to-export">
+                                            <CV data={formData} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1825,6 +1864,36 @@ export default function CvForm() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal profile photo */}
+            {showPhotoModal && photoPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-white/30 dark:bg-black/30" onClick={() => setShowPhotoModal(false)}>
+                    <div className="bg-white/90 dark:bg-gray-800/90 rounded-lg p-6 max-w-md w-full shadow-xl backdrop-blur" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                Preview Profile Photo
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowPhotoModal(false)}
+                                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div className="mx-auto rounded-full overflow-hidden border-4 border-gray-300 dark:border-gray-600 mb-4" style={{ width: '256px', height: '256px' }}>
+                            <img 
+                                src={photoPreview} 
+                                alt="Larger profile preview" 
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

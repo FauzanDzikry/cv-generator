@@ -96,6 +96,15 @@ const FormProgress: React.FC<FormProgressProps> = ({ formData, fieldGroups, addO
             } else {
                 // Jika field reguler (bukan array)
                 group.fields.forEach(field => {
+                    // Lewati field photo dan is_use_photo
+                    if (field === 'photo' || field === 'is_use_photo') {
+                        return;
+                    }
+                
+                    if (group.requiredFields && !group.requiredFields.includes(field)) {
+                        return;
+                    }
+                    
                     sectionTotalFields += 1;
                     totalFields += 1;
                     
