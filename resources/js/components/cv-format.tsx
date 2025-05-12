@@ -1,5 +1,79 @@
-import React, { useState, useEffect, useRef, ReactElement } from 'react';
+import React, { useState, useEffect, useRef, ReactElement, useMemo } from 'react';
 import ReactDOM from 'react-dom';
+
+// Style untuk page break dan PDF export mode
+export const pageBreakStyle = `
+.html2pdf__page-break {
+    margin-top: 30px;
+    page-break-before: always;
+}
+@media print {
+    .html2pdf__page-break {
+        height: 0;
+        page-break-before: always;
+        margin: 0;
+        border-top: none;
+    }
+    
+    /* Sembunyikan kontrol zoom dan indikator halaman saat print */
+    .zoom-controls, 
+    .page-number-indicator {
+        display: none !important;
+    }
+}
+
+/* Style khusus untuk mode ekspor PDF */
+.pdf-export-mode {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    background-color: white !important;
+    height: auto !important;
+    width: 21cm !important;
+    padding: 2cm !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Style untuk mode PDF */
+.cv-for-pdf-mode {
+    background-color: white;
+    font-family: Arial, sans-serif;
+}
+
+.cv-for-pdf-mode .cv-page {
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.cv-for-pdf-mode h1 {
+    font-size: 24pt !important;
+    margin-bottom: 8pt !important;
+}
+
+.cv-for-pdf-mode h2 {
+    font-size: 16pt !important;
+    margin-bottom: 6pt !important;
+}
+
+.cv-for-pdf-mode p, 
+.cv-for-pdf-mode div {
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+}
+
+.pdf-export-mode * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Sembunyikan kontrol zoom dan indikator halaman dalam mode PDF */
+.cv-for-pdf-mode .zoom-controls,
+.cv-for-pdf-mode .page-number-indicator {
+    display: none !important;
+}
+`;
 
 const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -13,6 +87,26 @@ const formatDate = (dateString: string) => {
     } catch (e) {
         return dateString;
     }
+};
+
+const formatPhoneForWhatsApp = (phone: string) => {
+    if (!phone) return '';
+    
+    // Hapus semua karakter yang bukan angka
+    let cleanNumber = phone.replace(/\D/g, '');
+    
+    // Jika dimulai dengan +62, hapus + nya
+    if (cleanNumber.startsWith('62')) {
+        return cleanNumber;
+    }
+    
+    // Jika dimulai dengan 0, ganti dengan 62
+    if (cleanNumber.startsWith('0')) {
+        return '62' + cleanNumber.substring(1);
+    }
+    
+    // Jika tidak dimulai dengan 62 atau 0, tambahkan 62 di depan
+    return '62' + cleanNumber;
 };
 
 const calculateDuration = (startDate: string, endDate: string, isCurrent: boolean = false) => {
@@ -131,22 +225,679 @@ interface CVData {
 
 interface CVProps {
     data: CVData;
+    isPdfMode?: boolean;
 }
 
-const CV: React.FC<CVProps> = ({ data }) => {
+const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const [zoomLevel, setZoomLevel] = useState(100);
-    const [showZoomControls, setShowZoomControls] = useState(true);
+    const [showZoomControls, setShowZoomControls] = useState(false);
+    const [pages, setPages] = useState<React.ReactNode[]>([]);
     const cvContentRef = useRef<HTMLDivElement>(null);
+    const contentObserverRef = useRef<ResizeObserver | null>(null);
+    const PAGE_HEIGHT = 620; // Tinggi halaman dalam piksel (area konten)
+
+    // Sisipkan style untuk PDF saat komponen mount
+    useEffect(() => {
+        // Tambahkan style ke head dokumen
+        const styleElement = document.createElement('style');
+        styleElement.innerHTML = pageBreakStyle;
+        document.head.appendChild(styleElement);
+
+        // Cleanup saat komponen unmount
+        return () => {
+            document.head.removeChild(styleElement);
+        };
+    }, []);
+
+    // Set showZoomControls false ketika isPdfMode true, dan true ketika isPdfMode false
+    useEffect(() => {
+        setShowZoomControls(!isPdfMode);
+    }, [isPdfMode]);
 
     const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setZoomLevel(parseInt(e.target.value));
     };
 
     const toggleZoomControls = () => {
-        setShowZoomControls(prev => !prev);
+        if (!isPdfMode) {
+            setShowZoomControls(prev => !prev);
+        }
     };
 
-    // Fungsi helper untuk memastikan semua deskripsi di-render dengan benar
+    // Fungsi untuk membagi konten ke beberapa halaman
+    useEffect(() => {
+        if (!data || Object.keys(data).length === 0) return;
+
+        // Buat array untuk menampung konten tiap halaman
+        let pageContents: React.ReactNode[] = [];
+        
+        // Konstanta tinggi elemen
+        const SECTION_HEADING_HEIGHT = 60;   // Tinggi heading section
+        const ITEM_HEADING_HEIGHT = 70;      // Tinggi heading item (misal: nama perusahaan, posisi)
+        const BULLET_POINT_HEIGHT = 30;      // Tinggi per bullet point
+        const PARAGRAPH_HEIGHT = 50;         // Tinggi paragraf normal
+        const SPACING_HEIGHT = 20;           // Tinggi spacing antar item
+        const SECTION_SPACING_HEIGHT = 30;   // Tinggi spacing antar section
+        
+        // Fungsi untuk membuat halaman CV
+        const createPage = (content: React.ReactNode) => (
+            <div 
+                className="cv-page bg-white shadow-lg rounded-lg mb-8"
+                style={{
+                    width: '21cm',
+                    height: '29.7cm',
+                    padding: '2cm',
+                    boxSizing: 'border-box',
+                    fontSize: '11pt',
+                    lineHeight: '1.5',
+                    backgroundColor: 'white',
+                    boxShadow: '0 0 10px rgba(83, 81, 81, 0.2)',
+                    margin: '0 auto',
+                    position: 'relative',
+                    overflowY: 'hidden'
+                }}
+            >
+                {content}
+            </div>
+        );
+
+        // Halaman pertama selalu dimulai dengan header
+        let currentPage: React.ReactNode[] = [];
+        
+        // Header selalu di halaman pertama
+        currentPage.push(
+            <div key="header" className="cv-header pb-4">
+                <div className="flex items-start justify-between">
+                    {data.is_use_photo && data.photo && (
+                        <div className="w-1/4 flex justify-start">
+                            <div className="h-32 w-32 rounded-full overflow-hidden border-2 border-gray-300">
+                                <img
+                                    src={URL.createObjectURL(data.photo)}
+                                    alt={`${data.name}'s photo`}
+                                    className="h-full w-full object-cover"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className={`${data.is_use_photo && data.photo ? 'w-3/4' : 'w-full'}`}>
+                        <h1 className={`text-3xl font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`}>{data.name}</h1>
+
+                        {data.is_use_photo ? <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1">
+                            {data.address && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '📍' : ''}</span>{data.address}</p>}
+                            {data.phone && <p className="flex items-center gap-2">
+                                <span>{data.is_use_photo ? '📱' : ''}</span>
+                                <a 
+                                    href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="hover:text-blue-600 hover:underline"
+                                >
+                                    {data.phone}
+                                </a>
+                            </p>}
+                            {data.email && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '✉️' : ''}</span>{data.email}</p>}
+                            {data.linkedin && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '🔗' : ''}</span>{data.linkedin}</p>}
+                        </div> :
+                            <div className="mt-3 text-gray-700 text-center">
+                                <div className="flex flex-wrap justify-center gap-2 mb-2">
+                                    {data.phone && <p className="whitespace-nowrap">
+                                        <a 
+                                            href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="hover:text-blue-600 hover:underline"
+                                        >
+                                            {data.phone}
+                                        </a>
+                                    </p>}
+                                    {data.phone && data.email && <span className="whitespace-nowrap">|</span>}
+                                    {data.email && <p className="whitespace-nowrap overflow-hidden text-ellipsis">{data.email}</p>}
+                                    {(data.phone || data.email) && data.linkedin && <span className="whitespace-nowrap">|</span>}
+                                    {data.linkedin && <p className="whitespace-nowrap overflow-hidden text-ellipsis">{data.linkedin}</p>}
+                                </div>
+                                {data.address && <p className="break-words">{data.address}</p>}
+                            </div>}
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Perkiraan tinggi header dan summary
+        const headerHeight = 220;
+        const summaryHeight = data.summary ? 150 : 0;
+        let currentPageHeight = headerHeight;
+
+        // Summary juga biasanya di halaman pertama
+        if (data.summary) {
+            currentPage.push(
+                <div key="summary" className="cv-section mb-4">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Summary</h2>
+                    <p className="text-gray-700">{data.summary}</p>
+                </div>
+            );
+            
+            // Tambahkan tinggi summary dan spacing setelah section
+            currentPageHeight += summaryHeight + SECTION_SPACING_HEIGHT;
+        }
+
+        // Fungsi untuk menganalisis bullet points dari deskripsi
+        const extractBulletPoints = (description: string): {intro?: string, bullets: string[]} => {
+            if (!description) return { bullets: [] };
+            
+            const result: {intro?: string, bullets: string[]} = { bullets: [] };
+            
+            // Format dengan bullet point '• '
+            if (description.includes('• ')) {
+                const parts = description.split('• ');
+                if (parts[0].trim()) {
+                    result.intro = parts[0].trim();
+                }
+                
+                for (let i = 1; i < parts.length; i++) {
+                    if (parts[i].trim()) {
+                        result.bullets.push(parts[i].trim());
+                    }
+                }
+                
+                return result;
+            }
+            
+            // Format dengan newline dan '-', '*', '•'
+            if (description.match(/[\n\r][-*•][\s]/) || description.includes('\n- ')) {
+                const lines = description.split(/[\n\r]+/);
+                let introLines: string[] = [];
+                
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
+                        result.bullets.push(trimmedLine.substring(2));
+                    } else if (trimmedLine) {
+                        introLines.push(trimmedLine);
+                    }
+                }
+                
+                if (introLines.length > 0) {
+                    result.intro = introLines.join('\n');
+                }
+                
+                return result;
+            }
+            
+            // Jika tidak ada format khusus, masukkan sebagai intro
+            if (description.trim()) {
+                result.intro = description.trim();
+            }
+            
+            return result;
+        };
+
+        // Fungsi untuk memproses section dengan paginasi per baris
+        const processSectionWithLineBreak = (sectionTitle: string, items: any[], renderItem: (item: any, index: number) => React.ReactNode) => {
+            // Tambahkan spacing sebelum section baru
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+            
+            // Tambahkan heading section
+            currentPage.push(
+                <div key={`${sectionTitle}_title`} className="cv-section-heading mb-4 mt-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">{sectionTitle}</h2>
+                </div>
+            );
+            currentPageHeight += SECTION_HEADING_HEIGHT;
+            
+            // Variabel untuk melacak apakah item sedang diproses di tengah konten
+            let isProcessingItem = false;
+            let currentItemIndex = -1;
+            
+            items.forEach((item, index) => {
+                // Render item heading
+                const itemElement = renderItem(item, index);
+                
+                // Ambil deskripsi dan parse bullet points untuk menghitung perkiraan tinggi total item
+                const description = item.description || '';
+                const { intro, bullets } = extractBulletPoints(description);
+                
+                // Hitung perkiraan tinggi total untuk item saat ini
+                let itemTotalHeight = ITEM_HEADING_HEIGHT; // Header item
+                if (intro) itemTotalHeight += PARAGRAPH_HEIGHT; // Intro paragraph
+                if (bullets.length > 0) itemTotalHeight += bullets.length * BULLET_POINT_HEIGHT; // Bullet points
+                itemTotalHeight += SPACING_HEIGHT; // Spacing
+                
+                // Jika item ini akan melebihi halaman saat ini tapi bukan item pertama, pindah ke halaman baru
+                const willExceedPage = (currentPageHeight + itemTotalHeight > PAGE_HEIGHT);
+                
+                if (willExceedPage && !isProcessingItem && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
+                    // Pindah ke halaman baru hanya jika halaman saat ini sudah memiliki konten signifikan
+                    pageContents.push(createPage(currentPage));
+                    currentPage = [];
+                    currentPageHeight = 0;
+                }
+                
+                // Jika mulai item baru
+                if (currentItemIndex !== index) {
+                    currentItemIndex = index;
+                    isProcessingItem = true;
+                    
+                    currentPage.push(itemElement);
+                    currentPageHeight += ITEM_HEADING_HEIGHT;
+                }
+                
+                // Proses paragraf intro jika ada
+                if (intro) {
+                    // Cek jika paragraf intro akan melebihi halaman ini
+                    if (currentPageHeight + PARAGRAPH_HEIGHT > PAGE_HEIGHT) {
+                        // Pindah ke halaman baru hanya jika tidak muat
+                        pageContents.push(createPage(currentPage));
+                        currentPage = [];
+                        currentPageHeight = 0;
+                    }
+                    
+                    // Tambahkan paragraf intro
+                    currentPage.push(
+                        <p key={`intro_${sectionTitle}_${index}`} className="text-gray-600 mt-1">{intro}</p>
+                    );
+                    currentPageHeight += PARAGRAPH_HEIGHT;
+                }
+                
+                // Container untuk bullet points
+                if (bullets.length > 0) {
+                    currentPage.push(
+                        <div key={`${sectionTitle}_bullets_container_${index}`} className="text-gray-600 mt-1"></div>
+                    );
+                }
+                
+                // Proses setiap bullet point
+                bullets.forEach((bullet, bulletIndex) => {
+                    // Cek jika bullet point akan melebihi halaman ini
+                    if (currentPageHeight + BULLET_POINT_HEIGHT > PAGE_HEIGHT) {
+                        // Pindah ke halaman baru hanya jika tidak muat
+                        pageContents.push(createPage(currentPage));
+                        currentPage = [];
+                        currentPageHeight = 0;
+                    }
+                    
+                    // Tambahkan bullet point
+                    currentPage.push(
+                        <div key={`bullet_${sectionTitle}_${index}_${bulletIndex}`} style={{
+                            display: 'flex',
+                            marginBottom: '0.25rem'
+                        }} className="text-gray-600">
+                            <div style={{ width: '1em', flexShrink: 0 }}>•</div>
+                            <div>{bullet}</div>
+                        </div>
+                    );
+                    currentPageHeight += BULLET_POINT_HEIGHT;
+                });
+                
+                // Selesai memproses item
+                isProcessingItem = false;
+                
+                // Tambahkan spacing setelah item
+                currentPageHeight += SPACING_HEIGHT;
+            });
+        };
+
+        // Proses Work Experience dengan pagination per baris
+        if (data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company) {
+            processSectionWithLineBreak(
+                "Work Experience",
+                data.work_experience.filter(work => work.company),
+                (work, index) => (
+                    <div key={`work_header_${index}`} className="mb-2">
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-lg font-semibold text-gray-800">{work.position}</h3>
+                            <span className="text-sm text-gray-600 font-semibold">
+                                {formatDate(work.start_date)} - {work.is_current ? 'Present' : formatDate(work.end_date)} {calculateDuration(work.start_date, work.end_date, work.is_current)}
+                            </span>
+                        </div>
+                        <h4 className="text-md text-gray-700 font-semibold">{work.company}, {work.company_location} ({work.location_type})</h4>
+                    </div>
+                )
+            );
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+
+        // Proses Education dengan pagination per baris
+        if (data.education && data.education.length > 0 && data.education[0].institution) {
+            processSectionWithLineBreak(
+                "Education",
+                data.education.filter(edu => edu.institution),
+                (edu, index) => (
+                    <div key={`edu_header_${index}`} className="mb-2">
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-md font-semibold text-gray-800">{edu.degree} {edu.degree ? ',' : ''} {edu.field}</h3>
+                            <span className="text-sm text-gray-600 font-semibold">
+                                {formatDate(edu.start_date)} - {formatDate(edu.end_date)}
+                            </span>
+                        </div>
+                        <h4 className="text-md text-gray-700 font-semibold">{edu.institution}</h4>
+                    </div>
+                )
+            );
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+
+        // Proses Skills section
+        if (data.skills && data.skills.length > 0 && data.skills[0].name) {
+            // Bagi skills ke dalam baris (4 skill per baris)
+            const skillsPerRow = 4;
+            const skillRows = [];
+            
+            for (let i = 0; i < data.skills.length; i += skillsPerRow) {
+                const rowSkills = data.skills.slice(i, i + skillsPerRow);
+                skillRows.push(rowSkills);
+            }
+
+            // Hitung tinggi total skill section
+            const totalSkillsHeight = SECTION_HEADING_HEIGHT + (skillRows.length * 40);
+            
+            // Cek apakah seluruh skills section muat di halaman ini
+            // Jika tidak cukup ruang dan halaman sudah berisi konten signifikan, pindah ke halaman baru
+            if ((currentPageHeight + totalSkillsHeight > PAGE_HEIGHT) && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
+                pageContents.push(createPage(currentPage));
+                currentPage = [];
+                currentPageHeight = 0;
+            }
+            
+            // Tambahkan spacing sebelum section baru
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+            
+            // Tambahkan heading skills
+            currentPage.push(
+                <div key="skills_title" className="cv-section mb-4 mt-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Skills</h2>
+                </div>
+            );
+            currentPageHeight += SECTION_HEADING_HEIGHT;
+            
+            // Tambahkan container untuk skills
+            currentPage.push(
+                <div key="skills_container" className="grid grid-cols-4 gap-1">
+                </div>
+            );
+            
+            // Proses setiap baris skill
+            skillRows.forEach((row, rowIndex) => {
+                const rowHeight = 40; // Tinggi per baris skill
+                
+                // Cek jika baris skill tidak akan muat di halaman ini
+                if (currentPageHeight + rowHeight > PAGE_HEIGHT) {
+                    pageContents.push(createPage(currentPage));
+                    currentPage = [];
+                    currentPageHeight = 0;
+                    
+                    // Tambahkan container baru untuk skills
+                    currentPage.push(
+                        <div key={`skills_container_row_${rowIndex}`} className="grid grid-cols-4 gap-1">
+                        </div>
+                    );
+                }
+                
+                // Tambahkan setiap skill dalam baris
+                row.forEach((skill, index) => {
+                    currentPage.push(
+                        <div key={`skill_${rowIndex}_${index}`} className="flex items-center">
+                            <span className="text-gray-700">• {skill.name}</span>
+                        </div>
+                    );
+                });
+                
+                currentPageHeight += rowHeight;
+            });
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+
+        // Proses Portfolios dengan pagination per baris
+        if (data.portfolios && data.portfolios.length > 0 && data.portfolios[0].title) {
+            processSectionWithLineBreak(
+                "Portfolios",
+                data.portfolios.filter(portfolio => portfolio.title),
+                (portfolio, index) => (
+                    <div key={`portfolio_header_${index}`} className="mb-2">
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-lg font-semibold text-gray-800">
+                                {portfolio.title} (
+                                <a
+                                    href={portfolio.link.startsWith('http') ? portfolio.link : `https://${portfolio.link}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-600 hover:underline"
+                                >
+                                    {portfolio.link}
+                                </a>
+                                )
+                            </h3>
+                        </div>
+                    </div>
+                )
+            );
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+
+        // Proses Accomplishments dengan pagination per baris
+        if (data.accomplishments && data.accomplishments.length > 0 && data.accomplishments[0].description) {
+            processSectionWithLineBreak(
+                "Accomplishments",
+                data.accomplishments.filter(acc => acc.description),
+                (accomplishment, index) => (
+                    <div key={`accomplishment_header_${index}`} className="mb-2">
+                        {/* Accomplishment entries don't have their own headers, so we return an empty div */}
+                    </div>
+                )
+            );
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+
+        // Proses Organizations dengan pagination per baris
+        if (data.organizations && data.organizations.length > 0 && data.organizations[0].name) {
+            processSectionWithLineBreak(
+                "Organization",
+                data.organizations.filter(org => org.name),
+                (org, index) => (
+                    <div key={`org_header_${index}`} className="mb-2">
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-md font-semibold text-gray-800">{org.position}, {org.name}</h3>
+                            <span className="text-sm text-gray-600 font-semibold">
+                                {formatDate(org.start_date)} - {formatDate(org.end_date)}
+                            </span>
+                        </div>
+                    </div>
+                )
+            );
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+
+        // Proses Languages dengan pagination per baris
+        if (data.languages && data.languages.length > 0 && data.languages[0].language) {
+            // Hitung total tinggi untuk languages section
+            const totalLanguagesHeight = SECTION_HEADING_HEIGHT + (data.languages.length * 30);
+            
+            // Cek apakah seluruh languages section muat di halaman ini
+            // Jika tidak cukup ruang dan halaman sudah berisi konten signifikan, pindah ke halaman baru
+            if ((currentPageHeight + totalLanguagesHeight > PAGE_HEIGHT) && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
+                pageContents.push(createPage(currentPage));
+                currentPage = [];
+                currentPageHeight = 0;
+            }
+            
+            // Tambahkan spacing sebelum section baru
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+            
+            // Tambahkan heading languages
+            currentPage.push(
+                <div key="languages_title" className="cv-section mb-4 mt-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Languages</h2>
+                </div>
+            );
+            currentPageHeight += SECTION_HEADING_HEIGHT;
+            
+            // Tambahkan container untuk languages
+            currentPage.push(
+                <ul key="languages_list" className="list-disc pl-5">
+                </ul>
+            );
+            
+            // Proses setiap language
+            data.languages.forEach((lang, index) => {
+                let levelText = "";
+                switch (lang.level) {
+                    case "Native":
+                        levelText = "Native or bilingual proficiency";
+                        break;
+                    case "Fluent":
+                        levelText = "Full professional proficiency";
+                        break;
+                    case "Advanced":
+                        levelText = "Professional working proficiency";
+                        break;
+                    case "Intermediate":
+                        levelText = "Limited working proficiency";
+                        break;
+                    case "Basic":
+                        levelText = "Elementary proficiency";
+                        break;
+                    default:
+                        levelText = lang.level;
+                }
+                
+                const langItemHeight = 30; // Tinggi item bahasa
+                
+                // Cek jika language item tidak akan muat di halaman ini
+                if (currentPageHeight + langItemHeight > PAGE_HEIGHT) {
+                    pageContents.push(createPage(currentPage));
+                    currentPage = [];
+                    currentPageHeight = 0;
+                    
+                    // Tambahkan container baru untuk languages
+                    currentPage.push(
+                        <ul key={`languages_list_item_${index}`} className="list-disc pl-5">
+                        </ul>
+                    );
+                }
+                
+                // Tambahkan language item
+                currentPage.push(
+                    <li key={`lang_${index}`} className="mb-1">
+                        <span className="text-gray-700 font-medium">{lang.language}</span>
+                        <span className="ml-2 text-gray-600">({levelText})</span>
+                    </li>
+                );
+                currentPageHeight += langItemHeight;
+            });
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+
+        // Proses Additional Info dengan pagination per baris
+        if (data.additional_info) {
+            // Parse additional info untuk bullet points dan hitung tinggi
+            const { intro, bullets } = extractBulletPoints(data.additional_info);
+            
+            // Hitung perkiraan tinggi total untuk additional info
+            let totalAdditionalInfoHeight = SECTION_HEADING_HEIGHT;
+            if (intro) totalAdditionalInfoHeight += PARAGRAPH_HEIGHT;
+            if (bullets.length > 0) totalAdditionalInfoHeight += bullets.length * BULLET_POINT_HEIGHT;
+            
+            // Cek apakah seluruh additional info section muat di halaman ini
+            // Jika tidak cukup ruang dan halaman sudah berisi konten signifikan, pindah ke halaman baru
+            if ((currentPageHeight + totalAdditionalInfoHeight > PAGE_HEIGHT) && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
+                pageContents.push(createPage(currentPage));
+                currentPage = [];
+                currentPageHeight = 0;
+            }
+            
+            // Tambahkan spacing sebelum section baru
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+            
+            // Tambahkan heading
+            currentPage.push(
+                <div key="additional_info_title" className="cv-section mb-4 mt-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Additional Info</h2>
+                </div>
+            );
+            currentPageHeight += SECTION_HEADING_HEIGHT;
+            
+            // Proses paragraf intro jika ada
+            if (intro) {
+                // Cek jika paragraf intro tidak akan muat di halaman ini
+                if (currentPageHeight + PARAGRAPH_HEIGHT > PAGE_HEIGHT) {
+                    pageContents.push(createPage(currentPage));
+                    currentPage = [];
+                    currentPageHeight = 0;
+                }
+                
+                // Tambahkan paragraf intro
+                currentPage.push(
+                    <p key="additional_info_intro" className="text-gray-600 mt-1">{intro}</p>
+                );
+                currentPageHeight += PARAGRAPH_HEIGHT;
+            }
+            
+            // Container untuk bullet points
+            if (bullets.length > 0) {
+                currentPage.push(
+                    <div key="additional_info_bullets_container" className="text-gray-600 mt-1"></div>
+                );
+            }
+            
+            // Proses setiap bullet point
+            bullets.forEach((bullet, bulletIndex) => {
+                // Cek jika bullet point tidak akan muat di halaman ini
+                if (currentPageHeight + BULLET_POINT_HEIGHT > PAGE_HEIGHT) {
+                    pageContents.push(createPage(currentPage));
+                    currentPage = [];
+                    currentPageHeight = 0;
+                    
+                    // Tambahkan container baru untuk bullet points
+                    currentPage.push(
+                        <div key={`additional_info_bullets_container_${bulletIndex}`} className="text-gray-600 mt-1"></div>
+                    );
+                }
+                
+                // Tambahkan bullet point
+                currentPage.push(
+                    <div key={`bullet_additional_info_${bulletIndex}`} style={{
+                        display: 'flex',
+                        marginBottom: '0.25rem'
+                    }} className="text-gray-600">
+                        <div style={{ width: '1em', flexShrink: 0 }}>•</div>
+                        <div>{bullet}</div>
+                    </div>
+                );
+                currentPageHeight += BULLET_POINT_HEIGHT;
+            });
+            
+            // Tambahkan spacing setelah section
+            currentPageHeight += SECTION_SPACING_HEIGHT;
+        }
+        
+        // Tambahkan halaman terakhir jika masih ada konten
+        if (currentPage.length > 0) {
+            pageContents.push(createPage(currentPage));
+        }
+        
+        // Jika tidak ada halaman yang dibuat, buat halaman dengan header saja
+        if (pageContents.length === 0) {
+            pageContents.push(createPage(currentPage));
+        }
+        
+        setPages(pageContents);
+    }, [data]);
+
+    // Fungsi helper untuk memastikan semua deskripsi di-render dengan benar (untuk kompatibilitas)
     const renderDescription = (description: string, itemIndex: number): React.ReactNode[] => {
         if (!description) return [];
         
@@ -212,8 +963,10 @@ const CV: React.FC<CVProps> = ({ data }) => {
     }
 
     return (
-        <div className="cv-container mx-auto relative flex justify-center bg-gray-100" style={{ maxWidth: '100%' }}>
-            {showZoomControls ? (
+        <div className={`cv-container mx-auto relative flex flex-col items-center justify-center ${!isPdfMode ? 'bg-gray-100' : ''}`} style={{ maxWidth: '100%' }}>
+            <style dangerouslySetInnerHTML={{ __html: pageBreakStyle }} />
+            
+            {!isPdfMode && showZoomControls && (
                 <div className="zoom-controls absolute right-3 top-3 flex items-center gap-2 bg-white p-2 rounded-lg shadow-md z-10">
                     <span className="text-sm font-medium">25%</span>
                     <input
@@ -238,7 +991,9 @@ const CV: React.FC<CVProps> = ({ data }) => {
                         </svg>
                     </button>
                 </div>
-            ) : (
+            )}
+            
+            {!isPdfMode && !showZoomControls && (
                 <button
                     onClick={toggleZoomControls}
                     className="absolute right-3 top-3 w-9 h-9 flex items-center justify-center bg-white hover:bg-gray-100 rounded-full shadow-md z-10"
@@ -251,268 +1006,24 @@ const CV: React.FC<CVProps> = ({ data }) => {
                 </button>
             )}
 
-            <div className="cv-single-page-container">
-                <div 
-                    className="cv-page bg-white shadow-lg rounded-lg"
-                    style={{
-                        width: '21cm',
-                        height: '29.7cm',
-                        padding: '2cm',
-                        boxSizing: 'border-box',
-                        fontSize: '11pt',
-                        lineHeight: '1.5',
-                        backgroundColor: 'white',
-                        boxShadow: '0 0 10px rgba(83, 81, 81, 0.2)',
-                        transform: `scale(${(zoomLevel / 100) * 0.65})`,
-                        transformOrigin: 'top center',
-                        transition: 'transform 0.2s ease',
-                        margin: '0 auto',
-                        marginBottom: '2rem',
-                        overflowY: 'visible'
-                    }}
-                    ref={cvContentRef}
-                >
-                    {/* Header / Personal Information */}
-                    <div className="cv-header pb-4">
-                        <div className="flex items-start justify-between">
-                            {data.is_use_photo && data.photo && (
-                                <div className="w-1/4 flex justify-start">
-                                    <div className="h-32 w-32 rounded-full overflow-hidden border-2 border-gray-300">
-                                        <img
-                                            src={URL.createObjectURL(data.photo)}
-                                            alt={`${data.name}'s photo`}
-                                            className="h-full w-full object-cover"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className={`${data.is_use_photo && data.photo ? 'w-3/4' : 'w-full'}`}>
-                                <h1 className={`text-3xl font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`}>{data.name}</h1>
-
-                                {data.is_use_photo ? <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1">
-                                    {data.address && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '📍' : ''}</span>{data.address}</p>}
-                                    {data.phone && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '📱' : ''}</span>{data.phone}</p>}
-                                    {data.email && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '✉️' : ''}</span>{data.email}</p>}
-                                    {data.linkedin && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '🔗' : ''}</span>{data.linkedin}</p>}
-                                </div> :
-                                    <div className="mt-3 text-gray-700 text-center">
-                                        <div className="flex flex-wrap justify-center gap-2 mb-2">
-                                            {data.phone && <p className="whitespace-nowrap">{data.phone}</p>}
-                                            {data.phone && data.email && <span className="whitespace-nowrap">|</span>}
-                                            {data.email && <p className="whitespace-nowrap overflow-hidden text-ellipsis">{data.email}</p>}
-                                            {(data.phone || data.email) && data.linkedin && <span className="whitespace-nowrap">|</span>}
-                                            {data.linkedin && <p className="whitespace-nowrap overflow-hidden text-ellipsis">{data.linkedin}</p>}
-                                        </div>
-                                        {data.address && <p className="break-words">{data.address}</p>}
-                                    </div>}
+            <div className="cv-multi-page-container" 
+                 style={{
+                     transform: !isPdfMode ? `scale(${(zoomLevel / 100) * 0.65})` : 'none',
+                     transformOrigin: 'top center',
+                     transition: 'transform 0.2s ease',
+                 }}
+                 ref={cvContentRef}>
+                {pages.map((page, index) => (
+                    <div key={`page-${index}`} className="relative mb-8">
+                        {page}
+                        {!isPdfMode && (
+                            <div className="page-number-indicator absolute bottom-2 text-center w-full text-xs text-gray-400 mb-5">
+                                Page {index + 1} of {pages.length}
                             </div>
-                        </div>
+                        )}
+                        {index < pages.length - 1 && <div className="html2pdf__page-break"></div>}
                     </div>
-
-                    {/* Summary */}
-                    {data.summary && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Summary</h2>
-                            <p className="text-gray-700">{data.summary}</p>
-                        </div>
-                    )}
-
-                    {/* Work Experience */}
-                    {data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Work Experience</h2>
-                            {data.work_experience.map((work, index) => (
-                                work.company && (
-                                    <div key={index} className="mb-4">
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-lg font-semibold text-gray-800">{work.position}</h3>
-                                            <span className="text-sm text-gray-600 font-semibold">
-                                                {formatDate(work.start_date)} - {work.is_current ? 'Present' : formatDate(work.end_date)} {calculateDuration(work.start_date, work.end_date, work.is_current)}
-                                            </span>
-                                        </div>
-                                        <h4 className="text-md text-gray-700 font-semibold">{work.company}, {work.company_location} ({work.location_type})</h4>
-                                        <div className="text-gray-600 mt-1">
-                                            {renderDescription(work.description, index)}
-                                        </div>
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Education */}
-                    {data.education && data.education.length > 0 && data.education[0].institution && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Education</h2>
-                            {data.education.map((edu, index) => (
-                                edu.institution && (
-                                    <div key={index} className="mb-4">
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-md font-semibold text-gray-800">{edu.degree} {edu.degree ? ',' : ''} {edu.field}</h3>
-                                            <span className="text-sm text-gray-600 font-semibold">
-                                                {formatDate(edu.start_date)} - {formatDate(edu.end_date)}
-                                            </span>
-                                        </div>
-                                        <h4 className="text-md text-gray-700 font-semibold">{edu.institution}</h4>
-                                        <div className="text-gray-600 mt-1">
-                                            {renderDescription(edu.description, index)}
-                                        </div>
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Skills */}
-                    {data.skills && data.skills.length > 0 && data.skills[0].name && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Skills</h2>
-                            <div className="grid grid-cols-4 gap-1">
-                                {data.skills.map((skill, index) => (
-                                    <div key={index} className="flex items-center">
-                                        <span className="text-gray-700">• {skill.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Portfolios */}
-                    {data.portfolios && data.portfolios.length > 0 && data.portfolios[0].title && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Portfolios</h2>
-                            {data.portfolios.map((portfolio, index) => (
-                                portfolio.title && (
-                                    <div key={index} className="mb-3">
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-lg font-semibold text-gray-800">
-                                                {portfolio.title} (
-                                                <a
-                                                    href={portfolio.link.startsWith('http') ? portfolio.link : `https://${portfolio.link}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-gray-600 hover:underline"
-                                                >
-                                                    {portfolio.link}
-                                                </a>
-                                                )
-                                            </h3>
-                                        </div>
-                                        {portfolio.description && (
-                                            <div className="text-gray-600 mt-1">
-                                                {renderDescription(portfolio.description, index)}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    )}
-
-                    {/* License & Certification */}
-                    {data.certifications && data.certifications.length > 0 && data.certifications[0].name && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">License & Certification</h2>
-                            {data.certifications.map((cert, index) => (
-                                cert.name && (
-                                    <div key={index} className="mb-3">
-                                        <h3 className="text-lg font-semibold text-gray-800">{cert.name} <span className="font-normal">({cert.organization})</span></h3>
-                                        <h4 className="text-md text-gray-700">Issued {formatDate(cert.start_year)} {cert.is_time_limited ? `- ${formatDate(cert.end_year)}` : ''}</h4>
-                                        {cert.credential_id && <p className="text-gray-600 mt-1">Credential ID : {cert.credential_id}</p>}
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Accomplishments */}
-                    {data.accomplishments && data.accomplishments.length > 0 && data.accomplishments[0].description && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Accomplishments</h2>
-                            {data.accomplishments.map((accomplishment, index) => (
-                                accomplishment.description && (
-                                    <div key={index} className="mb-3">
-                                        {accomplishment.description && (
-                                            <div className="text-gray-600 mt-1">
-                                                {renderDescription(accomplishment.description, index)}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Organization */}
-                    {data.organizations && data.organizations.length > 0 && data.organizations[0].name && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Organization</h2>
-                            {data.organizations.map((org, index) => (
-                                org.name && (
-                                    <div key={index} className="mb-4">
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-md font-semibold text-gray-800">{org.position}, {org.name}</h3>
-                                            <span className="text-sm text-gray-600 font-semibold">
-                                                {formatDate(org.start_date)} - {formatDate(org.end_date)}
-                                            </span>
-                                        </div>
-                                        <div className="text-gray-600 mt-1">
-                                            {renderDescription(org.description, index)}
-                                        </div>
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Languages */}
-                    {data.languages && data.languages.length > 0 && data.languages[0].language && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Languages</h2>
-                            <ul className="list-disc pl-5">
-                                {data.languages.map((lang, index) => {
-                                    let levelText = "";
-                                    switch (lang.level) {
-                                        case "Native":
-                                            levelText = "Native or bilingual proficiency";
-                                            break;
-                                        case "Fluent":
-                                            levelText = "Full professional proficiency";
-                                            break;
-                                        case "Advanced":
-                                            levelText = "Professional working proficiency";
-                                            break;
-                                        case "Intermediate":
-                                            levelText = "Limited working proficiency";
-                                            break;
-                                        case "Basic":
-                                            levelText = "Elementary proficiency";
-                                            break;
-                                        default:
-                                            levelText = lang.level;
-                                    }
-                                    return (
-                                        <li key={index} className="mb-1">
-                                            <span className="text-gray-700 font-medium">{lang.language}</span>
-                                            <span className="ml-2 text-gray-600">({levelText})</span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
-
-                    {/* Additional Info */}
-                    {data.additional_info && (
-                        <div className="cv-section mb-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Additional Info</h2>
-                            <div className="text-gray-600 mt-1">
-                                {renderDescription(data.additional_info, 0)}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                ))}
             </div>
         </div>
     );

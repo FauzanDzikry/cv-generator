@@ -2,8 +2,8 @@ import React, { useState, ChangeEvent, FormEvent, useEffect, useRef } from 'reac
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/layouts';
 import FormProgress from '@/components/percentage';
-import CV from '@/components/cv-format';
-// @ts-ignore
+import CV, { pageBreakStyle } from '@/components/cv-format';
+// Perbaiki import html2pdf
 import html2pdf from 'html2pdf.js';
 
 export default function CvForm() {
@@ -286,14 +286,82 @@ export default function CvForm() {
     const handleGeneratePDF = () => {
         if (!cvRef.current) return;
 
-        const element = cvRef.current;
-        const options = {
-            margin: 0,
-            filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
+        // Tampilkan indikator loading
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        loadingOverlay.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg text-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-700 mx-auto mb-3"></div>
+                <p class="text-gray-800 dark:text-gray-200">Menghasilkan PDF...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
+
+        try {
+            // Gunakan opsi yang sedikit berbeda yang lebih handal
+            const options = {
+                margin: [10, 10, 10, 10], // Margin atas, kanan, bawah, kiri (mm)
+                filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
+                image: { 
+                    type: 'jpeg', 
+                    quality: 0.98
+                },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: document.documentElement.offsetWidth,
+                    windowHeight: document.documentElement.offsetHeight
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait',
+                    compress: true
+                },
+                pagebreak: { mode: 'avoid-all' }
+            };
+
+            // Clone elemen untuk memastikan foto dapat diproses dengan benar
+            const element = cvRef.current.cloneNode(true) as HTMLElement;
+            document.body.appendChild(element);
+            element.style.position = 'absolute';
+            element.style.left = '-9999px';
+            element.style.overflow = 'hidden';
+            element.style.height = 'auto';
+            element.style.width = '210mm'; // A4 width
+            
+            // Buat PDF
+            html2pdf()
+                .from(element)
+                .set(options)
+                .save()
+                .then(() => {
+                    // Hapus overlay loading dan elemen clone ketika selesai
+                    document.body.removeChild(loadingOverlay);
+                    document.body.removeChild(element);
+                })
+                .catch((error: Error) => {
+                    console.error('Error generating PDF:', error);
+                    document.body.removeChild(loadingOverlay);
+                    document.body.removeChild(element);
+                    
+                    // Tampilkan pesan error ke pengguna
+                    alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
+                });
+        } catch (error) {
+            // Tangani error lainnya
+            console.error('Error in handleGeneratePDF:', error);
+            document.body.removeChild(loadingOverlay);
+            alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
+        }
+    };
+
+    const handleDirectGeneratePDF = () => {
+        // Buat PDF tanpa menampilkan preview
+        if (!cvRef.current) return;
 
         // Tampilkan indikator loading
         const loadingOverlay = document.createElement('div');
@@ -306,11 +374,66 @@ export default function CvForm() {
         `;
         document.body.appendChild(loadingOverlay);
 
-        // Buat PDF
-        html2pdf().from(element).set(options).save().then(() => {
-            // Hapus overlay loading ketika selesai
+        try {
+            // Gunakan opsi yang sedikit berbeda yang lebih handal
+            const options = {
+                margin: [10, 10, 10, 10], // Margin atas, kanan, bawah, kiri (mm)
+                filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
+                image: { 
+                    type: 'jpeg', 
+                    quality: 0.98
+                },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: document.documentElement.offsetWidth,
+                    windowHeight: document.documentElement.offsetHeight
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait',
+                    compress: true
+                },
+                pagebreak: { mode: 'avoid-all' }
+            };
+
+            // Clone elemen untuk memastikan foto dapat diproses dengan benar
+            const element = cvRef.current.cloneNode(true) as HTMLElement;
+            document.body.appendChild(element);
+            element.style.position = 'absolute';
+            element.style.left = '-9999px';
+            element.style.overflow = 'hidden';
+            element.style.height = 'auto';
+            element.style.width = '210mm'; // A4 width
+            
+            // Buat PDF
+            html2pdf()
+                .from(element)
+                .set(options)
+                .save()
+                .then(() => {
+                    // Hapus overlay loading dan elemen clone ketika selesai
+                    document.body.removeChild(loadingOverlay);
+                    document.body.removeChild(element);
+                })
+                .catch((error: Error) => {
+                    console.error('Error generating PDF:', error);
+                    document.body.removeChild(loadingOverlay);
+                    document.body.removeChild(element);
+                    
+                    // Tampilkan pesan error ke pengguna
+                    alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
+                });
+        } catch (error) {
+            // Tangani error lainnya
+            console.error('Error in handleDirectGeneratePDF:', error);
             document.body.removeChild(loadingOverlay);
-        });
+            alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
+        }
     };
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -322,10 +445,10 @@ export default function CvForm() {
             setShowPreview(true);
             // Berikan waktu untuk render preview sebelum generate PDF
             setTimeout(() => {
-                handleGeneratePDF();
+                generatePDFWithFallback();
             }, 500);
         } else {
-            handleGeneratePDF();
+            generatePDFWithFallback();
         }
     };
 
@@ -408,6 +531,223 @@ export default function CvForm() {
                     });
                     break;
             }
+        }
+    };
+
+    // Fungsi untuk membuat PDF langsung dengan cara lain (fallback method)
+    const handleFallbackPDF = () => {
+        if (!cvRef.current) {
+            alert('CV belum siap untuk diekspor. Silakan coba lagi.');
+            return;
+        }
+
+        try {
+            // Buat popup window untuk menampilkan CV yang bisa di-print
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert('Harap izinkan popup untuk mencetak CV');
+                return;
+            }
+            
+            // Buat representasi data CV
+            const cvData = { ...formData };
+            
+            // Tambahkan stylesheet
+            const styles = `
+                @page { 
+                    size: A4; 
+                    margin: 0; 
+                }
+                body { 
+                    margin: 0;
+                    padding: 0;
+                    font-family: Arial, sans-serif;
+                    background-color: white;
+                }
+                .print-container {
+                    width: 21cm;
+                    min-height: 29.7cm;
+                    margin: 0 auto;
+                    background: white;
+                    padding: 0;
+                }
+                .print-cv {
+                    padding: 2cm;
+                }
+                .no-print {
+                    padding: 20px;
+                    text-align: center;
+                    background-color: #f5f5f5;
+                    margin-bottom: 20px;
+                }
+                .print-button {
+                    padding: 10px 20px;
+                    background-color: #e53e3e;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    margin-bottom: 20px;
+                    font-weight: bold;
+                }
+                @media print {
+                    .no-print {
+                        display: none !important;
+                    }
+                    .print-container {
+                        width: 100%;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .print-cv {
+                        padding: 0;
+                    }
+                }
+                
+                /* Import gaya CV dari komponen asli */
+                ${pageBreakStyle}
+            `;
+
+            // Render CV di window baru
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>CV - ${formData.name}</title>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <style>${styles}</style>
+                </head>
+                <body>
+                    <div class="no-print">
+                        <h2>Cetak CV</h2>
+                        <pd>Silakan klik tombol Print di bawah, atau tekan Ctrl+P untuk mencetak/menyimpan sebagai PDF</pd>
+                        <button onclick="window.print()" class="print-button">
+                            Print / Simpan PDF
+                        </button>
+                    </div>
+                    <div class="print-container">
+                        <div class="print-cv cv-for-pdf-mode" id="print-content">
+                            ${cvRef.current.outerHTML}
+                        </div>
+                    </div>
+                    
+                    <script>
+                        // Auto-print setelah 1 detik
+                        setTimeout(function() {
+                            // Hapus pengingat halaman
+                            const pageNumbers = document.querySelectorAll('.print-container .text-gray-400');
+                            pageNumbers.forEach(el => el.style.display = 'none');
+                        }, 500);
+                    </script>
+                </body>
+                </html>
+            `);
+            
+            // Finalisasi dokumen
+            printWindow.document.close();
+            printWindow.focus();
+            
+        } catch (error) {
+            console.error('Error dalam metode fallback:', error);
+            alert('Tidak dapat membuat PDF. Coba gunakan browser lain atau metode lain untuk menyimpan CV Anda.');
+        }
+    };
+
+    // Fungsi utama untuk menghasilkan PDF dengan fallback
+    const generatePDFWithFallback = () => {
+        if (!cvRef.current) {
+            alert('CV belum siap untuk diekspor. Silakan coba lagi.');
+            return;
+        }
+
+        // Tampilkan indikator loading
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        loadingOverlay.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg text-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-700 mx-auto mb-3"></div>
+                <p class="text-gray-800 dark:text-gray-200">Menghasilkan PDF...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
+
+        try {
+            // Delay sedikit untuk memastikan UI sudah dirender dengan benar
+            setTimeout(() => {
+                try {
+                    // Persiapkan elemen yang akan dikonversi - penting untuk menggunakan isPdfMode=true
+                    const element = cvRef.current as HTMLElement;
+                    element.classList.add('pdf-export-mode');
+
+                    // Buat clone elemen untuk PDF agar tidak mengubah tampilan UI dan pastikan semua slider zoom, nomor halaman tidak ikut tercetak
+                    const cloneElement = element.cloneNode(true) as HTMLElement;
+                    document.body.appendChild(cloneElement);
+                    cloneElement.style.position = 'absolute';
+                    cloneElement.style.left = '-9999px';
+                    cloneElement.style.width = '21cm';
+                    cloneElement.style.padding = '2cm';
+                    cloneElement.style.boxSizing = 'border-box';
+                    cloneElement.style.margin = '0';
+                    cloneElement.style.backgroundColor = 'white';
+                    cloneElement.style.fontSize = '11pt';
+                    cloneElement.style.lineHeight = '1.5';
+                    
+                    // Hapus elemen kontrol zoom dan indikator halaman dari clone
+                    const zoomControls = cloneElement.querySelectorAll('.zoom-controls, .page-number-indicator');
+                    zoomControls.forEach(control => {
+                        if (control.parentNode) {
+                            control.parentNode.removeChild(control);
+                        }
+                    });
+                    
+                    // Opsi yang lebih konsisten untuk menghasilkan PDF yang sesuai dengan preview
+                    const options = {
+                        margin: 0,
+                        filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
+                        image: { type: 'jpeg', quality: 1.0 },
+                        html2canvas: { 
+                            scale: 2,
+                            useCORS: true,
+                            allowTaint: true,
+                            logging: false
+                        },
+                        jsPDF: { 
+                            unit: 'mm', 
+                            format: 'a4', 
+                            orientation: 'portrait',
+                            compress: true
+                        },
+                        pagebreak: { mode: 'avoid-all' }
+                    };
+    
+                    // Generate PDF dari elemen clone
+                    html2pdf()
+                        .from(cloneElement)
+                        .set(options)
+                        .save()
+                        .then(() => {
+                            document.body.removeChild(loadingOverlay);
+                            document.body.removeChild(cloneElement);
+                            element.classList.remove('pdf-export-mode');
+                        })
+                        .catch((error: Error) => {
+                            console.error('Error membuat PDF:', error);
+                            document.body.removeChild(loadingOverlay);
+                            document.body.removeChild(cloneElement);
+                            element.classList.remove('pdf-export-mode');
+                            handleFallbackPDF();
+                        });
+                } catch (error) {
+                    console.error('Error saat proses pembuatan PDF:', error);
+                    document.body.removeChild(loadingOverlay);
+                    handleFallbackPDF();
+                }
+            }, 300); // Tunda eksekusi untuk beri waktu render UI
+        } catch (error) {
+            console.error('Error dalam generatePDFWithFallback:', error);
+            document.body.removeChild(loadingOverlay);
+            handleFallbackPDF();
         }
     };
 
@@ -1818,10 +2158,11 @@ export default function CvForm() {
 
                                     <div className="mt-6 flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0 sm:space-x-4">
                                         <button
-                                            type="submit"
+                                            type="button"
+                                            onClick={generatePDFWithFallback}
                                             className="inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:border-red-700 focus:ring ring-red-300 disabled:opacity-25 transition w-full"
                                         >
-                                            Generate CV ke PDF
+                                            Generate PDF
                                         </button>
                                         <button
                                             type="button"
@@ -1838,24 +2179,39 @@ export default function CvForm() {
                         {/* Preview Section */}
                         {showPreview && (
                             <div className="md:w-1/2 transition-all duration-300">
-                                <div className="bg-white dark:bg-gray-700 shadow-md rounded-lg p-4 h-full">
+                                <div className="bg-white dark:bg-gray-700 shadow-md rounded-lg p-5 h-full">
                                     <div className="flex justify-between items-center mb-4">
                                         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                                             Preview CV
                                         </h2>
-                                        <button
-                                            type="button"
-                                            onClick={togglePreview}
-                                            className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                            </svg>
-                                        </button>
+                                        <div className="flex space-x-2">
+                                            <button
+                                                type="button"
+                                                onClick={togglePreview}
+                                                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="overflow-auto max-h-[800px] bg-gray-50 rounded p-1">
-                                        <div ref={cvRef} className="shadow-lg cv-for-pdf" id="cv-to-export">
-                                            <CV data={formData} />
+                                    <div className="overflow-auto bg-gray-50 rounded p-1">
+                                        <div 
+                                            ref={cvRef} 
+                                            className="shadow-lg cv-for-pdf" 
+                                            id="cv-to-export"
+                                            style={{
+                                                width: '21cm',
+                                                padding: '2cm',
+                                                boxSizing: 'border-box' as 'border-box',
+                                                margin: '0 auto',
+                                                backgroundColor: 'white',
+                                                fontSize: '11pt',
+                                                lineHeight: 1.5
+                                            }}
+                                        >
+                                            <CV data={formData} isPdfMode={false} />
                                         </div>
                                     </div>
                                 </div>
@@ -1891,6 +2247,29 @@ export default function CvForm() {
                                 className="h-full w-full object-cover"
                             />
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Hidden CV Component untuk generate PDF langsung (jika tidak ada preview aktif) */}
+            {!showPreview && (
+                <div style={{ display: 'none' }}>
+                    <div 
+                        ref={cvRef} 
+                        id="cv-to-export" 
+                        className="cv-for-pdf cv-for-pdf-mode" 
+                        style={{
+                            backgroundColor: 'white',
+                            width: '21cm',
+                            padding: '2cm',
+                            boxSizing: 'border-box' as 'border-box',
+                            margin: '0 auto',
+                            boxShadow: 'none',
+                            fontSize: '11pt',
+                            lineHeight: 1.5
+                        }}
+                    >
+                        <CV data={formData} isPdfMode={true} />
                     </div>
                 </div>
             )}
