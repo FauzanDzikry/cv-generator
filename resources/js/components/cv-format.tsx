@@ -965,11 +965,9 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 {pages.map((page, index) => (
                     <div key={`page-${index}`} className="relative mb-8">
                         {page}
-                        {!isPdfMode && (
-                            <div className="page-number-indicator absolute bottom-2 text-center w-full text-xs text-gray-400 mb-5">
-                                Page {index + 1} of {pages.length}
-                            </div>
-                        )}
+                        <div className="page-number-indicator absolute bottom-2 text-center w-full text-xs text-gray-400 mb-5">
+                            Page {index + 1} of {pages.length}
+                        </div>
                         {index < pages.length - 1 && <div className="html2pdf__page-break"></div>}
                     </div>
                 ))}

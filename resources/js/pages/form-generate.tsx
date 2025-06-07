@@ -558,9 +558,20 @@ export default function CvForm() {
                         }
                         
                         /* Hide unnecessary elements */
-                        .zoom-controls,
-                        .page-number-indicator {
+                        .zoom-controls {
                             display: none !important;
+                        }
+                        
+                        /* Show page numbers in print */
+                        .page-number-indicator {
+                            display: block !important;
+                            position: absolute;
+                            bottom: 1cm;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            font-size: 10pt;
+                            color: rgb(156, 163, 175);
+                            text-align: center;
                         }
                         
                         /* Header styles */
@@ -822,6 +833,8 @@ export default function CvForm() {
                             margin-bottom: 6pt !important;
                             margin-top: 1.5rem !important;
                             line-height: 1.3 !important;
+                            padding-bottom: 0.5rem !important;
+                            border-bottom: 2px solid rgb(229, 231, 235) !important;
                         }
                         
                         h3 {
@@ -2519,18 +2532,6 @@ export default function CvForm() {
                                             className="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-gray-900 dark:text-white uppercase tracking-widest hover:bg-gray-300 dark:hover:bg-gray-500 active:bg-gray-400 dark:active:bg-gray-700 focus:outline-none focus:ring ring-gray-300 disabled:opacity-25 transition w-full"
                                         >
                                             {showPreview ? 'Close Preview' : 'Preview CV'}
-                                        </button>
-                                    </div>
-
-                                    {/* Emergency cleanup button - tersembunyi secara default */}
-                                    <div className="mt-2 text-center">
-                                        <button
-                                            type="button"
-                                            onClick={cleanupAllOverlays}
-                                            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                                            title="Klik jika halaman tidak responsif setelah generate PDF"
-                                        >
-                                            Reset Loading
                                         </button>
                                     </div>
                                 </form>
