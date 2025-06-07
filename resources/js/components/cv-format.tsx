@@ -50,6 +50,8 @@ export const pageBreakStyle = `
 .cv-for-pdf-mode h1 {
     font-size: 24pt !important;
     margin-bottom: 8pt !important;
+    margin-top: 0 !important;
+    text-align: inherit !important;
 }
 
 .cv-for-pdf-mode h2 {
@@ -61,6 +63,10 @@ export const pageBreakStyle = `
 .cv-for-pdf-mode div {
     font-size: 11pt !important;
     line-height: 1.5 !important;
+}
+
+.cv-for-pdf-mode .cv-header {
+    padding-bottom: 1rem !important;
 }
 
 .pdf-export-mode * {
@@ -212,6 +218,7 @@ interface CVData {
     summary: string;
     is_use_photo: boolean;
     photo?: File | null;
+    photoPreview?: string | null;
     work_experience: WorkExperience[];
     education: Education[];
     skills: Skill[];
@@ -234,7 +241,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const [pages, setPages] = useState<React.ReactNode[]>([]);
     const cvContentRef = useRef<HTMLDivElement>(null);
     const contentObserverRef = useRef<ResizeObserver | null>(null);
-    const PAGE_HEIGHT = 620; // Tinggi halaman dalam piksel (area konten)
+    const PAGE_HEIGHT = 950; // Tinggi halaman dalam piksel (area konten)
 
     // Sisipkan style untuk PDF saat komponen mount
     useEffect(() => {
@@ -293,6 +300,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     backgroundColor: 'white',
                     boxShadow: '0 0 10px rgba(83, 81, 81, 0.2)',
                     margin: '0 auto',
+                    marginTop: '40px',
                     position: 'relative',
                     overflowY: 'hidden'
                 }}
@@ -308,11 +316,11 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
         currentPage.push(
             <div key="header" className="cv-header pb-4">
                 <div className="flex items-start justify-between">
-                    {data.is_use_photo && data.photo && (
+                    {data.is_use_photo && (data.photo || data.photoPreview) && (
                         <div className="w-1/4 flex justify-start">
                             <div className="h-32 w-32 rounded-full overflow-hidden border-2 border-gray-300">
                                 <img
-                                    src={URL.createObjectURL(data.photo)}
+                                    src={data.photoPreview || (data.photo ? URL.createObjectURL(data.photo) : '')}
                                     alt={`${data.name}'s photo`}
                                     className="h-full w-full object-cover"
                                 />
@@ -320,7 +328,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                         </div>
                     )}
 
-                    <div className={`${data.is_use_photo && data.photo ? 'w-3/4' : 'w-full'}`}>
+                    <div className={`${data.is_use_photo && (data.photo || data.photoPreview) ? 'w-3/4' : 'w-full'}`}>
                         <h1 className={`text-3xl font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`}>{data.name}</h1>
 
                         {data.is_use_photo ? <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1">
@@ -364,8 +372,8 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
         );
 
         // Perkiraan tinggi header dan summary
-        const headerHeight = 220;
-        const summaryHeight = data.summary ? 150 : 0;
+        const headerHeight = 150;
+        const summaryHeight = data.summary ? 100 : 0;
         let currentPageHeight = headerHeight;
 
         // Summary juga biasanya di halaman pertama
@@ -457,27 +465,20 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 const description = item.description || '';
                 const { intro, bullets } = extractBulletPoints(description);
                 
-                // Hitung perkiraan tinggi total untuk item saat ini
-                let itemTotalHeight = ITEM_HEADING_HEIGHT; // Header item
-                if (intro) itemTotalHeight += PARAGRAPH_HEIGHT; // Intro paragraph
-                if (bullets.length > 0) itemTotalHeight += bullets.length * BULLET_POINT_HEIGHT; // Bullet points
-                itemTotalHeight += SPACING_HEIGHT; // Spacing
-                
-                // Jika item ini akan melebihi halaman saat ini tapi bukan item pertama, pindah ke halaman baru
-                const willExceedPage = (currentPageHeight + itemTotalHeight > PAGE_HEIGHT);
-                
-                if (willExceedPage && !isProcessingItem && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
-                    // Pindah ke halaman baru hanya jika halaman saat ini sudah memiliki konten signifikan
-                    pageContents.push(createPage(currentPage));
-                    currentPage = [];
-                    currentPageHeight = 0;
-                }
-                
-                // Jika mulai item baru
+                // Jika memulai item baru
                 if (currentItemIndex !== index) {
                     currentItemIndex = index;
                     isProcessingItem = true;
                     
+                    // Cek apakah header item akan melebihi halaman
+                    if (currentPageHeight + ITEM_HEADING_HEIGHT > PAGE_HEIGHT - 5) {
+                        // Jika melebihi, pindah ke halaman baru
+                        pageContents.push(createPage(currentPage));
+                        currentPage = [];
+                        currentPageHeight = 0;
+                    }
+                    
+                    // Tambahkan header item
                     currentPage.push(itemElement);
                     currentPageHeight += ITEM_HEADING_HEIGHT;
                 }
@@ -485,8 +486,8 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 // Proses paragraf intro jika ada
                 if (intro) {
                     // Cek jika paragraf intro akan melebihi halaman ini
-                    if (currentPageHeight + PARAGRAPH_HEIGHT > PAGE_HEIGHT) {
-                        // Pindah ke halaman baru hanya jika tidak muat
+                    if (currentPageHeight + PARAGRAPH_HEIGHT > PAGE_HEIGHT - 5) {
+                        // Pindah ke halaman baru jika tidak muat
                         pageContents.push(createPage(currentPage));
                         currentPage = [];
                         currentPageHeight = 0;
@@ -499,41 +500,34 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     currentPageHeight += PARAGRAPH_HEIGHT;
                 }
                 
-                // Container untuk bullet points
+                // Proses setiap bullet point satu per satu
                 if (bullets.length > 0) {
-                    currentPage.push(
-                        <div key={`${sectionTitle}_bullets_container_${index}`} className="text-gray-600 mt-1"></div>
-                    );
+                    bullets.forEach((bullet, bulletIndex) => {
+                        // Cek jika bullet point ini akan melebihi halaman
+                        if (currentPageHeight + BULLET_POINT_HEIGHT > PAGE_HEIGHT - 5) {
+                            // Pindah ke halaman baru untuk bullet point berikutnya
+                            pageContents.push(createPage(currentPage));
+                            currentPage = [];
+                            currentPageHeight = 0;
+                        }
+                        
+                        // Tambahkan bullet point
+                        currentPage.push(
+                            <div key={`bullet_${sectionTitle}_${index}_${bulletIndex}`} style={{
+                                display: 'flex',
+                                marginBottom: '0.25rem'
+                            }} className="text-gray-600">
+                                <div style={{ width: '1em', flexShrink: 0 }}>•</div>
+                                <div>{bullet}</div>
+                            </div>
+                        );
+                        currentPageHeight += BULLET_POINT_HEIGHT;
+                    });
                 }
-                
-                // Proses setiap bullet point
-                bullets.forEach((bullet, bulletIndex) => {
-                    // Cek jika bullet point akan melebihi halaman ini
-                    if (currentPageHeight + BULLET_POINT_HEIGHT > PAGE_HEIGHT) {
-                        // Pindah ke halaman baru hanya jika tidak muat
-                        pageContents.push(createPage(currentPage));
-                        currentPage = [];
-                        currentPageHeight = 0;
-                    }
-                    
-                    // Tambahkan bullet point
-                    currentPage.push(
-                        <div key={`bullet_${sectionTitle}_${index}_${bulletIndex}`} style={{
-                            display: 'flex',
-                            marginBottom: '0.25rem'
-                        }} className="text-gray-600">
-                            <div style={{ width: '1em', flexShrink: 0 }}>•</div>
-                            <div>{bullet}</div>
-                        </div>
-                    );
-                    currentPageHeight += BULLET_POINT_HEIGHT;
-                });
-                
-                // Selesai memproses item
-                isProcessingItem = false;
                 
                 // Tambahkan spacing setelah item
                 currentPageHeight += SPACING_HEIGHT;
+                isProcessingItem = false;
             });
         };
 
@@ -583,28 +577,15 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
         // Proses Skills section
         if (data.skills && data.skills.length > 0 && data.skills[0].name) {
-            // Bagi skills ke dalam baris (4 skill per baris)
-            const skillsPerRow = 4;
-            const skillRows = [];
+            // Tambahkan spacing sebelum section baru
+            currentPageHeight += SECTION_SPACING_HEIGHT;
             
-            for (let i = 0; i < data.skills.length; i += skillsPerRow) {
-                const rowSkills = data.skills.slice(i, i + skillsPerRow);
-                skillRows.push(rowSkills);
-            }
-
-            // Hitung tinggi total skill section
-            const totalSkillsHeight = SECTION_HEADING_HEIGHT + (skillRows.length * 40);
-            
-            // Cek apakah seluruh skills section muat di halaman ini
-            // Jika tidak cukup ruang dan halaman sudah berisi konten signifikan, pindah ke halaman baru
-            if ((currentPageHeight + totalSkillsHeight > PAGE_HEIGHT) && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
+            // Cek jika heading tidak akan muat di halaman ini
+            if (currentPageHeight + SECTION_HEADING_HEIGHT > PAGE_HEIGHT - 5) {
                 pageContents.push(createPage(currentPage));
                 currentPage = [];
                 currentPageHeight = 0;
             }
-            
-            // Tambahkan spacing sebelum section baru
-            currentPageHeight += SECTION_SPACING_HEIGHT;
             
             // Tambahkan heading skills
             currentPage.push(
@@ -620,37 +601,31 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 </div>
             );
             
-            // Proses setiap baris skill
-            skillRows.forEach((row, rowIndex) => {
-                const rowHeight = 40; // Tinggi per baris skill
+            // Proses setiap skill
+            data.skills.forEach((skill, index) => {
+                const skillItemHeight = 30; // Tinggi item skill
                 
-                // Cek jika baris skill tidak akan muat di halaman ini
-                if (currentPageHeight + rowHeight > PAGE_HEIGHT) {
+                // Cek jika skill item tidak akan muat di halaman ini
+                if (currentPageHeight + skillItemHeight > PAGE_HEIGHT - 5) {
                     pageContents.push(createPage(currentPage));
                     currentPage = [];
                     currentPageHeight = 0;
                     
-                    // Tambahkan container baru untuk skills
+                    // Tambahkan container baru untuk skills di halaman baru
                     currentPage.push(
-                        <div key={`skills_container_row_${rowIndex}`} className="grid grid-cols-4 gap-1">
+                        <div key={`skills_container_new_page`} className="grid grid-cols-4 gap-1">
                         </div>
                     );
                 }
                 
-                // Tambahkan setiap skill dalam baris
-                row.forEach((skill, index) => {
-                    currentPage.push(
-                        <div key={`skill_${rowIndex}_${index}`} className="flex items-center">
-                            <span className="text-gray-700">• {skill.name}</span>
-                        </div>
-                    );
-                });
-                
-                currentPageHeight += rowHeight;
+                // Tambahkan skill item
+                currentPage.push(
+                    <div key={`skill_${index}`} className="flex items-center">
+                        <span className="text-gray-700">• {skill.name}</span>
+                    </div>
+                );
+                currentPageHeight += skillItemHeight;
             });
-            
-            // Tambahkan spacing setelah section
-            currentPageHeight += SECTION_SPACING_HEIGHT;
         }
 
         // Proses Portfolios dengan pagination per baris
@@ -726,7 +701,8 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             
             // Cek apakah seluruh languages section muat di halaman ini
             // Jika tidak cukup ruang dan halaman sudah berisi konten signifikan, pindah ke halaman baru
-            if ((currentPageHeight + totalLanguagesHeight > PAGE_HEIGHT) && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
+            // Tingkatkan batas minimum konten untuk pindah halaman
+            if ((currentPageHeight + totalLanguagesHeight > PAGE_HEIGHT - 50) && currentPageHeight > PAGE_HEIGHT * 0.7) {
                 pageContents.push(createPage(currentPage));
                 currentPage = [];
                 currentPageHeight = 0;
@@ -775,16 +751,10 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 const langItemHeight = 30; // Tinggi item bahasa
                 
                 // Cek jika language item tidak akan muat di halaman ini
-                if (currentPageHeight + langItemHeight > PAGE_HEIGHT) {
+                if (currentPageHeight + langItemHeight > PAGE_HEIGHT - 5) {
                     pageContents.push(createPage(currentPage));
                     currentPage = [];
                     currentPageHeight = 0;
-                    
-                    // Tambahkan container baru untuk languages
-                    currentPage.push(
-                        <ul key={`languages_list_item_${index}`} className="list-disc pl-5">
-                        </ul>
-                    );
                 }
                 
                 // Tambahkan language item
@@ -806,21 +776,15 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             // Parse additional info untuk bullet points dan hitung tinggi
             const { intro, bullets } = extractBulletPoints(data.additional_info);
             
-            // Hitung perkiraan tinggi total untuk additional info
-            let totalAdditionalInfoHeight = SECTION_HEADING_HEIGHT;
-            if (intro) totalAdditionalInfoHeight += PARAGRAPH_HEIGHT;
-            if (bullets.length > 0) totalAdditionalInfoHeight += bullets.length * BULLET_POINT_HEIGHT;
+            // Tambahkan spacing sebelum section baru
+            currentPageHeight += SECTION_SPACING_HEIGHT;
             
-            // Cek apakah seluruh additional info section muat di halaman ini
-            // Jika tidak cukup ruang dan halaman sudah berisi konten signifikan, pindah ke halaman baru
-            if ((currentPageHeight + totalAdditionalInfoHeight > PAGE_HEIGHT) && currentPageHeight > SECTION_HEADING_HEIGHT * 2) {
+            // Cek jika heading tidak akan muat di halaman ini
+            if (currentPageHeight + SECTION_HEADING_HEIGHT > PAGE_HEIGHT - 5) {
                 pageContents.push(createPage(currentPage));
                 currentPage = [];
                 currentPageHeight = 0;
             }
-            
-            // Tambahkan spacing sebelum section baru
-            currentPageHeight += SECTION_SPACING_HEIGHT;
             
             // Tambahkan heading
             currentPage.push(
@@ -833,7 +797,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             // Proses paragraf intro jika ada
             if (intro) {
                 // Cek jika paragraf intro tidak akan muat di halaman ini
-                if (currentPageHeight + PARAGRAPH_HEIGHT > PAGE_HEIGHT) {
+                if (currentPageHeight + PARAGRAPH_HEIGHT > PAGE_HEIGHT - 5) {
                     pageContents.push(createPage(currentPage));
                     currentPage = [];
                     currentPageHeight = 0;
@@ -846,25 +810,13 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 currentPageHeight += PARAGRAPH_HEIGHT;
             }
             
-            // Container untuk bullet points
-            if (bullets.length > 0) {
-                currentPage.push(
-                    <div key="additional_info_bullets_container" className="text-gray-600 mt-1"></div>
-                );
-            }
-            
-            // Proses setiap bullet point
+            // Proses setiap bullet point satu per satu
             bullets.forEach((bullet, bulletIndex) => {
                 // Cek jika bullet point tidak akan muat di halaman ini
-                if (currentPageHeight + BULLET_POINT_HEIGHT > PAGE_HEIGHT) {
+                if (currentPageHeight + BULLET_POINT_HEIGHT > PAGE_HEIGHT - 5) {
                     pageContents.push(createPage(currentPage));
                     currentPage = [];
                     currentPageHeight = 0;
-                    
-                    // Tambahkan container baru untuk bullet points
-                    currentPage.push(
-                        <div key={`additional_info_bullets_container_${bulletIndex}`} className="text-gray-600 mt-1"></div>
-                    );
                 }
                 
                 // Tambahkan bullet point
@@ -879,9 +831,6 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 );
                 currentPageHeight += BULLET_POINT_HEIGHT;
             });
-            
-            // Tambahkan spacing setelah section
-            currentPageHeight += SECTION_SPACING_HEIGHT;
         }
         
         // Tambahkan halaman terakhir jika masih ada konten

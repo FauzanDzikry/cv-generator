@@ -152,10 +152,109 @@ export default function CvForm() {
 
     const cvRef = useRef<HTMLDivElement>(null);
 
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${months[date.getMonth()]} ${date.getFullYear()}`;
+        } catch (e) {
+            return dateString;
+        }
+    };
+
+    const formatPhoneForWhatsApp = (phone: string) => {
+        if (!phone) return '';
+        let cleanNumber = phone.replace(/\D/g, '');
+        if (cleanNumber.startsWith('62')) {
+            return cleanNumber;
+        }
+        if (cleanNumber.startsWith('0')) {
+            return '62' + cleanNumber.substring(1);
+        }
+        return '62' + cleanNumber;
+    };
+
+    const calculateDuration = (startDate: string, endDate: string, isCurrent: boolean = false) => {
+        try {
+            const start = new Date(startDate);
+            const end = isCurrent ? new Date() : new Date(endDate);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                return '';
+            }
+            let months = (end.getFullYear() - start.getFullYear()) * 12;
+            months += end.getMonth() - start.getMonth();
+            if (end.getDate() < start.getDate()) {
+                months--;
+            }
+            const years = Math.floor(months / 12);
+            const remainingMonths = months % 12;
+            if (years > 0 && remainingMonths > 0) {
+                return `(${years}y ${remainingMonths}m)`;
+            } else if (years > 0) {
+                return `(${years}y)`;
+            } else if (remainingMonths > 0) {
+                return `(${remainingMonths}m)`;
+            } else {
+                return '(< 1m)';
+            }
+        } catch (e) {
+            return '';
+        }
+    };
+
+    // Fungsi global untuk membersihkan semua loading overlay yang mungkin tertinggal
+    const cleanupAllOverlays = () => {
+        try {
+            const allOverlays = document.querySelectorAll('[id*="pdf-loading-overlay"]');
+            allOverlays.forEach(overlay => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            });
+        } catch (error) {
+            console.error('Error cleaning up overlays:', error);
+        }
+    };
+
     useEffect(() => {
         setTimeout(() => {
             setPageLoaded(true);
         }, 100);
+
+        // Load data dari localStorage jika ada
+        const savedFormData = localStorage.getItem('cvFormData');
+        const savedAddOnSections = localStorage.getItem('cvAddOnSections');
+
+        if (savedFormData) {
+            try {
+                const parsedData = JSON.parse(savedFormData);
+
+                // Kita perlu menangani photo secara khusus karena File object tidak bisa di-stringify
+                if (parsedData.photo) {
+                    parsedData.photo = null; // Reset photo ke null karena tidak bisa disimpan di localStorage
+                }
+
+                setFormData(parsedData);
+
+                // Jika ada foto yang tersimpan di localStorage (sebagai URL base64), tampilkan
+                const savedPhotoPreview = localStorage.getItem('cvPhotoPreview');
+                if (savedPhotoPreview) {
+                    setPhotoPreview(savedPhotoPreview);
+                }
+            } catch (error) {
+                console.error('Error parsing form data from localStorage:', error);
+            }
+        }
+
+        if (savedAddOnSections) {
+            try {
+                setAddOnSections(JSON.parse(savedAddOnSections));
+            } catch (error) {
+                console.error('Error parsing add-on sections from localStorage:', error);
+            }
+        }
 
         if (!formTouched && (
             formData.name || formData.email || formData.phone ||
@@ -165,7 +264,59 @@ export default function CvForm() {
         )) {
             setFormTouched(true);
         }
-    }, [formData, formTouched]);
+
+        // Cleanup function untuk memastikan overlay dibersihkan saat komponen unmount
+        return () => {
+            cleanupAllOverlays();
+        };
+    }, [formTouched]);
+
+    // Simpan data form ke localStorage setiap kali formData berubah
+    useEffect(() => {
+        try {
+            // Buat salinan formData untuk diolah sebelum disimpan
+            const formDataToSave = { ...formData };
+
+            // Hapus photo dari data yang akan disimpan karena File object tidak bisa di-stringify
+            if (formDataToSave.photo) {
+                formDataToSave.photo = null;
+            }
+
+            localStorage.setItem('cvFormData', JSON.stringify(formDataToSave));
+            localStorage.setItem('cvAddOnSections', JSON.stringify(addOnSections));
+
+            // Jika ada photoPreview, simpan juga
+            if (photoPreview) {
+                localStorage.setItem('cvPhotoPreview', photoPreview);
+            }
+        } catch (error) {
+            console.error('Error saving form data to localStorage:', error);
+        }
+    }, [formData, addOnSections, photoPreview]);
+
+    // Effect untuk menangani cleanup overlay saat halaman ditinggalkan
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            cleanupAllOverlays();
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                cleanupAllOverlays();
+            }
+        };
+
+        // Tambahkan event listeners
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Cleanup event listeners
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            cleanupAllOverlays();
+        };
+    }, []);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -186,20 +337,20 @@ export default function CvForm() {
     const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            
+
             // Validasi tipe file
             const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
             if (!validTypes.includes(file.type)) {
                 alert('Please select a valid image file (JPEG, PNG, JPG)');
                 return;
             }
-            
+
             // Simpan file ke state
             setFormData({
                 ...formData,
                 photo: file
             });
-            
+
             // Buat URL untuk preview dengan rasio 3x4
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -207,42 +358,46 @@ export default function CvForm() {
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    
+
                     if (ctx) {
                         // Mengubah untuk memastikan gambar berbentuk bulat sempurna
                         const size = Math.min(img.width, img.height);
-                        
+
                         // Ukuran canvas dibuat persegi
                         canvas.width = size;
                         canvas.height = size;
-                        
+
                         // Menghitung posisi tengah gambar
                         const offsetX = (img.width - size) / 2;
                         const offsetY = (img.height - size) / 2;
-                        
+
                         // Isi background dengan putih (opsional)
                         ctx.fillStyle = 'white';
                         ctx.fillRect(0, 0, size, size);
-                        
+
                         // Membuat mask lingkaran
                         ctx.beginPath();
-                        ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2, true);
+                        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2, true);
                         ctx.closePath();
                         ctx.clip();
-                        
+
                         // Gambar foto dalam mask lingkaran
                         ctx.drawImage(
-                            img, 
-                            offsetX, offsetY, size, size, 
+                            img,
+                            offsetX, offsetY, size, size,
                             0, 0, size, size
                         );
-                        
+
                         // Konversi canvas ke URL data
                         const dataUrl = canvas.toDataURL(file.type);
                         setPhotoPreview(dataUrl);
+
+                        // Simpan juga ke localStorage
+                        localStorage.setItem('cvPhotoPreview', dataUrl);
                     } else {
                         // Fallback jika canvas tidak didukung
                         setPhotoPreview(reader.result as string);
+                        localStorage.setItem('cvPhotoPreview', reader.result as string);
                     }
                 };
                 img.src = reader.result as string;
@@ -283,163 +438,574 @@ export default function CvForm() {
         });
     };
 
-    const handleGeneratePDF = () => {
-        if (!cvRef.current) return;
+    // Fungsi utama untuk generate PDF
+    // Updated to use the exact same CV component as preview and auto-print
+    const handleGeneratePDF = async () => {
+        if (!cvRef.current) {
+            alert('CV not ready for export. Please try again.');
+            return;
+        }
 
-        // Tampilkan indikator loading
+        // Show loading indicator
         const loadingOverlay = document.createElement('div');
         loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        loadingOverlay.id = 'pdf-loading-overlay-main';
         loadingOverlay.innerHTML = `
             <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg text-center">
                 <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-700 mx-auto mb-3"></div>
-                <p class="text-gray-800 dark:text-gray-200">Menghasilkan PDF...</p>
+                <p class="text-gray-800 dark:text-gray-200">Preparing to print...</p>
             </div>
         `;
         document.body.appendChild(loadingOverlay);
 
+        // Cleanup function
+        const cleanup = () => {
+            try {
+                const existingOverlay = document.getElementById('pdf-loading-overlay-main');
+                if (existingOverlay && existingOverlay.parentNode) {
+                    existingOverlay.parentNode.removeChild(existingOverlay);
+                }
+            } catch (error) {
+                console.error('Error during cleanup:', error);
+            }
+        };
+
         try {
-            // Gunakan opsi yang sedikit berbeda yang lebih handal
-            const options = {
-                margin: [10, 10, 10, 10], // Margin atas, kanan, bawah, kiri (mm)
-                filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
-                image: { 
-                    type: 'jpeg', 
-                    quality: 0.98
-                },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: document.documentElement.offsetWidth,
-                    windowHeight: document.documentElement.offsetHeight
-                },
-                jsPDF: { 
-                    unit: 'mm', 
-                    format: 'a4', 
-                    orientation: 'portrait',
-                    compress: true
-                },
-                pagebreak: { mode: 'avoid-all' }
+            // Create iframe for printing
+            const printFrame = document.createElement('iframe');
+            printFrame.style.position = 'absolute';
+            printFrame.style.left = '-9999px';
+            printFrame.style.top = '-9999px';
+            printFrame.style.width = '0px';
+            printFrame.style.height = '0px';
+            printFrame.style.border = 'none';
+            document.body.appendChild(printFrame);
+
+            // Wait for iframe to load
+            printFrame.onload = () => {
+                try {
+                    const printDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+                    if (!printDoc) {
+                        throw new Error('Cannot access iframe document');
+                    }
+
+                    // Get the CV content from the existing hidden component
+                    const cvElement = cvRef.current;
+                    if (!cvElement) {
+                        throw new Error('CV element not available');
+                    }
+
+                    // Print styles that match the CV component exactly
+                    const printStyles = `
+                        @page {
+                            size: A4;
+                            margin: 0;
+                        }
+                        
+                        * {
+                            box-sizing: border-box;
+                        }
+                        
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: Arial, sans-serif;
+                            background-color: white;
+                            color: #000;
+                            line-height: 1.5;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                        
+                        .print-container {
+                            width: 100%;
+                            background: white;
+                        }
+                        
+                        /* Import all CV styles */
+                        ${pageBreakStyle}
+                        
+                        /* CV Container styles */
+                        .cv-container {
+                            background: white !important;
+                            max-width: none !important;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                        }
+                        
+                        .cv-multi-page-container {
+                            transform: none !important;
+                        }
+                        
+                        .cv-page {
+                            width: 21cm !important;
+                            height: auto !important;
+                            min-height: 29.7cm !important;
+                            padding: 2cm !important;
+                            box-sizing: border-box !important;
+                            background: white !important;
+                            box-shadow: none !important;
+                            margin: 0 auto !important;
+                            margin-bottom: 0 !important;
+                            page-break-after: always;
+                            position: relative;
+                            border-radius: 0 !important;
+                        }
+                        
+                        .cv-page:last-child {
+                            page-break-after: auto;
+                        }
+                        
+                        /* Hide unnecessary elements */
+                        .zoom-controls,
+                        .page-number-indicator {
+                            display: none !important;
+                        }
+                        
+                        /* Header styles */
+                        .cv-header {
+                            padding-bottom: 1rem;
+                            margin-bottom: 1rem;
+                        }
+                        
+                        /* Flexbox utilities */
+                        .flex {
+                            display: flex;
+                        }
+                        
+                        .items-start {
+                            align-items: flex-start;
+                        }
+                        
+                        .items-center {
+                            align-items: center;
+                        }
+                        
+                        .justify-between {
+                            justify-content: space-between;
+                        }
+                        
+                        .justify-center {
+                            justify-content: center;
+                        }
+                        
+                        .flex-wrap {
+                            flex-wrap: wrap;
+                        }
+                        
+                        /* Width utilities */
+                        .w-1\\/4 {
+                            width: 25%;
+                        }
+                        
+                        .w-3\\/4 {
+                            width: 75%;
+                        }
+                        
+                        .w-full {
+                            width: 100%;
+                        }
+                        
+                        .w-32 {
+                            width: 8rem;
+                        }
+                        
+                        .h-32 {
+                            height: 8rem;
+                        }
+                        
+                        .h-full {
+                            height: 100%;
+                        }
+                        
+                        /* Spacing utilities */
+                        .gap-1 {
+                            gap: 0.25rem;
+                        }
+                        
+                        .gap-2 {
+                            gap: 0.5rem;
+                        }
+                        
+                        .mt-1 {
+                            margin-top: 0.25rem;
+                        }
+                        
+                        .mt-3 {
+                            margin-top: 0.75rem;
+                        }
+                        
+                        .mt-6 {
+                            margin-top: 1.5rem;
+                        }
+                        
+                        .mb-1 {
+                            margin-bottom: 0.25rem;
+                        }
+                        
+                        .mb-2 {
+                            margin-bottom: 0.5rem;
+                        }
+                        
+                        .mb-4 {
+                            margin-bottom: 1rem;
+                        }
+                        
+                        .mb-8 {
+                            margin-bottom: 2rem;
+                        }
+                        
+                        .ml-2 {
+                            margin-left: 0.5rem;
+                        }
+                        
+                        .pb-2 {
+                            padding-bottom: 0.5rem;
+                        }
+                        
+                        .pb-4 {
+                            padding-bottom: 1rem;
+                        }
+                        
+                        .pl-5 {
+                            padding-left: 1.25rem;
+                        }
+                        
+                        /* Grid utilities */
+                        .grid {
+                            display: grid;
+                        }
+                        
+                        .grid-cols-1 {
+                            grid-template-columns: repeat(1, minmax(0, 1fr));
+                        }
+                        
+                        .grid-cols-2 {
+                            grid-template-columns: repeat(2, minmax(0, 1fr));
+                        }
+                        
+                        .grid-cols-4 {
+                            grid-template-columns: repeat(4, minmax(0, 1fr));
+                        }
+                        
+                        /* Text utilities */
+                        .text-center {
+                            text-align: center;
+                        }
+                        
+                        .text-sm {
+                            font-size: 0.875rem;
+                            line-height: 1.25rem;
+                        }
+                        
+                        .text-md {
+                            font-size: 1rem;
+                            line-height: 1.5rem;
+                        }
+                        
+                        .text-lg {
+                            font-size: 1.125rem;
+                            line-height: 1.75rem;
+                        }
+                        
+                        .text-xl {
+                            font-size: 1.25rem;
+                            line-height: 1.75rem;
+                        }
+                        
+                        .text-3xl {
+                            font-size: 1.875rem;
+                            line-height: 2.25rem;
+                        }
+                        
+                        .font-medium {
+                            font-weight: 500;
+                        }
+                        
+                        .font-semibold {
+                            font-weight: 600;
+                        }
+                        
+                        .font-bold {
+                            font-weight: 700;
+                        }
+                        
+                        /* Colors */
+                        .text-gray-600 {
+                            color: rgb(75, 85, 99);
+                        }
+                        
+                        .text-gray-700 {
+                            color: rgb(55, 65, 81);
+                        }
+                        
+                        .text-gray-800 {
+                            color: rgb(31, 41, 55);
+                        }
+                        
+                        .text-gray-900 {
+                            color: rgb(17, 24, 39);
+                        }
+                        
+                        /* Border utilities */
+                        .border-2 {
+                            border-width: 2px;
+                        }
+                        
+                        .border-b-2 {
+                            border-bottom-width: 2px;
+                        }
+                        
+                        .border-gray-200 {
+                            border-color: rgb(229, 231, 235);
+                        }
+                        
+                        .border-gray-300 {
+                            border-color: rgb(209, 213, 219);
+                        }
+                        
+                        .rounded-full {
+                            border-radius: 9999px;
+                        }
+                        
+                        /* Overflow utilities */
+                        .overflow-hidden {
+                            overflow: hidden;
+                        }
+                        
+                        .overflow-hidden {
+                            overflow: hidden;
+                        }
+                        
+                        .text-ellipsis {
+                            text-overflow: ellipsis;
+                        }
+                        
+                        .whitespace-nowrap {
+                            white-space: nowrap;
+                        }
+                        
+                        .break-words {
+                            word-wrap: break-word;
+                        }
+                        
+                        /* Object fit */
+                        .object-cover {
+                            object-fit: cover;
+                        }
+                        
+                        /* Lists */
+                        .list-disc {
+                            list-style-type: disc;
+                        }
+                        
+                        ul.list-disc {
+                            list-style-type: disc;
+                            margin: 0;
+                        }
+                        
+                        /* Typography overrides for print */
+                        h1 {
+                            font-size: 24pt !important;
+                            margin-top: 0 !important;
+                            margin-bottom: 8pt !important;
+                            font-weight: bold !important;
+                            color: rgb(17, 24, 39) !important;
+                            line-height: 1.2 !important;
+                        }
+                        
+                        h2 {
+                            font-size: 16pt !important;
+                            font-weight: 600 !important;
+                            color: rgb(31, 41, 55) !important;
+                            margin-bottom: 6pt !important;
+                            margin-top: 1.5rem !important;
+                            line-height: 1.3 !important;
+                        }
+                        
+                        h3 {
+                            font-size: 12pt !important;
+                            font-weight: 600 !important;
+                            color: rgb(31, 41, 55) !important;
+                            margin: 0 !important;
+                            line-height: 1.4 !important;
+                        }
+                        
+                        h4 {
+                            font-size: 11pt !important;
+                            font-weight: 600 !important;
+                            color: rgb(55, 65, 81) !important;
+                            margin: 0 0 0.25rem 0 !important;
+                            line-height: 1.4 !important;
+                        }
+                        
+                        p {
+                            font-size: 11pt !important;
+                            line-height: 1.5 !important;
+                            margin: 0.25rem 0 !important;
+                            color: rgb(75, 85, 99) !important;
+                        }
+                        
+                        span {
+                            font-size: 11pt !important;
+                            line-height: 1.5 !important;
+                        }
+                        
+                        div {
+                            font-size: 11pt !important;
+                            line-height: 1.5 !important;
+                        }
+                        
+                        /* Link styles */
+                        a {
+                            color: inherit !important;
+                            text-decoration: none !important;
+                        }
+                        
+                        /* Section spacing */
+                        .cv-section {
+                            margin-bottom: 1rem !important;
+                        }
+                        
+                        .cv-section-heading {
+                            margin-bottom: 1rem !important;
+                            margin-top: 1.5rem !important;
+                        }
+                        
+                        /* Page break handling */
+                        .html2pdf__page-break {
+                            page-break-before: always;
+                            height: 0;
+                            margin: 0;
+                            border: none;
+                        }
+                        
+                        /* Print media queries */
+                        @media print {
+                            html, body {
+                                width: 210mm;
+                                height: 297mm;
+                                margin: 0;
+                                padding: 0;
+                            }
+                            
+                            .html2pdf__page-break {
+                                page-break-before: always;
+                                height: 0;
+                                margin: 0;
+                                border: none;
+                            }
+                            
+                            .cv-page {
+                                margin-bottom: 0 !important;
+                                page-break-after: always;
+                            }
+                            
+                            .cv-page:last-child {
+                                page-break-after: auto;
+                            }
+                        }
+                    `;
+
+                    // Write content to iframe
+                    printDoc.open();
+                    printDoc.write(`
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <title>CV ${formData.name || 'Preview'}</title>
+                            <style>${printStyles}</style>
+                        </head>
+                        <body>
+                            <div class="print-container">
+                                ${cvElement.innerHTML}
+                            </div>
+                        </body>
+                        </html>
+                    `);
+                    printDoc.close();
+
+                    // Wait for content to render, then print
+                    setTimeout(() => {
+                        try {
+                            // Focus and print
+                            printFrame.contentWindow?.focus();
+                            printFrame.contentWindow?.print();
+
+                            // Cleanup after printing
+                            setTimeout(() => {
+                                cleanup();
+                                if (printFrame.parentNode) {
+                                    printFrame.parentNode.removeChild(printFrame);
+                                }
+                            }, 1000);
+                        } catch (printError) {
+                            console.error('Error during print:', printError);
+                            cleanup();
+                            if (printFrame.parentNode) {
+                                printFrame.parentNode.removeChild(printFrame);
+                            }
+                            alert('Print error occurred. Please try again or use a different browser.');
+                        }
+                    }, 500);
+
+                } catch (error) {
+                    console.error('Error in iframe setup:', error);
+                    cleanup();
+                    if (printFrame.parentNode) {
+                        printFrame.parentNode.removeChild(printFrame);
+                    }
+                    alert('Error preparing print. Please try again.');
+                }
             };
 
-            // Clone elemen untuk memastikan foto dapat diproses dengan benar
-            const element = cvRef.current.cloneNode(true) as HTMLElement;
-            document.body.appendChild(element);
-            element.style.position = 'absolute';
-            element.style.left = '-9999px';
-            element.style.overflow = 'hidden';
-            element.style.height = 'auto';
-            element.style.width = '210mm'; // A4 width
-            
-            // Buat PDF
-            html2pdf()
-                .from(element)
-                .set(options)
-                .save()
-                .then(() => {
-                    // Hapus overlay loading dan elemen clone ketika selesai
-                    document.body.removeChild(loadingOverlay);
-                    document.body.removeChild(element);
-                })
-                .catch((error: Error) => {
-                    console.error('Error generating PDF:', error);
-                    document.body.removeChild(loadingOverlay);
-                    document.body.removeChild(element);
-                    
-                    // Tampilkan pesan error ke pengguna
-                    alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
-                });
+            // Error handler for iframe
+            printFrame.onerror = () => {
+                console.error('Error loading iframe');
+                cleanup();
+                if (printFrame.parentNode) {
+                    printFrame.parentNode.removeChild(printFrame);
+                }
+                alert('Error loading print preview. Please try again.');
+            };
+
+            // Start loading iframe
+            printFrame.src = 'about:blank';
+
         } catch (error) {
-            // Tangani error lainnya
             console.error('Error in handleGeneratePDF:', error);
-            document.body.removeChild(loadingOverlay);
-            alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
+            cleanup();
+            alert('Cannot generate print preview. Please try again or use a different browser.');
         }
     };
 
+    // Remove the old complex PDF generation methods and replace with simple print
     const handleDirectGeneratePDF = () => {
-        // Buat PDF tanpa menampilkan preview
-        if (!cvRef.current) return;
+        handleGeneratePDF();
+    };
 
-        // Tampilkan indikator loading
-        const loadingOverlay = document.createElement('div');
-        loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        loadingOverlay.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg text-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-700 mx-auto mb-3"></div>
-                <p class="text-gray-800 dark:text-gray-200">Menghasilkan PDF...</p>
-            </div>
-        `;
-        document.body.appendChild(loadingOverlay);
+    // Simplified fallback that just calls the main print function
+    const handleFallbackPDF = () => {
+        handleGeneratePDF();
+    };
 
-        try {
-            // Gunakan opsi yang sedikit berbeda yang lebih handal
-            const options = {
-                margin: [10, 10, 10, 10], // Margin atas, kanan, bawah, kiri (mm)
-                filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
-                image: { 
-                    type: 'jpeg', 
-                    quality: 0.98
-                },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: document.documentElement.offsetWidth,
-                    windowHeight: document.documentElement.offsetHeight
-                },
-                jsPDF: { 
-                    unit: 'mm', 
-                    format: 'a4', 
-                    orientation: 'portrait',
-                    compress: true
-                },
-                pagebreak: { mode: 'avoid-all' }
-            };
+    // Simplified direct print that just calls the main print function
+    const handleDirectPrint = () => {
+        handleGeneratePDF();
+    };
 
-            // Clone elemen untuk memastikan foto dapat diproses dengan benar
-            const element = cvRef.current.cloneNode(true) as HTMLElement;
-            document.body.appendChild(element);
-            element.style.position = 'absolute';
-            element.style.left = '-9999px';
-            element.style.overflow = 'hidden';
-            element.style.height = 'auto';
-            element.style.width = '210mm'; // A4 width
-            
-            // Buat PDF
-            html2pdf()
-                .from(element)
-                .set(options)
-                .save()
-                .then(() => {
-                    // Hapus overlay loading dan elemen clone ketika selesai
-                    document.body.removeChild(loadingOverlay);
-                    document.body.removeChild(element);
-                })
-                .catch((error: Error) => {
-                    console.error('Error generating PDF:', error);
-                    document.body.removeChild(loadingOverlay);
-                    document.body.removeChild(element);
-                    
-                    // Tampilkan pesan error ke pengguna
-                    alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
-                });
-        } catch (error) {
-            // Tangani error lainnya
-            console.error('Error in handleDirectGeneratePDF:', error);
-            document.body.removeChild(loadingOverlay);
-            alert('Terjadi kesalahan saat menghasilkan PDF. Silakan coba lagi.');
-        }
+    // Simplified generate function
+    const generatePDFWithFallback = () => {
+        handleGeneratePDF();
     };
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         console.log('Form data:', formData);
-        
+
         // Tampilkan preview jika belum muncul
         if (!showPreview) {
             setShowPreview(true);
@@ -531,223 +1097,6 @@ export default function CvForm() {
                     });
                     break;
             }
-        }
-    };
-
-    // Fungsi untuk membuat PDF langsung dengan cara lain (fallback method)
-    const handleFallbackPDF = () => {
-        if (!cvRef.current) {
-            alert('CV belum siap untuk diekspor. Silakan coba lagi.');
-            return;
-        }
-
-        try {
-            // Buat popup window untuk menampilkan CV yang bisa di-print
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                alert('Harap izinkan popup untuk mencetak CV');
-                return;
-            }
-            
-            // Buat representasi data CV
-            const cvData = { ...formData };
-            
-            // Tambahkan stylesheet
-            const styles = `
-                @page { 
-                    size: A4; 
-                    margin: 0; 
-                }
-                body { 
-                    margin: 0;
-                    padding: 0;
-                    font-family: Arial, sans-serif;
-                    background-color: white;
-                }
-                .print-container {
-                    width: 21cm;
-                    min-height: 29.7cm;
-                    margin: 0 auto;
-                    background: white;
-                    padding: 0;
-                }
-                .print-cv {
-                    padding: 2cm;
-                }
-                .no-print {
-                    padding: 20px;
-                    text-align: center;
-                    background-color: #f5f5f5;
-                    margin-bottom: 20px;
-                }
-                .print-button {
-                    padding: 10px 20px;
-                    background-color: #e53e3e;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    margin-bottom: 20px;
-                    font-weight: bold;
-                }
-                @media print {
-                    .no-print {
-                        display: none !important;
-                    }
-                    .print-container {
-                        width: 100%;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .print-cv {
-                        padding: 0;
-                    }
-                }
-                
-                /* Import gaya CV dari komponen asli */
-                ${pageBreakStyle}
-            `;
-
-            // Render CV di window baru
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>CV - ${formData.name}</title>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <style>${styles}</style>
-                </head>
-                <body>
-                    <div class="no-print">
-                        <h2>Cetak CV</h2>
-                        <pd>Silakan klik tombol Print di bawah, atau tekan Ctrl+P untuk mencetak/menyimpan sebagai PDF</pd>
-                        <button onclick="window.print()" class="print-button">
-                            Print / Simpan PDF
-                        </button>
-                    </div>
-                    <div class="print-container">
-                        <div class="print-cv cv-for-pdf-mode" id="print-content">
-                            ${cvRef.current.outerHTML}
-                        </div>
-                    </div>
-                    
-                    <script>
-                        // Auto-print setelah 1 detik
-                        setTimeout(function() {
-                            // Hapus pengingat halaman
-                            const pageNumbers = document.querySelectorAll('.print-container .text-gray-400');
-                            pageNumbers.forEach(el => el.style.display = 'none');
-                        }, 500);
-                    </script>
-                </body>
-                </html>
-            `);
-            
-            // Finalisasi dokumen
-            printWindow.document.close();
-            printWindow.focus();
-            
-        } catch (error) {
-            console.error('Error dalam metode fallback:', error);
-            alert('Tidak dapat membuat PDF. Coba gunakan browser lain atau metode lain untuk menyimpan CV Anda.');
-        }
-    };
-
-    // Fungsi utama untuk menghasilkan PDF dengan fallback
-    const generatePDFWithFallback = () => {
-        if (!cvRef.current) {
-            alert('CV belum siap untuk diekspor. Silakan coba lagi.');
-            return;
-        }
-
-        // Tampilkan indikator loading
-        const loadingOverlay = document.createElement('div');
-        loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        loadingOverlay.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg text-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-700 mx-auto mb-3"></div>
-                <p class="text-gray-800 dark:text-gray-200">Menghasilkan PDF...</p>
-            </div>
-        `;
-        document.body.appendChild(loadingOverlay);
-
-        try {
-            // Delay sedikit untuk memastikan UI sudah dirender dengan benar
-            setTimeout(() => {
-                try {
-                    // Persiapkan elemen yang akan dikonversi - penting untuk menggunakan isPdfMode=true
-                    const element = cvRef.current as HTMLElement;
-                    element.classList.add('pdf-export-mode');
-
-                    // Buat clone elemen untuk PDF agar tidak mengubah tampilan UI dan pastikan semua slider zoom, nomor halaman tidak ikut tercetak
-                    const cloneElement = element.cloneNode(true) as HTMLElement;
-                    document.body.appendChild(cloneElement);
-                    cloneElement.style.position = 'absolute';
-                    cloneElement.style.left = '-9999px';
-                    cloneElement.style.width = '21cm';
-                    cloneElement.style.padding = '2cm';
-                    cloneElement.style.boxSizing = 'border-box';
-                    cloneElement.style.margin = '0';
-                    cloneElement.style.backgroundColor = 'white';
-                    cloneElement.style.fontSize = '11pt';
-                    cloneElement.style.lineHeight = '1.5';
-                    
-                    // Hapus elemen kontrol zoom dan indikator halaman dari clone
-                    const zoomControls = cloneElement.querySelectorAll('.zoom-controls, .page-number-indicator');
-                    zoomControls.forEach(control => {
-                        if (control.parentNode) {
-                            control.parentNode.removeChild(control);
-                        }
-                    });
-                    
-                    // Opsi yang lebih konsisten untuk menghasilkan PDF yang sesuai dengan preview
-                    const options = {
-                        margin: 0,
-                        filename: `CV-${formData.name.replace(/\s+/g, '-')}.pdf`,
-                        image: { type: 'jpeg', quality: 1.0 },
-                        html2canvas: { 
-                            scale: 2,
-                            useCORS: true,
-                            allowTaint: true,
-                            logging: false
-                        },
-                        jsPDF: { 
-                            unit: 'mm', 
-                            format: 'a4', 
-                            orientation: 'portrait',
-                            compress: true
-                        },
-                        pagebreak: { mode: 'avoid-all' }
-                    };
-    
-                    // Generate PDF dari elemen clone
-                    html2pdf()
-                        .from(cloneElement)
-                        .set(options)
-                        .save()
-                        .then(() => {
-                            document.body.removeChild(loadingOverlay);
-                            document.body.removeChild(cloneElement);
-                            element.classList.remove('pdf-export-mode');
-                        })
-                        .catch((error: Error) => {
-                            console.error('Error membuat PDF:', error);
-                            document.body.removeChild(loadingOverlay);
-                            document.body.removeChild(cloneElement);
-                            element.classList.remove('pdf-export-mode');
-                            handleFallbackPDF();
-                        });
-                } catch (error) {
-                    console.error('Error saat proses pembuatan PDF:', error);
-                    document.body.removeChild(loadingOverlay);
-                    handleFallbackPDF();
-                }
-            }, 300); // Tunda eksekusi untuk beri waktu render UI
-        } catch (error) {
-            console.error('Error dalam generatePDFWithFallback:', error);
-            document.body.removeChild(loadingOverlay);
-            handleFallbackPDF();
         }
     };
 
@@ -940,7 +1289,7 @@ export default function CvForm() {
                                                     Include Profile Photo
                                                 </label>
                                             </div>
-                                            
+
                                             {formData.is_use_photo && (
                                                 <div>
                                                     <label htmlFor="photo" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1117,12 +1466,12 @@ export default function CvForm() {
                                                                     ...newWorkExperience[index],
                                                                     is_current: e.target.checked
                                                                 };
-                                                                
+
                                                                 // Jika checkbox dicentang, hapus nilai end_date
                                                                 if (e.target.checked) {
                                                                     newWorkExperience[index].end_date = '';
                                                                 }
-                                                                
+
                                                                 setFormData({
                                                                     ...formData,
                                                                     work_experience: newWorkExperience
@@ -2159,7 +2508,7 @@ export default function CvForm() {
                                     <div className="mt-6 flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0 sm:space-x-4">
                                         <button
                                             type="button"
-                                            onClick={generatePDFWithFallback}
+                                            onClick={handleGeneratePDF}
                                             className="inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:border-red-700 focus:ring ring-red-300 disabled:opacity-25 transition w-full"
                                         >
                                             Generate PDF
@@ -2170,6 +2519,18 @@ export default function CvForm() {
                                             className="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-gray-900 dark:text-white uppercase tracking-widest hover:bg-gray-300 dark:hover:bg-gray-500 active:bg-gray-400 dark:active:bg-gray-700 focus:outline-none focus:ring ring-gray-300 disabled:opacity-25 transition w-full"
                                         >
                                             {showPreview ? 'Close Preview' : 'Preview CV'}
+                                        </button>
+                                    </div>
+
+                                    {/* Emergency cleanup button - tersembunyi secara default */}
+                                    <div className="mt-2 text-center">
+                                        <button
+                                            type="button"
+                                            onClick={cleanupAllOverlays}
+                                            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                                            title="Klik jika halaman tidak responsif setelah generate PDF"
+                                        >
+                                            Reset Loading
                                         </button>
                                     </div>
                                 </form>
@@ -2196,21 +2557,8 @@ export default function CvForm() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="overflow-auto bg-gray-50 rounded p-1">
-                                        <div 
-                                            ref={cvRef} 
-                                            className="shadow-lg cv-for-pdf" 
-                                            id="cv-to-export"
-                                            style={{
-                                                width: '21cm',
-                                                padding: '2cm',
-                                                boxSizing: 'border-box' as 'border-box',
-                                                margin: '0 auto',
-                                                backgroundColor: 'white',
-                                                fontSize: '11pt',
-                                                lineHeight: 1.5
-                                            }}
-                                        >
+                                    <div className="overflow-auto rounded">
+                                        <div>
                                             <CV data={formData} isPdfMode={false} />
                                         </div>
                                     </div>
@@ -2239,11 +2587,11 @@ export default function CvForm() {
                                 </svg>
                             </button>
                         </div>
-                        
+
                         <div className="mx-auto rounded-full overflow-hidden border-4 border-gray-300 dark:border-gray-600 mb-4" style={{ width: '256px', height: '256px' }}>
-                            <img 
-                                src={photoPreview} 
-                                alt="Larger profile preview" 
+                            <img
+                                src={photoPreview}
+                                alt="Larger profile preview"
                                 className="h-full w-full object-cover"
                             />
                         </div>
@@ -2251,28 +2599,28 @@ export default function CvForm() {
                 </div>
             )}
 
-            {/* Hidden CV Component untuk generate PDF langsung (jika tidak ada preview aktif) */}
-            {!showPreview && (
-                <div style={{ display: 'none' }}>
-                    <div 
-                        ref={cvRef} 
-                        id="cv-to-export" 
-                        className="cv-for-pdf cv-for-pdf-mode" 
-                        style={{
-                            backgroundColor: 'white',
-                            width: '21cm',
-                            padding: '2cm',
-                            boxSizing: 'border-box' as 'border-box',
-                            margin: '0 auto',
-                            boxShadow: 'none',
-                            fontSize: '11pt',
-                            lineHeight: 1.5
-                        }}
-                    >
-                        <CV data={formData} isPdfMode={true} />
-                    </div>
+            {/* Hidden CV Component untuk generate PDF */}
+            <div style={{ display: 'none' }}>
+                <div
+                    ref={cvRef}
+                    id="cv-to-export"
+                    className="cv-for-pdf"
+                    style={{
+                        backgroundColor: 'white',
+                        width: '21cm',
+                        minHeight: '29.7cm',
+                        padding: '2cm',
+                        boxSizing: 'border-box',
+                        margin: '0 auto',
+                        boxShadow: 'none',
+                        fontSize: '11pt',
+                        lineHeight: '1.5',
+                        fontFamily: 'Arial, sans-serif'
+                    }}
+                >
+                    <CV data={{...formData, photoPreview}} isPdfMode={true} />
                 </div>
-            )}
+            </div>
         </AppLayout>
     );
 }
