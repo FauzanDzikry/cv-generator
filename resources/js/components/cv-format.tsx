@@ -28,17 +28,18 @@ export const pageBreakStyle = `
     background-color: white !important;
     height: auto !important;
     width: 21cm !important;
-    padding: 2cm !important;
+    padding: 2.54cm !important;
     border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
     overflow: hidden !important;
+    font-family: Arial, sans-serif !important;
 }
 
 /* Style untuk mode PDF */
 .cv-for-pdf-mode {
     background-color: white;
-    font-family: Arial, sans-serif;
+    font-family: Arial, sans-serif !important;
 }
 
 .cv-for-pdf-mode .cv-page {
@@ -51,17 +52,20 @@ export const pageBreakStyle = `
     margin-bottom: 8pt !important;
     margin-top: 0 !important;
     text-align: inherit !important;
+    font-family: Arial, sans-serif !important;
 }
 
 .cv-for-pdf-mode h2 {
     font-size: 16pt !important;
     margin-bottom: 6pt !important;
+    font-family: Arial, sans-serif !important;
 }
 
 .cv-for-pdf-mode p, 
 .cv-for-pdf-mode div {
     font-size: 11pt !important;
     line-height: 1.5 !important;
+    font-family: Arial, sans-serif !important;
 }
 
 .cv-for-pdf-mode .cv-header {
@@ -71,6 +75,7 @@ export const pageBreakStyle = `
 .pdf-export-mode * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-family: Arial, sans-serif !important;
 }
 
 /* Sembunyikan kontrol zoom dalam mode PDF, tapi tetap tampilkan indikator halaman */
@@ -109,6 +114,15 @@ export const pageBreakStyle = `
     max-width: 200px !important;
     display: flex !important;
     flex-direction: column !important;
+}
+
+/* General CV page styling with Arial font */
+.cv-page {
+    font-family: Arial, sans-serif !important;
+}
+
+.cv-page * {
+    font-family: Arial, sans-serif !important;
 }
 `;
 
@@ -272,7 +286,10 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const [pages, setPages] = useState<React.ReactNode[]>([]);
     const cvContentRef = useRef<HTMLDivElement>(null);
     const contentObserverRef = useRef<ResizeObserver | null>(null);
-    const PAGE_HEIGHT = 800; // Tinggi halaman dalam piksel (area konten) - disesuaikan untuk margin yang optimal
+    // Tinggi halaman A4 = 29.7cm, margin top + bottom = 5.08cm, area konten = 24.62cm
+    // Dikurangi ruang untuk page number (40px) = 24.62cm - 40px ≈ 890px
+    // Dalam piksel (96 DPI): area konten yang aman = 890px
+    const PAGE_HEIGHT = 890; // Tinggi area konten yang tersedia dengan margin 1 inch dan ruang page number
 
     // Sisipkan style untuk PDF saat komponen mount
     useEffect(() => {
@@ -302,14 +319,18 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
         }
     };
 
-    // Konstanta tinggi elemen (dikurangi untuk spacing yang lebih baik)
-    const SECTION_HEADING_HEIGHT = 50;   // Tinggi heading section
-    const ITEM_HEADING_HEIGHT = 60;      // Tinggi heading item (misal: nama perusahaan, posisi)
-    const BULLET_POINT_HEIGHT = 25;      // Tinggi per bullet point
-    const WORK_BULLET_POINT_HEIGHT = 35; // Tinggi per bullet point untuk work experience (lebih tinggi karena teks lebih panjang)
-    const PARAGRAPH_HEIGHT = 40;         // Tinggi paragraf normal
-    const SPACING_HEIGHT = 15;           // Tinggi spacing antar item
-    const SECTION_SPACING_HEIGHT = 20;   // Tinggi spacing antar section
+    // Konstanta tinggi elemen (dioptimalkan untuk penggunaan ruang yang lebih efisien)
+    const SECTION_HEADING_HEIGHT = 40;   // Tinggi heading section (dikurangi dari 50)
+    const ITEM_HEADING_HEIGHT = 45;      // Tinggi heading item (dikurangi dari 60)
+    const BULLET_POINT_HEIGHT = 20;      // Tinggi per bullet point (dikurangi dari 25)
+    const WORK_BULLET_POINT_HEIGHT = 25; // Tinggi per bullet point untuk work experience (dikurangi dari 35)
+    const PARAGRAPH_HEIGHT = 30;         // Tinggi paragraf normal (dikurangi dari 40)
+    const SPACING_HEIGHT = 10;           // Tinggi spacing antar item (dikurangi dari 15)
+    const SECTION_SPACING_HEIGHT = 15;   // Tinggi spacing antar section (dikurangi dari 20)
+    const LINE_HEIGHT = 16;              // Tinggi per baris teks (dikurangi dari 20)
+    const BORDER_LINE_HEIGHT = 8;        // Tinggi garis border bawah heading (dikurangi dari 10)
+
+
 
     // Fungsi untuk membuat halaman CV
     const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
@@ -318,7 +339,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             style={{
                 width: '21cm',
                 height: '29.7cm',
-                padding: '2cm 2cm 1.2cm 2cm', // Padding bawah optimal untuk margin yang lebih dekat
+                padding: '2.54cm', // Margin 1 inch di semua sisi
                 boxSizing: 'border-box',
                 fontSize: '11pt',
                 lineHeight: '1.5',
@@ -328,10 +349,10 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 marginTop: '40px',
                 position: 'relative',
                 overflowY: 'hidden',
-                paddingBottom: '1.5cm' // Ruang tambahan untuk page number
+                fontFamily: 'Arial, sans-serif'
             }}
         >
-            <div style={{ minHeight: 'calc(100% - 30px)' }}>
+            <div style={{ minHeight: 'calc(100% - 60px)', paddingBottom: '20px' }}>
                 {content}
             </div>
             {/* Page number di dalam setiap halaman */}
@@ -340,12 +361,15 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     className="page-number-indicator"
                     style={{
                         position: 'absolute',
-                        bottom: '0.8cm',
-                        left: '0',
-                        right: '0',
+                        bottom: '1.5cm',
+                        left: '2.54cm',
+                        right: '2.54cm',
                         textAlign: 'center',
                         fontSize: '10px',
-                        color: '#9CA3AF'
+                        color: '#9CA3AF',
+                        fontFamily: 'Arial, sans-serif',
+                        height: '20px',
+                        lineHeight: '20px'
                     }}
                 >
                     Page {pageIndex + 1} of {totalPages}
@@ -381,9 +405,9 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     )}
 
                     <div className={`${data.is_use_photo && (data.photo || data.photoPreview) ? 'w-3/4' : 'w-full'}`}>
-                        <h1 className={`text-3xl font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`}>{data.name}</h1>
+                        <h1 className={`text-3xl font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`} style={{ fontFamily: 'Arial, sans-serif' }}>{data.name}</h1>
 
-                        {data.is_use_photo ? <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1">
+                        {data.is_use_photo ? <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1" style={{ fontFamily: 'Arial, sans-serif' }}>
                             {data.address && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '📍' : ''}</span>{data.address}</p>}
                             {data.phone && <p className="flex items-center gap-2">
                                 <span>{data.is_use_photo ? '📱' : ''}</span>
@@ -392,6 +416,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="hover:text-blue-600 hover:underline"
+                                    style={{ fontFamily: 'Arial, sans-serif' }}
                                 >
                                     {data.phone}
                                 </a>
@@ -399,7 +424,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             {data.email && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '✉️' : ''}</span>{data.email}</p>}
                             {data.linkedin && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '🔗' : ''}</span>{data.linkedin}</p>}
                         </div> :
-                            <div className="mt-3 text-gray-700 text-center">
+                            <div className="mt-3 text-gray-700 text-center" style={{ fontFamily: 'Arial, sans-serif' }}>
                                 <div className="flex flex-wrap justify-center gap-2 mb-2">
                                     {data.phone && <p className="whitespace-nowrap">
                                         <a 
@@ -407,6 +432,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             className="hover:text-blue-600 hover:underline"
+                                            style={{ fontFamily: 'Arial, sans-serif' }}
                                         >
                                             {data.phone}
                                         </a>
@@ -423,22 +449,21 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             </div>
         );
 
-        // Perkiraan tinggi header dan summary
-        const headerHeight = 150;
-        const summaryHeight = data.summary ? 100 : 0;
+        // Perkiraan tinggi header (dioptimalkan)
+        const headerHeight = data.is_use_photo && (data.photo || data.photoPreview) ? 120 : 100;
         let currentPageHeight = headerHeight;
 
         // Summary juga biasanya di halaman pertama
         if (data.summary) {
             currentPage.push(
                 <div key="summary" className="cv-section mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Summary</h2>
-                    <p className="text-gray-700">{data.summary}</p>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>Summary</h2>
+                    <p className="text-gray-700" style={{ fontFamily: 'Arial, sans-serif' }}>{data.summary}</p>
                 </div>
             );
             
             // Tambahkan tinggi summary dan spacing setelah section
-            currentPageHeight += summaryHeight + SECTION_SPACING_HEIGHT;
+            currentPageHeight += SECTION_HEADING_HEIGHT + SECTION_SPACING_HEIGHT;
         }
 
         // Fungsi untuk menganalisis bullet points dari deskripsi
@@ -492,28 +517,57 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             return result;
         };
 
-        // Fungsi untuk memproses section dengan paginasi per baris
-        const processSectionWithLineBreak = (sectionTitle: string, items: any[], renderItem: (item: any, index: number) => React.ReactNode, bulletHeight: number = BULLET_POINT_HEIGHT, marginThreshold: number = 15) => {
+        // Fungsi untuk menghitung tinggi teks berdasarkan jumlah baris
+        const calculateTextHeight = (text: string, maxWidth: number = 400): number => {
+            if (!text) return 0;
+            
+            // Estimasi karakter per baris (berdasarkan font size 11pt dan lebar maksimal)
+            // Disesuaikan untuk font Arial 11pt dengan line-height 1.5
+            const charsPerLine = Math.floor(maxWidth / 7.2); // 7.2px per karakter untuk font 11pt Arial
+            
+            // Hitung jumlah baris yang diperlukan
+            const lines = Math.ceil(text.length / charsPerLine);
+            
+            // Jika teks pendek, minimal 1 baris
+            return Math.max(1, lines) * LINE_HEIGHT;
+        };
+
+        // Perbaiki perhitungan tinggi summary jika ada
+        if (data.summary) {
+            const summaryTextHeight = calculateTextHeight(data.summary, 500);
+            currentPageHeight += summaryTextHeight;
+        }
+
+        // Fungsi untuk menghitung tinggi item berdasarkan kontennya
+        const calculateItemHeight = (item: any, bulletHeight: number = BULLET_POINT_HEIGHT): number => {
+            const description = item.description || '';
+            const { intro, bullets } = extractBulletPoints(description);
+            
+            let totalHeight = ITEM_HEADING_HEIGHT; // Tinggi header item
+            
+            // Tambahkan tinggi untuk intro jika ada
+            if (intro) {
+                totalHeight += calculateTextHeight(intro);
+            }
+            
+            // Tambahkan tinggi untuk setiap bullet point
+            bullets.forEach((bullet: string) => {
+                totalHeight += calculateTextHeight(bullet);
+            });
+            
+            // Tambahkan spacing
+            totalHeight += SPACING_HEIGHT;
+            
+            return totalHeight;
+        };
+
+        // Fungsi untuk memproses section dengan paginasi per baris yang lebih presisi
+        const processSectionWithPreciseLineBreak = (sectionTitle: string, items: any[], renderItem: (item: any, index: number) => React.ReactNode, bulletHeight: number = BULLET_POINT_HEIGHT, marginThreshold: number = 15) => {
             // Tambahkan spacing sebelum section baru
             currentPageHeight += SECTION_SPACING_HEIGHT;
             
-            // Hitung perkiraan tinggi minimum untuk section (heading + minimal 1 item)
-            let minSectionHeight = SECTION_HEADING_HEIGHT;
-            if (items.length > 0) {
-                const firstItem = items[0];
-                const firstItemDescription = firstItem.description || '';
-                const { intro, bullets } = extractBulletPoints(firstItemDescription);
-                const firstItemHeight = ITEM_HEADING_HEIGHT + 
-                    (intro ? PARAGRAPH_HEIGHT : 0) + 
-                    (bullets.length * bulletHeight) + 
-                    SPACING_HEIGHT;
-                minSectionHeight += firstItemHeight;
-            }
-            
-            // Cek apakah heading section + minimal 1 item akan melebihi halaman
-            // Gunakan threshold berdasarkan parameter
-            if (currentPageHeight + minSectionHeight > PAGE_HEIGHT - marginThreshold) {
-                // Jika melebihi, pindah ke halaman baru
+            // Cek apakah heading section saja akan melebihi margin
+            if (currentPageHeight + SECTION_HEADING_HEIGHT > PAGE_HEIGHT - marginThreshold) {
                 pageContents.push(currentPage);
                 currentPage = [];
                 currentPageHeight = 0;
@@ -522,7 +576,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             // Tambahkan heading section
             currentPage.push(
                 <div key={`${sectionTitle}_title`} className="cv-section-heading mb-4 mt-3">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">{sectionTitle}</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>{sectionTitle}</h2>
                 </div>
             );
             currentPageHeight += SECTION_HEADING_HEIGHT;
@@ -531,21 +585,11 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             let hasHeadingInCurrentPage = true;
             
             items.forEach((item, index) => {
-                // Render item heading
-                const itemElement = renderItem(item, index);
+                // Hitung tinggi total item berdasarkan konten aktual
+                const itemHeight = calculateItemHeight(item, bulletHeight);
                 
-                // Ambil deskripsi dan parse bullet points untuk menghitung perkiraan tinggi total item
-                const description = item.description || '';
-                const { intro, bullets } = extractBulletPoints(description);
-                
-                // Estimasi tinggi total untuk item ini
-                const estimatedItemHeight = ITEM_HEADING_HEIGHT + 
-                    (intro ? PARAGRAPH_HEIGHT : 0) + 
-                    (bullets.length * bulletHeight) + 
-                    SPACING_HEIGHT;
-                
-                // Cek apakah item akan melebihi halaman dengan threshold sesuai parameter
-                if (currentPageHeight + estimatedItemHeight > PAGE_HEIGHT - marginThreshold) {
+                // Cek apakah item akan melebihi halaman
+                if (currentPageHeight + itemHeight > PAGE_HEIGHT - marginThreshold) {
                     // Jika melebihi, pindah ke halaman baru
                     pageContents.push(currentPage);
                     currentPage = [];
@@ -556,7 +600,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     if (!hasHeadingInCurrentPage) {
                         currentPage.push(
                             <div key={`${sectionTitle}_title_continued_${index}`} className="cv-section-heading mb-4 mt-3">
-                                <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">{sectionTitle}</h2>
+                                <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>{sectionTitle}</h2>
                             </div>
                         );
                         currentPageHeight += SECTION_HEADING_HEIGHT;
@@ -565,26 +609,71 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 }
                 
                 // Tambahkan header item
-                currentPage.push(itemElement);
+                currentPage.push(renderItem(item, index));
                 currentPageHeight += ITEM_HEADING_HEIGHT;
+                
+                // Proses deskripsi per baris
+                const description = item.description || '';
+                const { intro, bullets } = extractBulletPoints(description);
                 
                 // Proses paragraf intro jika ada
                 if (intro) {
+                    const introHeight = calculateTextHeight(intro);
+                    
+                    // Cek apakah intro akan melebihi halaman
+                    if (currentPageHeight + introHeight > PAGE_HEIGHT - marginThreshold) {
+                        pageContents.push(currentPage);
+                        currentPage = [];
+                        currentPageHeight = 0;
+                        
+                        // Tambahkan section heading di halaman baru jika belum ada
+                        if (!hasHeadingInCurrentPage) {
+                            currentPage.push(
+                                <div key={`${sectionTitle}_title_continued_intro_${index}`} className="cv-section-heading mb-4 mt-3">
+                                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>{sectionTitle}</h2>
+                                </div>
+                            );
+                            currentPageHeight += SECTION_HEADING_HEIGHT;
+                            hasHeadingInCurrentPage = true;
+                        }
+                    }
+                    
                     // Tambahkan paragraf intro
                     currentPage.push(
-                        <p key={`intro_${sectionTitle}_${index}`} className="text-gray-600 mt-1">{intro}</p>
+                        <p key={`intro_${sectionTitle}_${index}`} className="text-gray-600 mt-1" style={{ fontFamily: 'Arial, sans-serif' }}>{intro}</p>
                     );
-                    currentPageHeight += PARAGRAPH_HEIGHT;
+                    currentPageHeight += introHeight;
                 }
                 
                 // Proses setiap bullet point satu per satu
                 if (bullets.length > 0) {
-                    bullets.forEach((bullet, bulletIndex) => {
+                    bullets.forEach((bullet: string, bulletIndex: number) => {
+                        const bulletHeight = calculateTextHeight(bullet);
+                        
+                        // Cek apakah bullet point akan melebihi halaman
+                        if (currentPageHeight + bulletHeight > PAGE_HEIGHT - marginThreshold) {
+                            pageContents.push(currentPage);
+                            currentPage = [];
+                            currentPageHeight = 0;
+                            
+                            // Tambahkan section heading di halaman baru jika belum ada
+                            if (!hasHeadingInCurrentPage) {
+                                currentPage.push(
+                                    <div key={`${sectionTitle}_title_continued_bullet_${index}_${bulletIndex}`} className="cv-section-heading mb-4 mt-3">
+                                        <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>{sectionTitle}</h2>
+                                    </div>
+                                );
+                                currentPageHeight += SECTION_HEADING_HEIGHT;
+                                hasHeadingInCurrentPage = true;
+                            }
+                        }
+                        
                         // Tambahkan bullet point
                         currentPage.push(
                             <div key={`bullet_${sectionTitle}_${index}_${bulletIndex}`} style={{
                                 display: 'flex',
-                                marginBottom: '0.25rem'
+                                marginBottom: '0.25rem',
+                                fontFamily: 'Arial, sans-serif'
                             }} className="text-gray-600">
                                 <div style={{ width: '1em', flexShrink: 0 }}>•</div>
                                 <div>{bullet}</div>
@@ -601,22 +690,22 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
         // Proses Work Experience dengan pagination per baris
         if (data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company) {
-            processSectionWithLineBreak(
+            processSectionWithPreciseLineBreak(
                 "Work Experience",
-                data.work_experience.filter(work => work.company),
-                (work, index) => (
+                data.work_experience.filter((work: WorkExperience) => work.company),
+                (work: WorkExperience, index: number) => (
                     <div key={`work_header_${index}`} className="mb-2">
                         <div className="flex justify-between items-start">
-                            <h3 className="text-lg font-semibold text-gray-800">{work.position}</h3>
-                            <span className="text-sm text-gray-600 font-semibold">
+                            <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif' }}>{work.position}</h3>
+                            <span className="text-sm text-gray-600 font-semibold" style={{ fontFamily: 'Arial, sans-serif' }}>
                                 {formatDate(work.start_date)} - {work.is_current ? 'Present' : formatDate(work.end_date)} {calculateDuration(work.start_date, work.end_date, work.is_current)}
                             </span>
                         </div>
-                        <h4 className="text-md text-gray-700 font-semibold">{work.company}, {work.company_location} ({work.location_type})</h4>
+                        <h4 className="text-md text-gray-700 font-semibold" style={{ fontFamily: 'Arial, sans-serif' }}>{work.company}, {work.company_location} ({work.location_type})</h4>
                     </div>
                 ),
                 WORK_BULLET_POINT_HEIGHT, // Gunakan tinggi bullet point khusus untuk work experience
-                30 // Gunakan margin threshold yang lebih besar untuk work experience
+                80 // Gunakan margin threshold yang lebih besar untuk work experience agar lebih efisien
             );
             
             // Tambahkan spacing setelah section
@@ -625,22 +714,22 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
         // Proses Education dengan pagination per baris
         if (data.education && data.education.length > 0 && data.education[0].institution) {
-            processSectionWithLineBreak(
+            processSectionWithPreciseLineBreak(
                 "Education",
-                data.education.filter(edu => edu.institution),
-                (edu, index) => (
+                data.education.filter((edu: Education) => edu.institution),
+                (edu: Education, index: number) => (
                     <div key={`edu_header_${index}`} className="mb-2">
                         <div className="flex justify-between items-start">
-                            <h3 className="text-md font-semibold text-gray-800">{edu.degree} {edu.degree ? ',' : ''} {edu.field}</h3>
-                            <span className="text-sm text-gray-600 font-semibold">
+                            <h3 className="text-md font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif' }}>{edu.degree} {edu.degree ? ',' : ''} {edu.field}</h3>
+                            <span className="text-sm text-gray-600 font-semibold" style={{ fontFamily: 'Arial, sans-serif' }}>
                                 {formatDate(edu.start_date)} - {formatDate(edu.end_date)}
                             </span>
                         </div>
-                        <h4 className="text-md text-gray-700 font-semibold">{edu.institution}</h4>
+                        <h4 className="text-md text-gray-700 font-semibold" style={{ fontFamily: 'Arial, sans-serif' }}>{edu.institution}</h4>
                     </div>
                 ),
                 BULLET_POINT_HEIGHT, // Gunakan tinggi bullet point standard
-                20 // Gunakan margin threshold sedikit lebih besar untuk safety
+                60 // Gunakan margin threshold yang lebih efisien untuk education
             );
             
             // Tambahkan spacing setelah section
@@ -663,7 +752,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             const minSkillsHeight = SECTION_HEADING_HEIGHT + (estimatedMaxSkillsInColumn * 25);
             
             // Cek jika skills section tidak akan muat di halaman ini
-            if (currentPageHeight + minSkillsHeight > PAGE_HEIGHT - 15) {
+            if (currentPageHeight + minSkillsHeight > PAGE_HEIGHT - 40) {
                 pageContents.push(currentPage);
                 currentPage = [];
                 currentPageHeight = 0;
@@ -672,7 +761,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             // Tambahkan heading skills
             currentPage.push(
                 <div key="skills_title" className="cv-section mb-4 mt-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Skills</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>Skills</h2>
                 </div>
             );
             currentPageHeight += SECTION_HEADING_HEIGHT;
@@ -701,11 +790,12 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                         <div key={`skills_column_${columnIndex}`} className="skills-column" style={{
                             flex: '1 1 auto',
                             minWidth: '120px',
-                            maxWidth: '200px'
+                            maxWidth: '200px',
+                            fontFamily: 'Arial, sans-serif'
                         }}>
                             {column.map((skill, skillIndex) => (
                                 <div key={`skill_${columnIndex}_${skillIndex}`} className="mb-1">
-                                    <span className="text-gray-700">• {skill.name}</span>
+                                    <span className="text-gray-700" style={{ fontFamily: 'Arial, sans-serif' }}>• {skill.name}</span>
                                 </div>
                             ))}
                         </div>
@@ -721,19 +811,20 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
         // Proses Portfolios dengan pagination per baris
         if (data.portfolios && data.portfolios.length > 0 && data.portfolios[0].title) {
-            processSectionWithLineBreak(
+            processSectionWithPreciseLineBreak(
                 "Portfolios",
-                data.portfolios.filter(portfolio => portfolio.title),
-                (portfolio, index) => (
+                data.portfolios.filter((portfolio: Portfolio) => portfolio.title),
+                (portfolio: Portfolio, index: number) => (
                     <div key={`portfolio_header_${index}`} className="mb-2">
                         <div className="flex justify-between items-start">
-                            <h3 className="text-lg font-semibold text-gray-800">
+                            <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif' }}>
                                 {portfolio.title} (
                                 <a
                                     href={portfolio.link.startsWith('http') ? portfolio.link : `https://${portfolio.link}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-gray-600 hover:underline"
+                                    style={{ fontFamily: 'Arial, sans-serif' }}
                                 >
                                     {portfolio.link}
                                 </a>
@@ -743,7 +834,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     </div>
                 ),
                 BULLET_POINT_HEIGHT, // Gunakan tinggi bullet point standard
-                15 // Portfolios bisa menggunakan margin kecil karena biasanya bullet points tidak sepanjang work experience
+                60 // Gunakan margin threshold yang lebih efisien untuk portfolios
             );
             
             // Tambahkan spacing setelah section
@@ -752,16 +843,16 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
         // Proses Accomplishments dengan pagination per baris
         if (data.accomplishments && data.accomplishments.length > 0 && data.accomplishments[0].description) {
-            processSectionWithLineBreak(
+            processSectionWithPreciseLineBreak(
                 "Accomplishments",
-                data.accomplishments.filter(acc => acc.description),
-                (accomplishment, index) => (
+                data.accomplishments.filter((acc: Accomplishment) => acc.description),
+                (accomplishment: Accomplishment, index: number) => (
                     <div key={`accomplishment_header_${index}`} className="mb-2">
                         {/* Accomplishment entries don't have their own headers, so we return an empty div */}
                     </div>
                 ),
                 BULLET_POINT_HEIGHT, // Gunakan tinggi bullet point standard
-                15 // Margin kecil untuk accomplishments
+                60 // Gunakan margin threshold yang lebih efisien untuk accomplishments
             );
             
             // Tambahkan spacing setelah section
@@ -770,21 +861,21 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
         // Proses Organizations dengan pagination per baris
         if (data.organizations && data.organizations.length > 0 && data.organizations[0].name) {
-            processSectionWithLineBreak(
+            processSectionWithPreciseLineBreak(
                 "Organization",
-                data.organizations.filter(org => org.name),
-                (org, index) => (
+                data.organizations.filter((org: Organization) => org.name),
+                (org: Organization, index: number) => (
                     <div key={`org_header_${index}`} className="mb-2">
                         <div className="flex justify-between items-start">
-                            <h3 className="text-md font-semibold text-gray-800">{org.position}, {org.name}</h3>
-                            <span className="text-sm text-gray-600 font-semibold">
+                            <h3 className="text-md font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif' }}>{org.position}, {org.name}</h3>
+                            <span className="text-sm text-gray-600 font-semibold" style={{ fontFamily: 'Arial, sans-serif' }}>
                                 {formatDate(org.start_date)} - {formatDate(org.end_date)}
                             </span>
                         </div>
                     </div>
                 ),
                 BULLET_POINT_HEIGHT, // Gunakan tinggi bullet point standard
-                15 // Margin kecil untuk organizations
+                60 // Gunakan margin threshold yang lebih efisien untuk organizations
             );
             
             // Tambahkan spacing setelah section
@@ -798,7 +889,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             
             // Cek apakah seluruh languages section muat di halaman ini
             // Jika tidak cukup ruang dan halaman sudah berisi konten signifikan, pindah ke halaman baru
-            if ((currentPageHeight + totalLanguagesHeight > PAGE_HEIGHT - 15) && currentPageHeight > PAGE_HEIGHT * 0.6) {
+            if ((currentPageHeight + totalLanguagesHeight > PAGE_HEIGHT - 40) && currentPageHeight > PAGE_HEIGHT * 0.6) {
                 pageContents.push(currentPage);
                 currentPage = [];
                 currentPageHeight = 0;
@@ -810,7 +901,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             // Tambahkan heading languages
             currentPage.push(
                 <div key="languages_title" className="cv-section mb-4 mt-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Languages</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>Languages</h2>
                 </div>
             );
             currentPageHeight += SECTION_HEADING_HEIGHT;
@@ -847,7 +938,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 const langItemHeight = 30; // Tinggi item bahasa
                 
                 // Cek jika language item tidak akan muat di halaman ini
-                if (currentPageHeight + langItemHeight + 15 > PAGE_HEIGHT) {
+                if (currentPageHeight + langItemHeight + 40 > PAGE_HEIGHT) {
                     pageContents.push(currentPage);
                     currentPage = [];
                     currentPageHeight = 0;
@@ -855,9 +946,9 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 
                 // Tambahkan language item
                 currentPage.push(
-                    <li key={`lang_${index}`} className="mb-1">
-                        <span className="text-gray-700 font-medium">{lang.language}</span>
-                        <span className="ml-2 text-gray-600">({levelText})</span>
+                    <li key={`lang_${index}`} className="mb-1" style={{ fontFamily: 'Arial, sans-serif' }}>
+                        <span className="text-gray-700 font-medium" style={{ fontFamily: 'Arial, sans-serif' }}>{lang.language}</span>
+                        <span className="ml-2 text-gray-600" style={{ fontFamily: 'Arial, sans-serif' }}>({levelText})</span>
                     </li>
                 );
                 currentPageHeight += langItemHeight;
@@ -881,7 +972,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 (bullets.length * BULLET_POINT_HEIGHT);
             
             // Cek jika additional info section tidak akan muat di halaman ini
-            if (currentPageHeight + minAdditionalInfoHeight > PAGE_HEIGHT - 15) {
+            if (currentPageHeight + minAdditionalInfoHeight > PAGE_HEIGHT - 40) {
                 pageContents.push(currentPage);
                 currentPage = [];
                 currentPageHeight = 0;
@@ -890,7 +981,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             // Tambahkan heading
             currentPage.push(
                 <div key="additional_info_title" className="cv-section mb-4 mt-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200">Additional Info</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif' }}>Additional Info</h2>
                 </div>
             );
             currentPageHeight += SECTION_HEADING_HEIGHT;
