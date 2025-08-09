@@ -92,7 +92,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
   // Contoh item navigasi, bisa diubah sesuai kebutuhan
   const navItems: NavItem[] = items.length > 0 ? items : [
     { title: 'Home', href: '#cvgen', isSection: true },
-    { title: 'How to use', href: '/how-to-use' },
+    { title: 'How to use', href: '#how-to-use', isSection: true },
   ];
 
   // Fungsi untuk menentukan class button/link berdasarkan status aktif
