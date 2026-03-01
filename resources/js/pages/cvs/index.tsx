@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/layouts';
 
 interface CvItem {
     id: number;
+    cv_name?: string | null;
     name: string;
     email: string;
     created_at: string;
@@ -66,7 +67,7 @@ export default function CvIndex({ cvs }: Props) {
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="truncate font-medium text-gray-900 dark:text-white">{cv.name}</p>
+                                                    <p className="truncate font-medium text-gray-900 dark:text-white">{cv.cv_name || cv.name || 'Untitled CV'}</p>
                                                     <p className="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">{cv.email}</p>
                                                 </div>
                                                 <FileText className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />

@@ -275,10 +275,9 @@ interface CVData {
 interface CVProps {
     data: CVData;
     isPdfMode?: boolean;
-    showLineGrid?: boolean;
 }
 
-const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }) => {
+const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const [zoomLevel, setZoomLevel] = useState(100);
     const [showZoomControls, setShowZoomControls] = useState(false);
     const [pages, setPages] = useState<React.ReactNode[]>([]);
@@ -323,10 +322,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
 
     const SECTION_TITLE_LINES = Math.ceil(SECTION_HEADING_HEIGHT / LINE_HEIGHT);
 
-    const lineCount = Math.ceil(PAGE_HEIGHT / LINE_HEIGHT);
-    const gridLineCount = Math.ceil(((29.7 - 2) * 96 / 2.54) / LINE_HEIGHT);
-    const gridContentHeightPx = gridLineCount * LINE_HEIGHT;
-    const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number, withLineGrid?: boolean) => (
+    const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
         <div 
             className="cv-page bg-white shadow-lg rounded-lg mb-8"
             style={{
@@ -346,34 +342,6 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
                 fontFamily: 'Arial, sans-serif'
             }}
         >
-            {withLineGrid && (
-                <div
-                    aria-hidden
-                    style={{
-                        position: 'absolute',
-                        top: '1cm',
-                        left: '1cm',
-                        right: '1cm',
-                        height: `${gridContentHeightPx}px`,
-                        pointerEvents: 'none',
-                        zIndex: 0,
-                    }}
-                >
-                    {Array.from({ length: gridLineCount }, (_, i) => (
-                        <div
-                            key={i}
-                            style={{
-                                position: 'absolute',
-                                left: 0,
-                                right: 0,
-                                top: `${i * LINE_HEIGHT}px`,
-                                height: 0,
-                                borderTop: '1px dashed rgba(59, 130, 246, 0.4)',
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
             <div style={{ minHeight: 'calc(100% - 60px)', paddingBottom: '20px', position: 'relative', zIndex: 1 }}>
                 {content}
             </div>
@@ -559,7 +527,14 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
             return totalHeight;
         };
 
-        const processSectionWithPreciseLineBreak = (sectionTitle: string, items: any[], renderItem: (item: any, index: number) => React.ReactNode, bulletHeight: number = BULLET_POINT_HEIGHT, marginThreshold: number = 15, itemHeaderLines: number = 2) => {
+        const processSectionWithPreciseLineBreak = (
+            sectionTitle: string,
+            items: any[],
+            renderItem: (item: any, index: number) => React.ReactNode,
+            bulletHeight: number = BULLET_POINT_HEIGHT,
+            marginThreshold: number = 15,
+            itemHeaderLines: number = 2
+        ) => {
             currentPageHeight += SECTION_SPACING_HEIGHT;
 
             const sectionTitleHeightPx = SECTION_TITLE_LINES * LINE_HEIGHT;
@@ -577,6 +552,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
             currentPageHeight += sectionTitleHeightPx;
 
             const itemHeaderHeight = itemHeaderLines * LINE_HEIGHT;
+
             items.forEach((item, index) => {
                 const isFirstItem = index === 0;
                 if (!isFirstItem && currentPageHeight + itemHeaderHeight > PAGE_HEIGHT - marginThreshold) {
@@ -588,37 +564,28 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
                 currentPage.push(renderItem(item, index));
                 currentPageHeight += itemHeaderHeight;
 
-                // Proses deskripsi per baris
                 const description = item.description || '';
                 const { intro, bullets } = extractBulletPoints(description);
-                
-                // Proses paragraf intro jika ada
                 if (intro) {
                     const introHeight = calculateTextHeight(intro);
-
                     if (!isFirstItem && currentPageHeight + introHeight > PAGE_HEIGHT - marginThreshold) {
                         pageContents.push(currentPage);
                         currentPage = [];
                         currentPageHeight = 0;
                     }
-
                     currentPage.push(
                         <p key={`intro_${sectionTitle}_${index}`} className="text-gray-600 mt-1 cv-body-text" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}>{intro}</p>
                     );
                     currentPageHeight += introHeight;
                 }
-                
-                // Proses setiap bullet point satu per satu
                 if (bullets.length > 0) {
                     bullets.forEach((bullet: string, bulletIndex: number) => {
-                        const bulletHeight = calculateTextHeight(bullet);
-
-                        if (!isFirstItem && currentPageHeight + bulletHeight > PAGE_HEIGHT - marginThreshold) {
+                        const bHeight = calculateTextHeight(bullet);
+                        if (!isFirstItem && currentPageHeight + bHeight > PAGE_HEIGHT - marginThreshold) {
                             pageContents.push(currentPage);
                             currentPage = [];
                             currentPageHeight = 0;
                         }
-
                         currentPage.push(
                             <div key={`bullet_${sectionTitle}_${index}_${bulletIndex}`} style={{
                                 display: 'flex',
@@ -631,11 +598,10 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
                                 <div>{bullet}</div>
                             </div>
                         );
-                        currentPageHeight += bulletHeight;
+                        currentPageHeight += bHeight;
                     });
                 }
-                
-                // Tambahkan spacing setelah item
+
                 currentPageHeight += SPACING_HEIGHT;
             });
         };
@@ -884,7 +850,6 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
                 currentPageHeight = 0;
             }
 
-            // Tambahkan heading
             currentPage.push(
                 <div key="additional_info_title" className="cv-section mb-4 mt-6">
                     <h2 className="font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>Additional Info</h2>
@@ -898,8 +863,6 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
                 );
                 currentPageHeight += PARAGRAPH_HEIGHT;
             }
-            
-            // Proses setiap bullet point satu per satu
             bullets.forEach((bullet, bulletIndex) => {
                 currentPage.push(
                     <div key={`bullet_additional_info_${bulletIndex}`} style={{
@@ -1048,7 +1011,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, showLineGrid = false }
                  ref={cvContentRef}>
                 {pages.map((pageContent, index) => (
                     <div key={`page-${index}`} className="relative mb-6">
-                        {createPage(pageContent, index, pages.length, showLineGrid)}
+                        {createPage(pageContent, index, pages.length)}
                         {index < pages.length - 1 && <div className="html2pdf__page-break"></div>}
                     </div>
                 ))}

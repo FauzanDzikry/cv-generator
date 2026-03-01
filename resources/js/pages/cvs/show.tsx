@@ -6,6 +6,7 @@ import AppLayout from '@/layouts/layouts';
 interface CvShowProps {
     cv: {
         id: number;
+        cv_name?: string | null;
         name: string;
         address: string;
         phone: string;
@@ -46,7 +47,7 @@ export default function CvShow({ cv }: CvShowProps) {
 
     return (
         <AppLayout>
-            <Head title={`CV: ${cv.name}`} />
+            <Head title={`CV: ${cv.cv_name || cv.name || 'Untitled CV'}`} />
             <div className="py-8 md:py-16 bg-gray-50 dark:bg-gray-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-wrap items-center gap-4 mb-6">

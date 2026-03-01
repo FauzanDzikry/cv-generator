@@ -6,6 +6,7 @@ import CV, { pageBreakStyle } from '@/components/cv-format';
 import html2pdf from 'html2pdf.js';
 
 const defaultFormData = {
+    cv_name: '',
     name: '',
     address: '',
     phone: '',
@@ -127,6 +128,7 @@ function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
             : '';
     return {
         ...defaultFormData,
+        cv_name: (cv.cv_name as string) ?? '',
         name: (cv.name as string) ?? '',
         address: (cv.address as string) ?? '',
         phone: (cv.phone as string) ?? '',
@@ -176,7 +178,6 @@ export default function CvForm() {
 
     const [formData, setFormData] = useState(initialFormData);
     const [showPreview, setShowPreview] = useState(false);
-    const [showLineGrid, setShowLineGrid] = useState(false);
     const [pageLoaded, setPageLoaded] = useState(false);
     const [addOnSections, setAddOnSections] = useState(initialAddOn);
     const [photoPreview, setPhotoPreview] = useState<string | null>(initialPhoto);
@@ -386,10 +387,14 @@ export default function CvForm() {
             credentials: 'same-origin',
         })
             .then((res) => {
-                localStorage.removeItem(PENDING_CV_SAVE_KEY);
                 if (res.ok) {
+                    localStorage.removeItem(PENDING_CV_SAVE_KEY);
+                    localStorage.removeItem('cvFormData');
+                    localStorage.removeItem('cvAddOnSections');
+                    localStorage.removeItem('cvPhotoPreview');
                     setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
                 } else {
+                    localStorage.removeItem(PENDING_CV_SAVE_KEY);
                     setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
                 }
             })
@@ -1267,6 +1272,20 @@ export default function CvForm() {
                                 )}
 
                                 <form onSubmit={handleSubmit}>
+                                    <div className="mb-6">
+                                        <label htmlFor="cv_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            CV Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="cv_name"
+                                            name="cv_name"
+                                            value={formData.cv_name}
+                                            onChange={handleChange}
+                                            placeholder="e.g. CV for Google, Frontend 2024"
+                                            className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
                                     {/* Personal Information */}
                                     <div className="mb-8">
                                         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
@@ -2643,15 +2662,6 @@ export default function CvForm() {
                                             Preview CV
                                         </h2>
                                         <div className="flex items-center gap-3">
-                                            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={showLineGrid}
-                                                    onChange={(e) => setShowLineGrid(e.target.checked)}
-                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                />
-                                                Show line grid (16px per line)
-                                            </label>
                                             <button
                                                 type="button"
                                                 onClick={togglePreview}
@@ -2665,7 +2675,7 @@ export default function CvForm() {
                                     </div>
                                     <div className="overflow-auto rounded">
                                         <div>
-                                            <CV data={formData} isPdfMode={false} showLineGrid={showLineGrid} />
+                                            <CV data={formData} isPdfMode={false} />
                                         </div>
                                     </div>
                                 </div>

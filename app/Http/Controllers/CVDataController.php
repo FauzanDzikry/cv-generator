@@ -13,7 +13,7 @@ class CVDataController extends Controller
     {
         $cvs = CVData::where('user_id', auth()->id())
             ->orderByDesc('updated_at')
-            ->get(['id', 'name', 'email', 'created_at', 'updated_at']);
+            ->get(['id', 'cv_name', 'name', 'email', 'created_at', 'updated_at']);
 
         return Inertia::render('cvs/index', [
             'cvs' => $cvs,
@@ -23,6 +23,7 @@ class CVDataController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'cv_name' => ['nullable', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string'],
             'phone' => ['required', 'string', 'max:50'],
@@ -99,6 +100,7 @@ class CVDataController extends Controller
         }
 
         $validated = $request->validate([
+            'cv_name' => ['nullable', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string'],
             'phone' => ['required', 'string', 'max:50'],

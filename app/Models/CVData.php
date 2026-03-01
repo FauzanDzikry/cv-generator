@@ -10,6 +10,7 @@ class CVData extends Model
 
     protected $fillable = [
         'user_id',
+        'cv_name',
         'name',
         'address',
         'phone',
