@@ -6,85 +6,116 @@ import CV, { pageBreakStyle } from '@/components/cv-format';
 // Perbaiki import html2pdf
 import html2pdf from 'html2pdf.js';
 
-export default function CvForm() {
-    // State untuk form
-    const [formData, setFormData] = useState({
+const defaultFormData = {
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    linkedin: '',
+    summary: '',
+    photo: null as File | null,
+    is_use_photo: false,
+    work_experience: [{
+        company: '',
+        company_location: '',
+        position: '',
+        location_type: '',
+        start_date: '',
+        end_date: '',
+        description: '',
+        is_current: false
+    }],
+    education: [{
+        institution: '',
+        degree: '',
+        field: '',
+        start_date: '',
+        end_date: '',
+        description: ''
+    }],
+    skills: [{ name: '' }],
+    portfolios: [{ title: '', link: '', description: '' }],
+    certifications: [{
         name: '',
-        address: '',
-        phone: '',
-        email: '',
-        linkedin: '',
-        summary: '',
-        photo: null as File | null,
-        is_use_photo: false,
-        work_experience: [{
-            company: '',
-            company_location: '',
-            position: '',
-            location_type: '',
-            start_date: '',
-            end_date: '',
-            description: '',
-            is_current: false
-        }],
-        education: [{
-            institution: '',
-            degree: '',
-            field: '',
-            start_date: '',
-            end_date: '',
-            description: ''
-        }],
-        skills: [{
-            name: ''
-        }],
-        portfolios: [{
-            title: '',
-            link: '',
-            description: ''
-        }],
-        certifications: [{
-            name: '',
-            organization: '',
-            start_year: '',
-            end_year: '',
-            is_time_limited: false,
-            description: '',
-            credential_id: ''
-        }],
-        languages: [{
-            language: '',
-            level: ''
-        }],
-        accomplishments: [{
-            description: ''
-        }],
-        organizations: [{
-            name: '',
-            position: '',
-            start_date: '',
-            end_date: '',
-            is_current: false,
-            description: ''
-        }],
-        additional_info: '',
-    });
+        organization: '',
+        start_year: '',
+        end_year: '',
+        is_time_limited: false,
+        description: '',
+        credential_id: ''
+    }],
+    languages: [{ language: '', level: '' }],
+    accomplishments: [{ description: '' }],
+    organizations: [{
+        name: '',
+        position: '',
+        start_date: '',
+        end_date: '',
+        is_current: false,
+        description: ''
+    }],
+    additional_info: '',
+};
 
-    // State untuk preview
+const defaultAddOnSections = {
+    portfolios: false,
+    certifications: false,
+    accomplishments: false,
+    organizations: false,
+    languages: false,
+    additional_info: false
+};
+
+function getInitialFormData() {
+    try {
+        const saved = localStorage.getItem('cvFormData');
+        if (!saved) return defaultFormData;
+        const parsed = JSON.parse(saved) as typeof defaultFormData;
+        if (parsed.photo) parsed.photo = null;
+        const workDefault = defaultFormData.work_experience[0];
+        const eduDefault = defaultFormData.education[0];
+        return {
+            ...defaultFormData,
+            ...parsed,
+            work_experience: (parsed.work_experience?.length ? parsed.work_experience : defaultFormData.work_experience).map((item: typeof workDefault) => ({ ...workDefault, ...item })),
+            education: (parsed.education?.length ? parsed.education : defaultFormData.education).map((item: typeof eduDefault) => ({ ...eduDefault, ...item })),
+            skills: (parsed.skills?.length ? parsed.skills : defaultFormData.skills).map((s: { name: string }) => ({ name: s?.name ?? '' })),
+            portfolios: (parsed.portfolios?.length ? parsed.portfolios : defaultFormData.portfolios).map((p: { title: string; link: string; description: string }) => ({ title: p?.title ?? '', link: p?.link ?? '', description: p?.description ?? '' })),
+            certifications: (parsed.certifications?.length ? parsed.certifications : defaultFormData.certifications).map((c: typeof defaultFormData.certifications[0]) => ({ ...defaultFormData.certifications[0], ...c })),
+            languages: (parsed.languages?.length ? parsed.languages : defaultFormData.languages).map((l: { language: string; level: string }) => ({ language: l?.language ?? '', level: l?.level ?? '' })),
+            accomplishments: (parsed.accomplishments?.length ? parsed.accomplishments : defaultFormData.accomplishments).map((a: { description: string }) => ({ description: a?.description ?? '' })),
+            organizations: (parsed.organizations?.length ? parsed.organizations : defaultFormData.organizations).map((o: typeof defaultFormData.organizations[0]) => ({ ...defaultFormData.organizations[0], ...o })),
+        };
+    } catch {
+        return defaultFormData;
+    }
+}
+
+function getInitialAddOnSections() {
+    try {
+        const saved = localStorage.getItem('cvAddOnSections');
+        if (!saved) return defaultAddOnSections;
+        return { ...defaultAddOnSections, ...JSON.parse(saved) };
+    } catch {
+        return defaultAddOnSections;
+    }
+}
+
+function getInitialPhotoPreview(): string | null {
+    try {
+        const saved = localStorage.getItem('cvPhotoPreview');
+        return saved && typeof saved === 'string' ? saved : null;
+    } catch {
+        return null;
+    }
+}
+
+export default function CvForm() {
+    const [formData, setFormData] = useState(getInitialFormData);
     const [showPreview, setShowPreview] = useState(false);
-    // State untuk animasi
     const [pageLoaded, setPageLoaded] = useState(false);
-    // State untuk add-on
-    const [addOnSections, setAddOnSections] = useState({
-        portfolios: false,
-        certifications: false,
-        accomplishments: false,
-        organizations: false,
-        languages: false,
-        additional_info: false
-    });
-    // State untuk preview foto
-    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [addOnSections, setAddOnSections] = useState(getInitialAddOnSections);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(getInitialPhotoPreview);
     // State untuk modal preview foto
     const [showPhotoModal, setShowPhotoModal] = useState(false);
 
@@ -219,42 +250,7 @@ export default function CvForm() {
     };
 
     useEffect(() => {
-        setTimeout(() => {
-            setPageLoaded(true);
-        }, 100);
-
-        // Load data dari localStorage jika ada
-        const savedFormData = localStorage.getItem('cvFormData');
-        const savedAddOnSections = localStorage.getItem('cvAddOnSections');
-
-        if (savedFormData) {
-            try {
-                const parsedData = JSON.parse(savedFormData);
-
-                // Kita perlu menangani photo secara khusus karena File object tidak bisa di-stringify
-                if (parsedData.photo) {
-                    parsedData.photo = null; // Reset photo ke null karena tidak bisa disimpan di localStorage
-                }
-
-                setFormData(parsedData);
-
-                // Jika ada foto yang tersimpan di localStorage (sebagai URL base64), tampilkan
-                const savedPhotoPreview = localStorage.getItem('cvPhotoPreview');
-                if (savedPhotoPreview) {
-                    setPhotoPreview(savedPhotoPreview);
-                }
-            } catch (error) {
-                console.error('Error parsing form data from localStorage:', error);
-            }
-        }
-
-        if (savedAddOnSections) {
-            try {
-                setAddOnSections(JSON.parse(savedAddOnSections));
-            } catch (error) {
-                console.error('Error parsing add-on sections from localStorage:', error);
-            }
-        }
+        setTimeout(() => setPageLoaded(true), 100);
 
         if (!formTouched && (
             formData.name || formData.email || formData.phone ||
@@ -265,11 +261,8 @@ export default function CvForm() {
             setFormTouched(true);
         }
 
-        // Cleanup function untuk memastikan overlay dibersihkan saat komponen unmount
-        return () => {
-            cleanupAllOverlays();
-        };
-    }, [formTouched]);
+        return () => cleanupAllOverlays();
+    }, []);
 
     // Simpan data form ke localStorage setiap kali formData berubah
     useEffect(() => {
@@ -2237,11 +2230,7 @@ export default function CvForm() {
 
                                             <button
                                                 type="button"
-                                                onClick={() => addArrayItem('accomplishments', {
-                                                    title: '',
-                                                    date: '',
-                                                    description: ''
-                                                })}
+                                                onClick={() => addArrayItem('accomplishments', { description: '' })}
                                                 className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                                             >
                                                 <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

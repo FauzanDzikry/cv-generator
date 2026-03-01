@@ -1,8 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import ThemeToggle from '@/components/ui/theme-toggle';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { type SharedData, type User } from '@/types';
 
 // Definisikan tipe untuk item navigasi
@@ -17,6 +18,8 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
   const page = usePage();
   const { auth } = usePage<SharedData>().props;
   
@@ -72,6 +75,27 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
+  }, [isMenuOpen]);
+
+  // Menutup dropdown user ketika klik di luar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Menutup dropdown user ketika menu mobile terbuka
+  useEffect(() => {
+    if (isMenuOpen) {
+      setIsUserDropdownOpen(false);
+    }
   }, [isMenuOpen]);
   
   // Fungsi untuk melakukan scroll ke elemen dengan ID tertentu
@@ -178,17 +202,69 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
             ))}
             
             {auth.user ? (
-              <span className="px-3 py-2 rounded-md text-sm font-medium text-gray-900 dark:text-white">
-                {(auth.user as User).name}
-              </span>
+              <div className="relative" ref={userDropdownRef}>
+                {/* User Card Button */}
+                <button
+                  onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                  className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage 
+                      src={(auth.user as User).avatar} 
+                      alt={(auth.user as User).name}
+                    />
+                    <AvatarFallback className="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 text-sm font-medium">
+                      {(auth.user as User).name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {(auth.user as User).name}
+                  </span>
+                  <ChevronDown 
+                    className={cn(
+                      "h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200",
+                      isUserDropdownOpen ? "rotate-180" : ""
+                    )} 
+                  />
+                </button>
+                
+                {/* Dropdown Menu */}
+                {isUserDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {(auth.user as User).name}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {(auth.user as User).email}
+                      </div>
+                    </div>
+                    
+                    <Link
+                      href="/your-cv"
+                      className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      <span>Your CVs</span>
+                    </Link>
+                    
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                    
+                    <Link
+                      href="/logout"
+                      method="post"
+                      as="button"
+                      className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Logout</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
-                <Link
-                  href="/register"
-                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Register
-                </Link>
                 <Link
                   href="/login"
                   className="px-3 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors gradient-button"
@@ -261,8 +337,58 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
           ))}
           
           {auth.user ? (
-            <div className="block px-3 py-3 rounded-md text-base font-medium text-gray-900 dark:text-white">
-              {(auth.user as User).name}
+            <div className="px-3 py-3 space-y-3">
+              {/* User Card Mobile */}
+              <div className="flex items-center space-x-3 px-3 py-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage 
+                    src={(auth.user as User).avatar} 
+                    alt={(auth.user as User).name}
+                  />
+                  <AvatarFallback className="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 text-base font-medium">
+                    {(auth.user as User).name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    {(auth.user as User).name}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {(auth.user as User).email}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Mobile Menu Items */}
+              <Link
+                href="/dashboard"
+                className="flex items-center space-x-2 px-3 py-3 rounded-md text-base font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <span>Dashboard</span>
+              </Link>
+              
+              <Link
+                href="/settings/profile"
+                className="flex items-center space-x-2 px-3 py-3 rounded-md text-base font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <span>Profile Settings</span>
+              </Link>
+              
+              <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+              
+              {/* Logout Button Mobile */}
+              <Link
+                href="/logout"
+                method="post"
+                as="button"
+                className="flex items-center space-x-2 w-full px-3 py-3 rounded-md text-base font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </Link>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2 mt-3">
