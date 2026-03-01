@@ -1,9 +1,8 @@
 import React, { useState, ChangeEvent, FormEvent, useEffect, useRef } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/layouts';
 import FormProgress from '@/components/percentage';
 import CV, { pageBreakStyle } from '@/components/cv-format';
-// Perbaiki import html2pdf
 import html2pdf from 'html2pdf.js';
 
 const defaultFormData = {
@@ -110,14 +109,80 @@ function getInitialPhotoPreview(): string | null {
     }
 }
 
+const PENDING_CV_SAVE_KEY = 'pendingCvSave';
+
+type FormGenerateProps = {
+    cv?: Record<string, unknown>;
+    addOnSections?: Record<string, boolean>;
+    isEdit?: boolean;
+    cvId?: number;
+};
+
+function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
+    const customFields = (cv.custom_fields as Record<string, unknown>) ?? {};
+    const additionalInfo = typeof cv.additional_info === 'string'
+        ? cv.additional_info
+        : Array.isArray(cv.additional_info)
+            ? (cv.additional_info as string[]).join('')
+            : '';
+    return {
+        ...defaultFormData,
+        name: (cv.name as string) ?? '',
+        address: (cv.address as string) ?? '',
+        phone: (cv.phone as string) ?? '',
+        email: (cv.email as string) ?? '',
+        linkedin: (cv.linkedin as string) ?? '',
+        summary: (cv.summary as string) ?? '',
+        photo: null,
+        is_use_photo: Boolean(customFields.is_use_photo),
+        work_experience: Array.isArray(cv.work_experience) && (cv.work_experience as unknown[]).length
+            ? (cv.work_experience as typeof defaultFormData.work_experience)
+            : defaultFormData.work_experience,
+        education: Array.isArray(cv.education) && (cv.education as unknown[]).length
+            ? (cv.education as typeof defaultFormData.education)
+            : defaultFormData.education,
+        skills: Array.isArray(cv.skills) && (cv.skills as unknown[]).length
+            ? (cv.skills as typeof defaultFormData.skills)
+            : defaultFormData.skills,
+        portfolios: Array.isArray(cv.portfolios) && (cv.portfolios as unknown[]).length
+            ? (cv.portfolios as typeof defaultFormData.portfolios)
+            : defaultFormData.portfolios,
+        certifications: Array.isArray(cv.certifications) && (cv.certifications as unknown[]).length
+            ? (cv.certifications as typeof defaultFormData.certifications)
+            : defaultFormData.certifications,
+        languages: Array.isArray(cv.languages) && (cv.languages as unknown[]).length
+            ? (cv.languages as typeof defaultFormData.languages)
+            : defaultFormData.languages,
+        accomplishments: Array.isArray(cv.accomplishments) && (cv.accomplishments as unknown[]).length
+            ? (cv.accomplishments as typeof defaultFormData.accomplishments)
+            : defaultFormData.accomplishments,
+        organizations: Array.isArray(cv.organizations) && (cv.organizations as unknown[]).length
+            ? (cv.organizations as typeof defaultFormData.organizations)
+            : defaultFormData.organizations,
+        additional_info: additionalInfo,
+    };
+}
+
 export default function CvForm() {
-    const [formData, setFormData] = useState(getInitialFormData);
+    const { props } = usePage<{ auth: { user: unknown }; cv?: Record<string, unknown>; addOnSections?: Record<string, boolean>; isEdit?: boolean; cvId?: number }>();
+    const isGuest = !props.auth?.user;
+    const isEdit = props.isEdit === true && props.cvId;
+    const cvId = props.cvId as number | undefined;
+    const initialFormData = props.cv ? formDataFromCv(props.cv) : getInitialFormData();
+    const initialAddOn = props.addOnSections ?? getInitialAddOnSections();
+    const initialPhoto = props.cv && (props.cv.custom_fields as Record<string, unknown>)?.photo_base64
+        ? String((props.cv.custom_fields as Record<string, unknown>).photo_base64)
+        : getInitialPhotoPreview();
+
+    const [formData, setFormData] = useState(initialFormData);
     const [showPreview, setShowPreview] = useState(false);
+    const [showLineGrid, setShowLineGrid] = useState(false);
     const [pageLoaded, setPageLoaded] = useState(false);
-    const [addOnSections, setAddOnSections] = useState(getInitialAddOnSections);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(getInitialPhotoPreview);
-    // State untuk modal preview foto
+    const [addOnSections, setAddOnSections] = useState(initialAddOn);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(initialPhoto);
     const [showPhotoModal, setShowPhotoModal] = useState(false);
+    const [showLoginSaveModal, setShowLoginSaveModal] = useState(false);
+    const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const fieldGroups = {
         personal: {
@@ -235,7 +300,6 @@ export default function CvForm() {
         }
     };
 
-    // Fungsi global untuk membersihkan semua loading overlay yang mungkin tertinggal
     const cleanupAllOverlays = () => {
         try {
             const allOverlays = document.querySelectorAll('[id*="pdf-loading-overlay"]');
@@ -264,13 +328,10 @@ export default function CvForm() {
         return () => cleanupAllOverlays();
     }, []);
 
-    // Simpan data form ke localStorage setiap kali formData berubah
     useEffect(() => {
         try {
-            // Buat salinan formData untuk diolah sebelum disimpan
             const formDataToSave = { ...formData };
 
-            // Hapus photo dari data yang akan disimpan karena File object tidak bisa di-stringify
             if (formDataToSave.photo) {
                 formDataToSave.photo = null;
             }
@@ -278,7 +339,6 @@ export default function CvForm() {
             localStorage.setItem('cvFormData', JSON.stringify(formDataToSave));
             localStorage.setItem('cvAddOnSections', JSON.stringify(addOnSections));
 
-            // Jika ada photoPreview, simpan juga
             if (photoPreview) {
                 localStorage.setItem('cvPhotoPreview', photoPreview);
             }
@@ -287,7 +347,64 @@ export default function CvForm() {
         }
     }, [formData, addOnSections, photoPreview]);
 
-    // Effect untuk menangani cleanup overlay saat halaman ditinggalkan
+    useEffect(() => {
+        if (!props.auth?.user || localStorage.getItem(PENDING_CV_SAVE_KEY) !== 'true') return;
+
+        const rawForm = localStorage.getItem('cvFormData');
+        const rawPhoto = localStorage.getItem('cvPhotoPreview');
+        if (!rawForm) {
+            localStorage.removeItem(PENDING_CV_SAVE_KEY);
+            return;
+        }
+
+        let payload: Record<string, unknown>;
+        try {
+            const parsed = JSON.parse(rawForm) as Record<string, unknown>;
+            const { photo: _p, ...rest } = parsed;
+            payload = {
+                ...rest,
+                custom_fields: {
+                    is_use_photo: parsed.is_use_photo ?? false,
+                    photo_base64: rawPhoto && typeof rawPhoto === 'string' ? rawPhoto : null,
+                },
+            };
+        } catch {
+            localStorage.removeItem(PENDING_CV_SAVE_KEY);
+            return;
+        }
+
+        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.getAttribute('content');
+        fetch(route('cvs.store'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(payload),
+            credentials: 'same-origin',
+        })
+            .then((res) => {
+                localStorage.removeItem(PENDING_CV_SAVE_KEY);
+                if (res.ok) {
+                    setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
+                } else {
+                    setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
+                }
+            })
+            .catch(() => {
+                localStorage.removeItem(PENDING_CV_SAVE_KEY);
+                setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
+            });
+    }, [props.auth?.user]);
+
+    useEffect(() => {
+        if (!saveMessage) return;
+        const t = setTimeout(() => setSaveMessage(null), 4000);
+        return () => clearTimeout(t);
+    }, [saveMessage]);
+
     useEffect(() => {
         const handleBeforeUnload = () => {
             cleanupAllOverlays();
@@ -299,11 +416,9 @@ export default function CvForm() {
             }
         };
 
-        // Tambahkan event listeners
         window.addEventListener('beforeunload', handleBeforeUnload);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        // Cleanup event listeners
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -331,20 +446,17 @@ export default function CvForm() {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
 
-            // Validasi tipe file
             const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
             if (!validTypes.includes(file.type)) {
                 alert('Please select a valid image file (JPEG, PNG, JPG)');
                 return;
             }
 
-            // Simpan file ke state
             setFormData({
                 ...formData,
                 photo: file
             });
 
-            // Buat URL untuk preview dengan rasio 3x4
             const reader = new FileReader();
             reader.onloadend = () => {
                 const img = new Image();
@@ -353,42 +465,32 @@ export default function CvForm() {
                     const ctx = canvas.getContext('2d');
 
                     if (ctx) {
-                        // Mengubah untuk memastikan gambar berbentuk bulat sempurna
                         const size = Math.min(img.width, img.height);
 
-                        // Ukuran canvas dibuat persegi
                         canvas.width = size;
                         canvas.height = size;
 
-                        // Menghitung posisi tengah gambar
                         const offsetX = (img.width - size) / 2;
                         const offsetY = (img.height - size) / 2;
 
-                        // Isi background dengan putih (opsional)
                         ctx.fillStyle = 'white';
                         ctx.fillRect(0, 0, size, size);
 
-                        // Membuat mask lingkaran
                         ctx.beginPath();
                         ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2, true);
                         ctx.closePath();
                         ctx.clip();
 
-                        // Gambar foto dalam mask lingkaran
                         ctx.drawImage(
                             img,
                             offsetX, offsetY, size, size,
                             0, 0, size, size
                         );
 
-                        // Konversi canvas ke URL data
                         const dataUrl = canvas.toDataURL(file.type);
                         setPhotoPreview(dataUrl);
-
-                        // Simpan juga ke localStorage
                         localStorage.setItem('cvPhotoPreview', dataUrl);
                     } else {
-                        // Fallback jika canvas tidak didukung
                         setPhotoPreview(reader.result as string);
                         localStorage.setItem('cvPhotoPreview', reader.result as string);
                     }
@@ -431,15 +533,12 @@ export default function CvForm() {
         });
     };
 
-    // Fungsi utama untuk generate PDF
-    // Updated to use the exact same CV component as preview and auto-print
     const handleGeneratePDF = async () => {
         if (!cvRef.current) {
             alert('CV not ready for export. Please try again.');
             return;
         }
 
-        // Show loading indicator
         const loadingOverlay = document.createElement('div');
         loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
         loadingOverlay.id = 'pdf-loading-overlay-main';
@@ -451,7 +550,6 @@ export default function CvForm() {
         `;
         document.body.appendChild(loadingOverlay);
 
-        // Cleanup function
         const cleanup = () => {
             try {
                 const existingOverlay = document.getElementById('pdf-loading-overlay-main');
@@ -464,7 +562,6 @@ export default function CvForm() {
         };
 
         try {
-            // Create iframe for printing
             const printFrame = document.createElement('iframe');
             printFrame.style.position = 'absolute';
             printFrame.style.left = '-9999px';
@@ -474,7 +571,6 @@ export default function CvForm() {
             printFrame.style.border = 'none';
             document.body.appendChild(printFrame);
 
-            // Wait for iframe to load
             printFrame.onload = () => {
                 try {
                     const printDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
@@ -482,17 +578,15 @@ export default function CvForm() {
                         throw new Error('Cannot access iframe document');
                     }
 
-                    // Get the CV content from the existing hidden component
                     const cvElement = cvRef.current;
                     if (!cvElement) {
                         throw new Error('CV element not available');
                     }
 
-                    // Print styles that match the CV component exactly
                     const printStyles = `
                         @page {
                             size: A4;
-                            margin: 0;
+                            margin: 1cm;
                         }
                         
                         * {
@@ -513,18 +607,18 @@ export default function CvForm() {
                         .print-container {
                             width: 100%;
                             background: white;
+                            color: #000;
                         }
                         
-                        /* Import all CV styles */
                         ${pageBreakStyle}
                         
-                        /* CV Container styles */
                         .cv-container {
                             background: white !important;
                             max-width: none !important;
                             display: flex;
                             flex-direction: column;
                             align-items: center;
+                            color: #000;
                         }
                         
                         .cv-multi-page-container {
@@ -535,7 +629,7 @@ export default function CvForm() {
                             width: 21cm !important;
                             height: auto !important;
                             min-height: 29.7cm !important;
-                            padding: 2cm !important;
+                            padding: 1cm !important;
                             box-sizing: border-box !important;
                             background: white !important;
                             box-shadow: none !important;
@@ -544,6 +638,11 @@ export default function CvForm() {
                             page-break-after: always;
                             position: relative;
                             border-radius: 0 !important;
+                            color: #000 !important;
+                        }
+                        
+                        .cv-page * {
+                            color: #000 !important;
                         }
                         
                         .cv-page:last-child {
@@ -555,16 +654,15 @@ export default function CvForm() {
                             display: none !important;
                         }
                         
-                        /* Show page numbers in print */
                         .page-number-indicator {
                             display: block !important;
                             position: absolute;
                             bottom: 1cm;
-                            left: 50%;
-                            transform: translateX(-50%);
-                            font-size: 10pt;
-                            color: rgb(156, 163, 175);
+                            left: 1cm;
+                            right: 1cm;
                             text-align: center;
+                            font-size: 10pt;
+                            color: #000;
                         }
                         
                         /* Header styles */
@@ -809,58 +907,57 @@ export default function CvForm() {
                             margin: 0;
                         }
                         
-                        /* Typography overrides for print */
+                        /* Typography: name 12pt, section 12pt, subsection 11pt, body 10pt; justify */
                         h1 {
-                            font-size: 24pt !important;
+                            font-size: 12pt !important;
                             margin-top: 0 !important;
-                            margin-bottom: 8pt !important;
+                            margin-bottom: 6pt !important;
                             font-weight: bold !important;
-                            color: rgb(17, 24, 39) !important;
+                            color: #000 !important;
                             line-height: 1.2 !important;
                         }
                         
                         h2 {
-                            font-size: 16pt !important;
-                            font-weight: 600 !important;
-                            color: rgb(31, 41, 55) !important;
-                            margin-bottom: 6pt !important;
-                            margin-top: 1.5rem !important;
-                            line-height: 1.3 !important;
-                            padding-bottom: 0.5rem !important;
-                            border-bottom: 2px solid rgb(229, 231, 235) !important;
-                        }
-                        
-                        h3 {
                             font-size: 12pt !important;
                             font-weight: 600 !important;
-                            color: rgb(31, 41, 55) !important;
-                            margin: 0 !important;
-                            line-height: 1.4 !important;
+                            color: #000 !important;
+                            margin-bottom: 4pt !important;
+                            margin-top: 1rem !important;
+                            line-height: 1.3 !important;
+                            padding-bottom: 0.5rem !important;
+                            border-bottom: 2px solid #000 !important;
                         }
                         
-                        h4 {
+                        h3, h4 {
                             font-size: 11pt !important;
                             font-weight: 600 !important;
-                            color: rgb(55, 65, 81) !important;
+                            color: #000 !important;
                             margin: 0 0 0.25rem 0 !important;
                             line-height: 1.4 !important;
                         }
                         
-                        p {
-                            font-size: 11pt !important;
+                        p, .cv-body-text {
+                            font-size: 10pt !important;
                             line-height: 1.5 !important;
                             margin: 0.25rem 0 !important;
-                            color: rgb(75, 85, 99) !important;
+                            color: #000 !important;
+                            text-align: justify !important;
                         }
                         
                         span {
-                            font-size: 11pt !important;
+                            font-size: 10pt !important;
                             line-height: 1.5 !important;
+                            color: #000 !important;
                         }
                         
                         div {
-                            font-size: 11pt !important;
+                            font-size: 10pt !important;
                             line-height: 1.5 !important;
+                            color: #000 !important;
+                        }
+                        
+                        .cv-body-text, .cv-page p, .cv-page div[style*="justify"] {
+                            text-align: justify !important;
                         }
                         
                         /* Link styles */
@@ -934,18 +1031,19 @@ export default function CvForm() {
                     `);
                     printDoc.close();
 
-                    // Wait for content to render, then print
                     setTimeout(() => {
                         try {
-                            // Focus and print
                             printFrame.contentWindow?.focus();
                             printFrame.contentWindow?.print();
 
-                            // Cleanup after printing
                             setTimeout(() => {
                                 cleanup();
                                 if (printFrame.parentNode) {
                                     printFrame.parentNode.removeChild(printFrame);
+                                }
+                                if (isGuest) {
+                                    localStorage.setItem(PENDING_CV_SAVE_KEY, 'true');
+                                    setShowLoginSaveModal(true);
                                 }
                             }, 1000);
                         } catch (printError) {
@@ -968,7 +1066,6 @@ export default function CvForm() {
                 }
             };
 
-            // Error handler for iframe
             printFrame.onerror = () => {
                 console.error('Error loading iframe');
                 cleanup();
@@ -978,7 +1075,6 @@ export default function CvForm() {
                 alert('Error loading print preview. Please try again.');
             };
 
-            // Start loading iframe
             printFrame.src = 'about:blank';
 
         } catch (error) {
@@ -988,34 +1084,26 @@ export default function CvForm() {
         }
     };
 
-    // Remove the old complex PDF generation methods and replace with simple print
     const handleDirectGeneratePDF = () => {
         handleGeneratePDF();
     };
 
-    // Simplified fallback that just calls the main print function
     const handleFallbackPDF = () => {
         handleGeneratePDF();
     };
 
-    // Simplified direct print that just calls the main print function
     const handleDirectPrint = () => {
         handleGeneratePDF();
     };
 
-    // Simplified generate function
     const generatePDFWithFallback = () => {
         handleGeneratePDF();
     };
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log('Form data:', formData);
-
-        // Tampilkan preview jika belum muncul
         if (!showPreview) {
             setShowPreview(true);
-            // Berikan waktu untuk render preview sebelum generate PDF
             setTimeout(() => {
                 generatePDFWithFallback();
             }, 500);
@@ -1024,11 +1112,23 @@ export default function CvForm() {
         }
     };
 
+    const handleSaveUpdate = () => {
+        if (!cvId) return;
+        const { photo: _p, ...rest } = formData;
+        const payload = {
+            ...rest,
+            custom_fields: {
+                is_use_photo: formData.is_use_photo,
+                photo_base64: photoPreview ?? null,
+            },
+        };
+        router.put(route('cvs.update', cvId), payload);
+    };
+
     const togglePreview = () => {
         setShowPreview(!showPreview);
     };
 
-    // Handler untuk checkbox add-on sections
     const handleAddOnChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
         setAddOnSections({
@@ -1036,9 +1136,7 @@ export default function CvForm() {
             [name]: checked
         });
 
-        // Reset data ketika checkbox unchecked
         if (!checked) {
-            // Reset data berdasarkan jenis add-on
             switch (name) {
                 case 'portfolios':
                     setFormData({
@@ -1108,24 +1206,26 @@ export default function CvForm() {
 
     return (
         <AppLayout>
-            <Head title="Form - CV Generator" />
+            <Head title={isEdit ? `Edit CV - ${formData.name || 'CV'}` : 'Form - CV Generator'} />
 
             <div className="py-8 md:py-16 bg-gray-50 dark:bg-gray-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div
-                        className="mb-8 text-center transition-all duration-700"
-                        style={{
-                            opacity: pageLoaded ? 1 : 0,
-                            transform: `translateY(${pageLoaded ? 0 : 50}px)`
-                        }}
-                    >
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Create Your <span className="text-red-600">Professional CV</span>
-                        </h1>
-                        <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
-                            Complete the following form to create a professional CV
-                        </p>
-                    </div>
+                    {!isEdit && (
+                        <div
+                            className="mb-8 text-center transition-all duration-700"
+                            style={{
+                                opacity: pageLoaded ? 1 : 0,
+                                transform: `translateY(${pageLoaded ? 0 : 50}px)`
+                            }}
+                        >
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                                Create Your <span className="text-red-600">Professional CV</span>
+                            </h1>
+                            <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
+                                Complete the following form to create a professional CV
+                            </p>
+                        </div>
+                    )}
 
                     <div
                         className="flex flex-col md:flex-row gap-6 transition-all duration-700"
@@ -1138,8 +1238,16 @@ export default function CvForm() {
                         {/* Form Section */}
                         <div className={`${showPreview ? 'md:w-1/2' : 'w-full'} transition-all duration-300`}>
                             <div className="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
-                                {/* Tombol Preview */}
-                                <div className="flex justify-end mb-4">
+                                <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+                                    {isEdit && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveUpdate}
+                                            className="inline-flex items-center px-4 py-2 bg-gray-700 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-600 dark:hover:bg-gray-500 focus:outline-none focus:ring ring-gray-300 disabled:opacity-25 transition"
+                                        >
+                                            Save changes
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={togglePreview}
@@ -1473,7 +1581,6 @@ export default function CvForm() {
                                                                     is_current: e.target.checked
                                                                 };
 
-                                                                // Jika checkbox dicentang, hapus nilai end_date
                                                                 if (e.target.checked) {
                                                                     newWorkExperience[index].end_date = '';
                                                                 }
@@ -2531,11 +2638,20 @@ export default function CvForm() {
                         {showPreview && (
                             <div className="md:w-1/2 transition-all duration-300">
                                 <div className="bg-white dark:bg-gray-700 shadow-md rounded-lg p-5 h-full">
-                                    <div className="flex justify-between items-center mb-4">
+                                    <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                                         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                                             Preview CV
                                         </h2>
-                                        <div className="flex space-x-2">
+                                        <div className="flex items-center gap-3">
+                                            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={showLineGrid}
+                                                    onChange={(e) => setShowLineGrid(e.target.checked)}
+                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                                Show line grid (16px per line)
+                                            </label>
                                             <button
                                                 type="button"
                                                 onClick={togglePreview}
@@ -2549,7 +2665,7 @@ export default function CvForm() {
                                     </div>
                                     <div className="overflow-auto rounded">
                                         <div>
-                                            <CV data={formData} isPdfMode={false} />
+                                            <CV data={formData} isPdfMode={false} showLineGrid={showLineGrid} />
                                         </div>
                                     </div>
                                 </div>
@@ -2586,6 +2702,45 @@ export default function CvForm() {
                             />
                         </div>
                     </div>
+                </div>
+            )}
+
+            {showLoginSaveModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30" onClick={() => setShowLoginSaveModal(false)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Save this CV to your account?</h3>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                            Log in and we will save this CV to your account so you can access it later.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowLoginSaveModal(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                            >
+                                Later
+                            </button>
+                            <a
+                                href={`${route('login')}?redirect=${encodeURIComponent('/generate-cv')}`}
+                                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-md"
+                            >
+                                Log in
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {saveMessage && (
+                <div
+                    className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+                        saveMessage.type === 'success'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-red-600 text-white'
+                    }`}
+                    role="alert"
+                >
+                    {saveMessage.text}
                 </div>
             )}
 

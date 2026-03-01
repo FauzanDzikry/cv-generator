@@ -33,6 +33,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $redirect = $request->query('redirect');
+        $allowed = ['/generate-cv', '/cvs'];
+        if ($redirect && in_array($redirect, $allowed, true)) {
+            return redirect($redirect);
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

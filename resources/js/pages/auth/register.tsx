@@ -125,11 +125,18 @@ export default function Register() {
                     </button>
                 </div>
 
-                <div className="text-center text-sm text-gray-600 dark:text-gray-300">
-                    Already have an account?{' '}
-                    <TextLink href={route('login')} className="text-red-600 hover:underline dark:text-red-400" tabIndex={6}>
-                        Log in
-                    </TextLink>
+                <div className="space-y-1 text-center text-sm text-gray-600 dark:text-gray-300">
+                    <p>
+                        Already have an account?{' '}
+                        <TextLink href={route('login')} className="text-red-600 hover:underline dark:text-red-400" tabIndex={6}>
+                            Log in
+                        </TextLink>
+                    </p>
+                    <p>
+                        <TextLink href={route('password.request')} className="text-red-600 hover:underline dark:text-red-400" tabIndex={7}>
+                            Forgot password?
+                        </TextLink>
+                    </p>
                 </div>
             </form>
         </AuthLayout>
