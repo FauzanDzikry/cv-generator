@@ -6,7 +6,6 @@ import ThemeToggle from '@/components/ui/theme-toggle';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { type SharedData, type User } from '@/types';
 
-// Definisikan tipe untuk item navigasi
 type NavItem = {
   title: string;
   href: string;
@@ -23,109 +22,78 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
   const page = usePage();
   const { auth } = usePage<SharedData>().props;
   
-  // Mendeteksi scroll untuk menambahkan shadow
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
       setHasScrolled(scrollPosition > 0);
-      
-      // Deteksi section mana yang sedang aktif
       const sections = document.querySelectorAll('section[id], div[id]');
-      
-      // Jika tidak ada section, jangan lakukan apa-apa
       if (sections.length === 0) return;
-      
-      // Loop melalui semua section untuk menemukan yang sedang terlihat
       let currentSection: string | null = null;
-      
       sections.forEach((section) => {
         const sectionTop = section.getBoundingClientRect().top;
         const sectionId = section.getAttribute('id');
-        
-        // Jika section ini terlihat pada viewport (dengan offset untuk navbar)
         if (sectionTop <= 100 && sectionId) {
           currentSection = sectionId;
         }
       });
-      
       setActiveSection(currentSection);
     };
-    
     window.addEventListener('scroll', handleScroll);
-    
-    // Initial call to set active section on load
     handleScroll();
-    
-    // Cleanup event listener
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
-  // Menutup menu saat ukuran layar berubah ke desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768 && isMenuOpen) {
         setIsMenuOpen(false);
       }
     };
-    
     window.addEventListener('resize', handleResize);
-    
     return () => {
       window.removeEventListener('resize', handleResize);
     };
   }, [isMenuOpen]);
 
-  // Menutup dropdown user ketika klik di luar
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setIsUserDropdownOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  // Menutup dropdown user ketika menu mobile terbuka
   useEffect(() => {
     if (isMenuOpen) {
       setIsUserDropdownOpen(false);
     }
   }, [isMenuOpen]);
   
-  // Fungsi untuk melakukan scroll ke elemen dengan ID tertentu
   const scrollToSection = (sectionId: string) => {
     setIsMenuOpen(false);
-    
-    // Periksa apakah ada elemen dengan ID tersebut
     const element = document.getElementById(sectionId);
     if (element) {
-      // Scroll ke elemen dengan animasi smooth
       element.scrollIntoView({ behavior: 'smooth' });
     } else {
-      // Jika tidak ada di halaman ini, arahkan ke halaman home + id elemen
       window.location.href = `/#${sectionId}`;
     }
   };
   
-  // Contoh item navigasi, bisa diubah sesuai kebutuhan
   const navItems: NavItem[] = items.length > 0 ? items : [
     { title: 'Home', href: '#cvgen', isSection: true },
     { title: 'How to use', href: '#how-to-use', isSection: true },
   ];
 
-  // Fungsi untuk menentukan class button/link berdasarkan status aktif
   const getItemClass = (item: NavItem) => {
-    // Untuk section item
     if (item.isSection) {
-      const sectionId = item.href.substring(1); // Menghilangkan # dari href
+      const sectionId = item.href.substring(1);
       const isActive = activeSection === sectionId;
-      
       return cn(
         "px-3 py-2 rounded-md text-sm font-medium transition-colors",
         isActive
@@ -133,8 +101,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
           : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
       );
     }
-    
-    // Untuk link biasa
     return cn(
       "px-3 py-2 rounded-md text-sm font-medium transition-colors",
       page.url === item.href
@@ -143,13 +109,10 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
     );
   };
   
-  // Fungsi untuk menentukan class mobile button/link berdasarkan status aktif
   const getMobileItemClass = (item: NavItem) => {
-    // Untuk section item
     if (item.isSection) {
-      const sectionId = item.href.substring(1); // Menghilangkan # dari href
+      const sectionId = item.href.substring(1);
       const isActive = activeSection === sectionId;
-      
       return cn(
         "block w-full text-left px-3 py-3 rounded-md text-base font-medium transition-colors",
         isActive
@@ -157,8 +120,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
           : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
       );
     }
-    
-    // Untuk link biasa
     return cn(
       "block px-3 py-3 rounded-md text-base font-medium transition-colors",
       page.url === item.href
@@ -172,13 +133,11 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 md:h-16">
           <div className="flex items-center">
-            {/* Logo */}
             <Link href="/" className="flex-shrink-0 flex items-center">
               <span className="text-lg md:text-xl font-bold text-red-600 dark:text-white">CV</span><span className="text-lg md:text-xl font-bold text-gray-900 dark:text-red-600"> Generator</span>
             </Link>
           </div>
           
-          {/* Menu Desktop */}
           <div className="hidden md:flex items-center space-x-4">
             {navItems.map((item) => (
               item.isSection ? (
@@ -203,7 +162,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
             
             {auth.user ? (
               <div className="relative" ref={userDropdownRef}>
-                {/* User Card Button */}
                 <button
                   onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                   className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
@@ -228,7 +186,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
                   />
                 </button>
                 
-                {/* Dropdown Menu */}
                 {isUserDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
@@ -277,7 +234,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
             <ThemeToggle />
           </div>
           
-          {/* Tombol menu mobile */}
           <div className="md:hidden flex items-center">
             <ThemeToggle />
             <button
@@ -305,7 +261,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
         </div>
       </div>
       
-      {/* Menu Mobile */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${
           isMenuOpen 
@@ -338,7 +293,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
           
           {auth.user ? (
             <div className="px-3 py-3 space-y-3">
-              {/* User Card Mobile */}
               <div className="flex items-center space-x-3 px-3 py-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                 <Avatar className="h-10 w-10">
                   <AvatarImage 
@@ -359,7 +313,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
                 </div>
               </div>
               
-              {/* Mobile Menu Items */}
               <Link
                 href="/dashboard"
                 className="flex items-center space-x-2 px-3 py-3 rounded-md text-base font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
@@ -378,7 +331,6 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
               
               <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
               
-              {/* Logout Button Mobile */}
               <Link
                 href="/logout"
                 method="post"
