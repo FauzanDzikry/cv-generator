@@ -1,56 +1,81 @@
-# Stage 1: Build frontend assets
+# Stage 1: PHP Dependencies
+FROM composer:2.6 AS vendor
+WORKDIR /app
+# Copy composer files for optimal caching
+COPY composer.json composer.lock ./
+# Run install, ignore platform reqs to prevent extension errors during build
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
+
+# Stage 2: Frontend Assets (React + Inertia)
 FROM node:20-alpine AS frontend
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
-RUN pnpm run build
+RUN npm run build
 
-# Stage 2: Build backend dependencies
-FROM composer:2.7 AS backend
-WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --prefer-dist --no-interaction
-COPY . .
-RUN composer dump-autoload --optimize
+# Stage 3: Production Image
+FROM php:8.2-fpm-alpine
 
-# Stage 3: Final Production Image
-FROM php:8.2-apache
-WORKDIR /var/www/html
-
-# Install system dependencies and PHP extensions for PostgreSQL and Laravel
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
+# Install system dependencies, Nginx, Supervisord, and PostgreSQL driver
+RUN apk add --no-cache \
+    nginx \
+    supervisor \
+    postgresql-dev \
     libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
+    libzip-dev \
     zip \
     unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_pgsql pgsql gd \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install pdo pdo_pgsql pgsql gd zip bcmath
 
-# Enable Apache mod_rewrite for Laravel routing
-RUN a2enmod rewrite
+WORKDIR /var/www/html
 
-# Update Apache DocumentRoot to Laravel's public directory
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# Use the default production configuration
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
-
-# Copy source code
+# Copy application code
 COPY . .
 
-# Copy vendor and built assets from previous stages
-COPY --from=backend /app/vendor ./vendor
-COPY --from=frontend /app/public/build ./public/build
+# Copy vendor & build assets from previous stages
+COPY --from=vendor /app/vendor/ vendor/
+COPY --from=frontend /app/public/build/ public/build/
 
-# Ensure proper permissions for Laravel directories
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Setup permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
+
+# Configure Nginx for Laravel
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /var/www/html/public; \
+    index index.php index.html; \
+    location / { \
+        try_files $uri $uri/ /index.php?$query_string; \
+    } \
+    location ~ \.php$ { \
+        include fastcgi_params; \
+        fastcgi_pass 127.0.0.1:9000; \
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
+        fastcgi_index index.php; \
+    } \
+}' > /etc/nginx/http.d/default.conf
+
+# Configure Supervisord to run PHP-FPM and Nginx in one container
+RUN echo '[supervisord] \
+nodaemon=true \
+[program:php-fpm] \
+command=php-fpm -F \
+stdout_logfile=/dev/stdout \
+stdout_logfile_maxbytes=0 \
+stderr_logfile=/dev/stderr \
+stderr_logfile_maxbytes=0 \
+[program:nginx] \
+command=nginx -g "daemon off;" \
+stdout_logfile=/dev/stdout \
+stdout_logfile_maxbytes=0 \
+stderr_logfile=/dev/stderr \
+stderr_logfile_maxbytes=0 \
+' > /etc/supervisord.conf
 
 EXPOSE 80
-CMD ["apache2-foreground"]
+
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
