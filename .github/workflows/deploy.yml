@@ -76,8 +76,8 @@ jobs:
             IMAGE_LOWER=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
             export APP_IMAGE="ghcr.io/$IMAGE_LOWER:latest"
             
-            # Autentikasi ke Container Registry menggunakan Personal Access Token
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u $GH_ACTOR --password-stdin
+            # Autentikasi ke Container Registry menggunakan Token Sementara GitHub Actions
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GH_ACTOR --password-stdin
             
             # Unduh image versi terbaru
             docker compose pull
