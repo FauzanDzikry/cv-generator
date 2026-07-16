@@ -4,7 +4,7 @@ WORKDIR /app
 # Copy composer files for optimal caching
 COPY composer.json composer.lock ./
 # Run install, ignore platform reqs to prevent extension errors during build
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs --no-scripts
 
 # Stage 2: Frontend Assets (React + Inertia)
 FROM node:20-alpine AS frontend
