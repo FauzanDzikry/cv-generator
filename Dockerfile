@@ -32,15 +32,14 @@ RUN apk add --no-cache \
 WORKDIR /var/www/html
 
 # Copy application code
-COPY . .
+COPY --chown=www-data:www-data . .
 
 # Copy vendor & build assets from previous stages
-COPY --from=vendor /app/vendor/ vendor/
-COPY --from=frontend /app/public/build/ public/build/
+COPY --chown=www-data:www-data --from=vendor /app/vendor/ vendor/
+COPY --chown=www-data:www-data --from=frontend /app/public/build/ public/build/
 
 # Setup permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage \
+RUN chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
 
 # Configure Nginx for Laravel
