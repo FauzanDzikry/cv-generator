@@ -9,10 +9,11 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 # Stage 2: Frontend Assets (React + Inertia)
 FROM node:20-alpine AS frontend
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install -g pnpm
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Stage 3: Production Image
 FROM php:8.2-fpm-alpine
@@ -49,32 +50,32 @@ RUN echo 'server { \
     root /var/www/html/public; \
     index index.php index.html; \
     location / { \
-        try_files $uri $uri/ /index.php?$query_string; \
+    try_files $uri $uri/ /index.php?$query_string; \
     } \
     location ~ \.php$ { \
-        include fastcgi_params; \
-        fastcgi_pass 127.0.0.1:9000; \
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
-        fastcgi_index index.php; \
+    include fastcgi_params; \
+    fastcgi_pass 127.0.0.1:9000; \
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
+    fastcgi_index index.php; \
     } \
-}' > /etc/nginx/http.d/default.conf
+    }' > /etc/nginx/http.d/default.conf
 
 # Configure Supervisord to run PHP-FPM and Nginx in one container
 RUN echo '[supervisord] \
-nodaemon=true \
-[program:php-fpm] \
-command=php-fpm -F \
-stdout_logfile=/dev/stdout \
-stdout_logfile_maxbytes=0 \
-stderr_logfile=/dev/stderr \
-stderr_logfile_maxbytes=0 \
-[program:nginx] \
-command=nginx -g "daemon off;" \
-stdout_logfile=/dev/stdout \
-stdout_logfile_maxbytes=0 \
-stderr_logfile=/dev/stderr \
-stderr_logfile_maxbytes=0 \
-' > /etc/supervisord.conf
+    nodaemon=true \
+    [program:php-fpm] \
+    command=php-fpm -F \
+    stdout_logfile=/dev/stdout \
+    stdout_logfile_maxbytes=0 \
+    stderr_logfile=/dev/stderr \
+    stderr_logfile_maxbytes=0 \
+    [program:nginx] \
+    command=nginx -g "daemon off;" \
+    stdout_logfile=/dev/stdout \
+    stdout_logfile_maxbytes=0 \
+    stderr_logfile=/dev/stderr \
+    stderr_logfile_maxbytes=0 \
+    ' > /etc/supervisord.conf
 
 EXPOSE 80
 

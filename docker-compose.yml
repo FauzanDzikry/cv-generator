@@ -11,13 +11,14 @@ services:
       APP_DEBUG: false
       APP_KEY: ${APP_KEY}
       DB_CONNECTION: pgsql
-      DB_HOST: db
-      DB_PORT: 5432
+      # Menggunakan host.docker.internal atau default ke 172.17.0.1 (IP host di Docker Linux)
+      DB_HOST: ${DB_HOST:-172.17.0.1}
+      DB_PORT: ${DB_PORT:-5432}
       DB_DATABASE: ${DB_DATABASE:-cv_gen}
       DB_USERNAME: ${DB_USERNAME:-cv_user}
       DB_PASSWORD: ${DB_PASSWORD:-secret}
-    depends_on:
-      - db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         # Batasan RAM maksimal untuk menghindari OOM Killer pada VPS 2GB
@@ -25,23 +26,3 @@ services:
           memory: 512M
         reservations:
           memory: 256M
-
-  db:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: ${DB_DATABASE:-cv_gen}
-      POSTGRES_USER: ${DB_USERNAME:-cv_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    deploy:
-      resources:
-        # Alokasi RAM yang memadai untuk Database PostgreSQL
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-
-volumes:
-  db-data:
