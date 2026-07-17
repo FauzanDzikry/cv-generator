@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Custom hook untuk mengelola localStorage dengan auto-save
@@ -8,19 +8,18 @@ import { useState, useEffect } from 'react';
  * @returns [value, setValue, status] - Value, setter function, dan status save
  */
 export function useLocalStorage<T>(
-    key: string, 
-    initialValue: T, 
-    debounceMs: number = 500
+    key: string,
+    initialValue: T,
+    debounceMs: number = 500,
 ): [T, (value: T | ((prev: T) => T)) => void, 'saving' | 'saved' | 'idle'] {
-    
     const [status, setStatus] = useState<'saving' | 'saved' | 'idle'>('idle');
-    
+
     // Fungsi untuk mendapatkan nilai awal dari localStorage
     const getStoredValue = (): T => {
         if (typeof window === 'undefined') {
             return initialValue;
         }
-        
+
         try {
             const item = window.localStorage.getItem(key);
             return item ? JSON.parse(item) : initialValue;
@@ -52,7 +51,7 @@ export function useLocalStorage<T>(
             try {
                 window.localStorage.setItem(key, JSON.stringify(storedValue));
                 setStatus('saved');
-                
+
                 // Reset status setelah 2 detik
                 setTimeout(() => setStatus('idle'), 2000);
             } catch (error) {
@@ -73,18 +72,14 @@ export function useLocalStorage<T>(
  * @param initialFormData - Data form awal
  * @param debounceMs - Delay untuk debouncing (default: 500ms)
  */
-export function useFormLocalStorage<T extends Record<string, any>>(
-    key: string,
-    initialFormData: T,
-    debounceMs: number = 500
-) {
+export function useFormLocalStorage<T extends Record<string, any>>(key: string, initialFormData: T, debounceMs: number = 500) {
     const [formData, setFormData, status] = useLocalStorage(key, initialFormData, debounceMs);
 
     // Fungsi helper untuk mengupdate field tertentu
     const updateField = <K extends keyof T>(field: K, value: T[K]) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [field]: value
+            [field]: value,
         }));
     };
 
@@ -102,9 +97,8 @@ export function useFormLocalStorage<T extends Record<string, any>>(
 
     // Fungsi untuk cek apakah form kosong
     const isFormEmpty = () => {
-        return Object.values(formData).every(value => 
-            value === '' || value === null || value === undefined ||
-            (Array.isArray(value) && value.length === 0)
+        return Object.values(formData).every(
+            (value) => value === '' || value === null || value === undefined || (Array.isArray(value) && value.length === 0),
         );
     };
 
@@ -114,7 +108,7 @@ export function useFormLocalStorage<T extends Record<string, any>>(
         updateField,
         resetForm,
         isFormEmpty,
-        saveStatus: status
+        saveStatus: status,
     };
 }
 
@@ -125,7 +119,7 @@ export const localStorageUtils = {
     // Cek apakah localStorage tersedia
     isAvailable: (): boolean => {
         if (typeof window === 'undefined') return false;
-        
+
         try {
             const testKey = '__localStorage_test__';
             window.localStorage.setItem(testKey, 'test');
@@ -139,9 +133,9 @@ export const localStorageUtils = {
     // Dapatkan ukuran localStorage yang terpakai
     getUsedSpace: (): number => {
         if (!localStorageUtils.isAvailable()) return 0;
-        
+
         let total = 0;
-        for (let key in localStorage) {
+        for (const key in localStorage) {
             if (localStorage.hasOwnProperty(key)) {
                 total += localStorage[key].length + key.length;
             }
@@ -158,9 +152,9 @@ export const localStorageUtils = {
     // Hapus semua data localStorage dengan prefix tertentu
     clearByPrefix: (prefix: string): void => {
         if (!localStorageUtils.isAvailable()) return;
-        
+
         const keys = Object.keys(localStorage);
-        keys.forEach(key => {
+        keys.forEach((key) => {
             if (key.startsWith(prefix)) {
                 localStorage.removeItem(key);
             }
@@ -170,9 +164,9 @@ export const localStorageUtils = {
     // Backup semua data localStorage
     backup: (): string => {
         if (!localStorageUtils.isAvailable()) return '{}';
-        
+
         const backup: Record<string, string> = {};
-        for (let key in localStorage) {
+        for (const key in localStorage) {
             if (localStorage.hasOwnProperty(key)) {
                 backup[key] = localStorage[key];
             }
@@ -183,10 +177,10 @@ export const localStorageUtils = {
     // Restore data localStorage dari backup
     restore: (backupString: string): boolean => {
         if (!localStorageUtils.isAvailable()) return false;
-        
+
         try {
             const backup = JSON.parse(backupString);
-            for (let key in backup) {
+            for (const key in backup) {
                 localStorage.setItem(key, backup[key]);
             }
             return true;
@@ -194,7 +188,7 @@ export const localStorageUtils = {
             console.error('Error restoring localStorage backup:', error);
             return false;
         }
-    }
+    },
 };
 
-export default useLocalStorage; 
+export default useLocalStorage;

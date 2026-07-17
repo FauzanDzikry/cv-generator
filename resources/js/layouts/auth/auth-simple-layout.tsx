@@ -10,9 +10,9 @@ interface AuthLayoutProps {
 
 export default function AuthSimpleLayout({ children, title, description }: PropsWithChildren<AuthLayoutProps>) {
     return (
-        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-gray-50 p-6 dark:bg-gray-800 md:p-10">
+        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-gray-50 p-6 md:p-10 dark:bg-gray-800">
             <div className="w-full max-w-sm">
-                <div className="flex flex-col gap-6 rounded-lg bg-white p-6 shadow-md dark:bg-gray-700 md:p-8">
+                <div className="flex flex-col gap-6 rounded-lg bg-white p-6 shadow-md md:p-8 dark:bg-gray-700">
                     <div className="flex flex-col items-center gap-4">
                         <Link href={route('home')} className="flex flex-col items-center gap-2 font-medium text-gray-900 dark:text-white">
                             <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md">

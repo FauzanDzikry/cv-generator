@@ -31,19 +31,19 @@ class CVData extends Model
 
     // Kolom bertipe JSON
     protected $casts = [
-        'work_experience'   => 'array',
-        'education'         => 'array',
-        'skills'            => 'array',
-        'portfolios'        => 'array',
-        'certifications'    => 'array',
-        'languages'         => 'array',
-        'accomplishments'   => 'array',
-        'organizations'     => 'array',
-        'additional_info'   => 'array',
-        'custom_fields'     => 'array',
-        'created_at'        => 'datetime',
-        'updated_at'        => 'datetime',
-        'deleted_at'        => 'datetime',
+        'work_experience' => 'array',
+        'education' => 'array',
+        'skills' => 'array',
+        'portfolios' => 'array',
+        'certifications' => 'array',
+        'languages' => 'array',
+        'accomplishments' => 'array',
+        'organizations' => 'array',
+        'additional_info' => 'array',
+        'custom_fields' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     // Relasi ke User

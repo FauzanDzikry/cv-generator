@@ -1,5 +1,5 @@
-import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
+import Navbar from '@/components/navbar';
 import { type BreadcrumbItem } from '@/types';
 import { type ReactNode } from 'react';
 
@@ -13,9 +13,7 @@ export default function AppLayout({ children, breadcrumbs, navItems = [], ...pro
     return (
         <div className="min-h-screen bg-transparent dark:bg-gray-900">
             <Navbar items={navItems} />
-            <main className="w-full">
-                {children}
-            </main>
+            <main className="w-full">{children}</main>
             <Footer />
         </div>
     );

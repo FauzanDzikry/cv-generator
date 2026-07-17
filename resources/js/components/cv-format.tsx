@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, ReactElement, useMemo } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useEffect, useRef, useState } from 'react';
 
 export const pageBreakStyle = `
 .html2pdf__page-break {
@@ -151,7 +150,7 @@ const formatDate = (dateString: string) => {
 
 const formatPhoneForWhatsApp = (phone: string) => {
     if (!phone) return '';
-    let cleanNumber = phone.replace(/\D/g, '');
+    const cleanNumber = phone.replace(/\D/g, '');
     if (cleanNumber.startsWith('62')) {
         return cleanNumber;
     }
@@ -305,7 +304,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
     const toggleZoomControls = () => {
         if (!isPdfMode) {
-            setShowZoomControls(prev => !prev);
+            setShowZoomControls((prev) => !prev);
         }
     };
 
@@ -323,8 +322,8 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const SECTION_TITLE_LINES = Math.ceil(SECTION_HEADING_HEIGHT / LINE_HEIGHT);
 
     const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
-        <div 
-            className="cv-page bg-white shadow-lg rounded-lg mb-8"
+        <div
+            className="cv-page mb-8 rounded-lg bg-white shadow-lg"
             style={{
                 width: '21cm',
                 height: '29.7cm',
@@ -339,14 +338,12 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 marginTop: '40px',
                 position: 'relative',
                 overflowY: 'hidden',
-                fontFamily: 'Arial, sans-serif'
+                fontFamily: 'Arial, sans-serif',
             }}
         >
-            <div style={{ minHeight: 'calc(100% - 60px)', paddingBottom: '20px', position: 'relative', zIndex: 1 }}>
-                {content}
-            </div>
+            <div style={{ minHeight: 'calc(100% - 60px)', paddingBottom: '20px', position: 'relative', zIndex: 1 }}>{content}</div>
             {typeof pageIndex === 'number' && typeof totalPages === 'number' && (
-                <div 
+                <div
                     className="page-number-indicator"
                     style={{
                         position: 'absolute',
@@ -358,7 +355,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                         color: '#000',
                         fontFamily: 'Arial, sans-serif',
                         height: '20px',
-                        lineHeight: '20px'
+                        lineHeight: '20px',
                     }}
                 >
                     Page {pageIndex + 1} of {totalPages}
@@ -370,15 +367,15 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     useEffect(() => {
         if (!data || Object.keys(data).length === 0) return;
 
-        let pageContents: React.ReactNode[][] = [];
+        const pageContents: React.ReactNode[][] = [];
         let currentPage: React.ReactNode[] = [];
 
         currentPage.push(
             <div key="header" className="cv-header pb-4">
                 <div className="flex items-start justify-between">
                     {data.is_use_photo && (data.photo || data.photoPreview) && (
-                        <div className="w-1/4 flex justify-start">
-                            <div className="h-32 w-32 rounded-full overflow-hidden border-2 border-gray-300">
+                        <div className="flex w-1/4 justify-start">
+                            <div className="h-32 w-32 overflow-hidden rounded-full border-2 border-gray-300">
                                 <img
                                     src={data.photoPreview || (data.photo ? URL.createObjectURL(data.photo) : '')}
                                     alt={`${data.name}'s photo`}
@@ -389,49 +386,79 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     )}
 
                     <div className={`${data.is_use_photo && (data.photo || data.photoPreview) ? 'w-3/4' : 'w-full'}`}>
-                        <h1 className={`font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`} style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>{data.name}</h1>
+                        <h1
+                            className={`font-bold text-gray-900 ${!data.is_use_photo ? 'text-center' : ''}`}
+                            style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
+                        >
+                            {data.name}
+                        </h1>
 
-                        {data.is_use_photo ? <div className="mt-3 text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-                            {data.address && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '📍' : ''}</span>{data.address}</p>}
-                            {data.phone && <p className="flex items-center gap-2">
-                                <span>{data.is_use_photo ? '📱' : ''}</span>
-                                <a 
-                                    href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="hover:text-blue-600 hover:underline"
-                                    style={{ fontFamily: 'Arial, sans-serif' }}
-                                >
-                                    {data.phone}
-                                </a>
-                            </p>}
-                            {data.email && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '✉️' : ''}</span>{data.email}</p>}
-                            {data.linkedin && <p className="flex items-center gap-2"><span>{data.is_use_photo ? '🔗' : ''}</span>{data.linkedin}</p>}
-                        </div> :
-                            <div className="mt-3 text-gray-700 text-center" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-                                <div className="flex flex-wrap justify-center gap-2">
-                                    {data.phone && <p className="whitespace-nowrap">
-                                        <a 
-                                            href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`} 
-                                            target="_blank" 
+                        {data.is_use_photo ? (
+                            <div
+                                className="mt-3 grid grid-cols-1 gap-1 text-gray-700 md:grid-cols-2"
+                                style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}
+                            >
+                                {data.address && (
+                                    <p className="flex items-center gap-2">
+                                        <span>{data.is_use_photo ? '📍' : ''}</span>
+                                        {data.address}
+                                    </p>
+                                )}
+                                {data.phone && (
+                                    <p className="flex items-center gap-2">
+                                        <span>{data.is_use_photo ? '📱' : ''}</span>
+                                        <a
+                                            href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`}
+                                            target="_blank"
                                             rel="noopener noreferrer"
                                             className="hover:text-blue-600 hover:underline"
                                             style={{ fontFamily: 'Arial, sans-serif' }}
                                         >
                                             {data.phone}
                                         </a>
-                                    </p>}
+                                    </p>
+                                )}
+                                {data.email && (
+                                    <p className="flex items-center gap-2">
+                                        <span>{data.is_use_photo ? '✉️' : ''}</span>
+                                        {data.email}
+                                    </p>
+                                )}
+                                {data.linkedin && (
+                                    <p className="flex items-center gap-2">
+                                        <span>{data.is_use_photo ? '🔗' : ''}</span>
+                                        {data.linkedin}
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="mt-3 text-center text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {data.phone && (
+                                        <p className="whitespace-nowrap">
+                                            <a
+                                                href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="hover:text-blue-600 hover:underline"
+                                                style={{ fontFamily: 'Arial, sans-serif' }}
+                                            >
+                                                {data.phone}
+                                            </a>
+                                        </p>
+                                    )}
                                     {data.phone && data.email && <span className="whitespace-nowrap">|</span>}
-                                    {data.email && <p className="whitespace-nowrap overflow-hidden text-ellipsis">{data.email}</p>}
+                                    {data.email && <p className="overflow-hidden text-ellipsis whitespace-nowrap">{data.email}</p>}
                                     {(data.phone || data.email) && data.linkedin && <span className="whitespace-nowrap">|</span>}
-                                    {data.linkedin && <p className="whitespace-nowrap overflow-hidden text-ellipsis">{data.linkedin}</p>}
+                                    {data.linkedin && <p className="overflow-hidden text-ellipsis whitespace-nowrap">{data.linkedin}</p>}
                                     {(data.phone || data.email || data.linkedin) && data.address && <span className="whitespace-nowrap">|</span>}
-                                    {data.address && <p className="break-words max-w-full">{data.address}</p>}
+                                    {data.address && <p className="max-w-full break-words">{data.address}</p>}
                                 </div>
-                            </div>}
+                            </div>
+                        )}
                     </div>
                 </div>
-            </div>
+            </div>,
         );
 
         // Perkiraan tinggi header (dioptimalkan)
@@ -442,40 +469,47 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
         if (data.summary) {
             currentPage.push(
                 <div key="summary" className="cv-section mb-4">
-                    <h2 className="font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>Summary</h2>
-                    <p className="text-gray-700 cv-body-text" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}>{data.summary}</p>
-                </div>
+                    <h2
+                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
+                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
+                    >
+                        Summary
+                    </h2>
+                    <p className="cv-body-text text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}>
+                        {data.summary}
+                    </p>
+                </div>,
             );
-            
+
             // Tambahkan tinggi summary dan spacing setelah section
             currentPageHeight += SECTION_HEADING_HEIGHT + SECTION_SPACING_HEIGHT;
         }
 
         // Fungsi untuk menganalisis bullet points dari deskripsi
-        const extractBulletPoints = (description: string): {intro?: string, bullets: string[]} => {
+        const extractBulletPoints = (description: string): { intro?: string; bullets: string[] } => {
             if (!description) return { bullets: [] };
-            
-            const result: {intro?: string, bullets: string[]} = { bullets: [] };
-            
+
+            const result: { intro?: string; bullets: string[] } = { bullets: [] };
+
             if (description.includes('• ')) {
                 const parts = description.split('• ');
                 if (parts[0].trim()) {
                     result.intro = parts[0].trim();
                 }
-                
+
                 for (let i = 1; i < parts.length; i++) {
                     if (parts[i].trim()) {
                         result.bullets.push(parts[i].trim());
                     }
                 }
-                
+
                 return result;
             }
-            
+
             if (description.match(/[\n\r][-*•][\s]/) || description.includes('\n- ')) {
                 const lines = description.split(/[\n\r]+/);
-                let introLines: string[] = [];
-                
+                const introLines: string[] = [];
+
                 for (const line of lines) {
                     const trimmedLine = line.trim();
                     if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
@@ -484,18 +518,18 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                         introLines.push(trimmedLine);
                     }
                 }
-                
+
                 if (introLines.length > 0) {
                     result.intro = introLines.join('\n');
                 }
-                
+
                 return result;
             }
-            
+
             if (description.trim()) {
                 result.intro = description.trim();
             }
-            
+
             return result;
         };
 
@@ -533,7 +567,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             renderItem: (item: any, index: number) => React.ReactNode,
             bulletHeight: number = BULLET_POINT_HEIGHT,
             marginThreshold: number = 15,
-            itemHeaderLines: number = 2
+            itemHeaderLines: number = 2,
         ) => {
             currentPageHeight += SECTION_SPACING_HEIGHT;
 
@@ -545,9 +579,14 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             }
 
             currentPage.push(
-                <div key={`${sectionTitle}_title`} className="cv-section-heading mb-4 mt-3">
-                    <h2 className="font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>{sectionTitle}</h2>
-                </div>
+                <div key={`${sectionTitle}_title`} className="cv-section-heading mt-3 mb-4">
+                    <h2
+                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
+                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
+                    >
+                        {sectionTitle}
+                    </h2>
+                </div>,
             );
             currentPageHeight += sectionTitleHeightPx;
 
@@ -574,7 +613,13 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                         currentPageHeight = 0;
                     }
                     currentPage.push(
-                        <p key={`intro_${sectionTitle}_${index}`} className="text-gray-600 mt-1 cv-body-text" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}>{intro}</p>
+                        <p
+                            key={`intro_${sectionTitle}_${index}`}
+                            className="cv-body-text mt-1 text-gray-600"
+                            style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}
+                        >
+                            {intro}
+                        </p>,
                     );
                     currentPageHeight += introHeight;
                 }
@@ -587,16 +632,20 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             currentPageHeight = 0;
                         }
                         currentPage.push(
-                            <div key={`bullet_${sectionTitle}_${index}_${bulletIndex}`} style={{
-                                display: 'flex',
-                                marginBottom: '0.25rem',
-                                fontFamily: 'Arial, sans-serif',
-                                fontSize: '10pt',
-                                textAlign: 'justify'
-                            }} className="text-gray-600 cv-body-text">
+                            <div
+                                key={`bullet_${sectionTitle}_${index}_${bulletIndex}`}
+                                style={{
+                                    display: 'flex',
+                                    marginBottom: '0.25rem',
+                                    fontFamily: 'Arial, sans-serif',
+                                    fontSize: '10pt',
+                                    textAlign: 'justify',
+                                }}
+                                className="cv-body-text text-gray-600"
+                            >
                                 <div style={{ width: '1em', flexShrink: 0 }}>•</div>
                                 <div>{bullet}</div>
-                            </div>
+                            </div>,
                         );
                         currentPageHeight += bHeight;
                     });
@@ -609,43 +658,52 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
         // Proses Work Experience dengan pagination per baris
         if (data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company) {
             processSectionWithPreciseLineBreak(
-                "Work Experience",
+                'Work Experience',
                 data.work_experience.filter((work: WorkExperience) => work.company),
                 (work: WorkExperience, index: number) => (
                     <div key={`work_header_${index}`} className="mb-2">
-                        <div className="flex justify-between items-start">
-                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>{work.position}</h3>
-                            <span className="text-gray-600 font-semibold" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-                                {formatDate(work.start_date)} - {work.is_current ? 'Present' : formatDate(work.end_date)} {calculateDuration(work.start_date, work.end_date, work.is_current)}
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {work.position}
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {formatDate(work.start_date)} - {work.is_current ? 'Present' : formatDate(work.end_date)}{' '}
+                                {calculateDuration(work.start_date, work.end_date, work.is_current)}
                             </span>
                         </div>
-                        <h4 className="text-gray-700 font-semibold" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>{work.company}, {work.company_location} ({work.location_type})</h4>
+                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                            {work.company}, {work.company_location} ({work.location_type})
+                        </h4>
                     </div>
                 ),
                 WORK_BULLET_POINT_HEIGHT,
                 80,
-                3
+                3,
             );
         }
 
         if (data.education && data.education.length > 0 && data.education[0].institution) {
             processSectionWithPreciseLineBreak(
-                "Education",
+                'Education',
                 data.education.filter((edu: Education) => edu.institution),
                 (edu: Education, index: number) => (
                     <div key={`edu_header_${index}`} className="mb-2">
-                        <div className="flex justify-between items-start">
-                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>{edu.degree} {edu.degree ? ',' : ''} {edu.field}</h3>
-                            <span className="text-gray-600 font-semibold" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {edu.degree} {edu.degree ? ',' : ''} {edu.field}
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {formatDate(edu.start_date)} - {formatDate(edu.end_date)}
                             </span>
                         </div>
-                        <h4 className="text-gray-700 font-semibold" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>{edu.institution}</h4>
+                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                            {edu.institution}
+                        </h4>
                     </div>
                 ),
                 BULLET_POINT_HEIGHT,
                 0,
-                2
+                2,
             );
         }
 
@@ -656,9 +714,14 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             const skillsSectionTitleHeight = SECTION_TITLE_LINES * LINE_HEIGHT;
             // Tambahkan heading skills
             currentPage.push(
-                <div key="skills_title" className="cv-section mb-4 mt-6">
-                    <h2 className="font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>Skills</h2>
-                </div>
+                <div key="skills_title" className="cv-section mt-6 mb-4">
+                    <h2
+                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
+                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
+                    >
+                        Skills
+                    </h2>
+                </div>,
             );
             currentPageHeight += skillsSectionTitleHeight;
 
@@ -666,41 +729,51 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             const skillsPerColumn = 3;
             const totalColumns = Math.ceil(data.skills.length / skillsPerColumn);
             const skillColumns: Skill[][] = [];
-            
+
             // Bagi skills ke dalam kolom-kolom
             for (let i = 0; i < totalColumns; i++) {
                 const startIndex = i * skillsPerColumn;
                 const endIndex = startIndex + skillsPerColumn;
                 skillColumns.push(data.skills.slice(startIndex, endIndex));
             }
-            
+
             // Tambahkan container untuk skills dengan layout kolom yang konsisten untuk PDF dan preview
             currentPage.push(
-                <div key="skills_container" className="skills-container" style={{ 
-                    display: 'flex', 
-                    flexWrap: 'wrap', 
-                    gap: '2rem',
-                    justifyContent: 'flex-start' 
-                }}>
+                <div
+                    key="skills_container"
+                    className="skills-container"
+                    style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '2rem',
+                        justifyContent: 'flex-start',
+                    }}
+                >
                     {skillColumns.map((column, columnIndex) => (
-                        <div key={`skills_column_${columnIndex}`} className="skills-column" style={{
-                            flex: '1 1 auto',
-                            minWidth: '120px',
-                            maxWidth: '200px',
-                            fontFamily: 'Arial, sans-serif'
-                        }}>
+                        <div
+                            key={`skills_column_${columnIndex}`}
+                            className="skills-column"
+                            style={{
+                                flex: '1 1 auto',
+                                minWidth: '120px',
+                                maxWidth: '200px',
+                                fontFamily: 'Arial, sans-serif',
+                            }}
+                        >
                             {column.map((skill, skillIndex) => (
                                 <div key={`skill_${columnIndex}_${skillIndex}`} className="mb-1">
-                                    <span className="text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>• {skill.name}</span>
+                                    <span className="text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
+                                        • {skill.name}
+                                    </span>
                                 </div>
                             ))}
                         </div>
                     ))}
-                </div>
+                </div>,
             );
-            
+
             // Hitung tinggi total skills section
-            const maxSkillsInColumn = Math.max(...skillColumns.map(col => col.length));
+            const maxSkillsInColumn = Math.max(...skillColumns.map((col) => col.length));
             const totalSkillsHeight = maxSkillsInColumn * 25; // 25px per skill item
             currentPageHeight += totalSkillsHeight;
         }
@@ -708,11 +781,11 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
         // Proses Portfolios dengan pagination per baris
         if (data.portfolios && data.portfolios.length > 0 && data.portfolios[0].title) {
             processSectionWithPreciseLineBreak(
-                "Portfolios",
+                'Portfolios',
                 data.portfolios.filter((portfolio: Portfolio) => portfolio.title),
                 (portfolio: Portfolio, index: number) => (
                     <div key={`portfolio_header_${index}`} className="mb-2">
-                        <div className="flex justify-between items-start">
+                        <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {portfolio.title} (
                                 <a
@@ -731,32 +804,32 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 ),
                 BULLET_POINT_HEIGHT,
                 -100,
-                2
+                2,
             );
         }
 
         if (data.accomplishments && data.accomplishments.length > 0 && data.accomplishments[0].description) {
             processSectionWithPreciseLineBreak(
-                "Accomplishments",
+                'Accomplishments',
                 data.accomplishments.filter((acc: Accomplishment) => acc.description),
-                (accomplishment: Accomplishment, index: number) => (
-                    <div key={`accomplishment_header_${index}`} className="mb-2" />
-                ),
+                (accomplishment: Accomplishment, index: number) => <div key={`accomplishment_header_${index}`} className="mb-2" />,
                 BULLET_POINT_HEIGHT,
                 -100,
-                0
+                0,
             );
         }
 
         if (data.organizations && data.organizations.length > 0 && data.organizations[0].name) {
             processSectionWithPreciseLineBreak(
-                "Organization",
+                'Organization',
                 data.organizations.filter((org: Organization) => org.name),
                 (org: Organization, index: number) => (
                     <div key={`org_header_${index}`} className="mb-2">
-                        <div className="flex justify-between items-start">
-                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>{org.position}, {org.name}</h3>
-                            <span className="text-gray-600 font-semibold" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {org.position}, {org.name}
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {formatDate(org.start_date)} - {formatDate(org.end_date)}
                             </span>
                         </div>
@@ -764,7 +837,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 ),
                 BULLET_POINT_HEIGHT,
                 -100,
-                2
+                2,
             );
         }
 
@@ -782,41 +855,43 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
             // Tambahkan heading languages
             currentPage.push(
-                <div key="languages_title" className="cv-section mb-4 mt-6">
-                    <h2 className="font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>Languages</h2>
-                </div>
+                <div key="languages_title" className="cv-section mt-6 mb-4">
+                    <h2
+                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
+                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
+                    >
+                        Languages
+                    </h2>
+                </div>,
             );
             currentPageHeight += languagesSectionTitleHeight;
 
             // Tambahkan container untuk languages
-            currentPage.push(
-                <ul key="languages_list" className="list-disc pl-5">
-                </ul>
-            );
-            
+            currentPage.push(<ul key="languages_list" className="list-disc pl-5"></ul>);
+
             // Proses setiap language
             data.languages.forEach((lang, index) => {
-                let levelText = "";
+                let levelText = '';
                 switch (lang.level) {
-                    case "Native":
-                        levelText = "Native or bilingual proficiency";
+                    case 'Native':
+                        levelText = 'Native or bilingual proficiency';
                         break;
-                    case "Fluent":
-                        levelText = "Full professional proficiency";
+                    case 'Fluent':
+                        levelText = 'Full professional proficiency';
                         break;
-                    case "Advanced":
-                        levelText = "Professional working proficiency";
+                    case 'Advanced':
+                        levelText = 'Professional working proficiency';
                         break;
-                    case "Intermediate":
-                        levelText = "Limited working proficiency";
+                    case 'Intermediate':
+                        levelText = 'Limited working proficiency';
                         break;
-                    case "Basic":
-                        levelText = "Elementary proficiency";
+                    case 'Basic':
+                        levelText = 'Elementary proficiency';
                         break;
                     default:
                         levelText = lang.level;
                 }
-                
+
                 const langItemHeight = 30;
 
                 if (currentPageHeight + langItemHeight > languagesLimit) {
@@ -824,13 +899,13 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     currentPage = [];
                     currentPageHeight = 0;
                 }
-                
+
                 // Tambahkan language item
                 currentPage.push(
                     <li key={`lang_${index}`} className="mb-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
-                        <span className="text-gray-700 font-medium">{lang.language}</span>
+                        <span className="font-medium text-gray-700">{lang.language}</span>
                         <span className="ml-2 text-gray-600">({levelText})</span>
-                    </li>
+                    </li>,
                 );
                 currentPageHeight += langItemHeight;
             });
@@ -851,80 +926,98 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
             }
 
             currentPage.push(
-                <div key="additional_info_title" className="cv-section mb-4 mt-6">
-                    <h2 className="font-semibold text-gray-800 mb-2 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>Additional Info</h2>
-                </div>
+                <div key="additional_info_title" className="cv-section mt-6 mb-4">
+                    <h2
+                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
+                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
+                    >
+                        Additional Info
+                    </h2>
+                </div>,
             );
             currentPageHeight += additionalInfoSectionTitleHeight;
 
             if (intro) {
                 currentPage.push(
-                    <p key="additional_info_intro" className="text-gray-600 mt-1 cv-body-text" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}>{intro}</p>
+                    <p
+                        key="additional_info_intro"
+                        className="cv-body-text mt-1 text-gray-600"
+                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}
+                    >
+                        {intro}
+                    </p>,
                 );
                 currentPageHeight += PARAGRAPH_HEIGHT;
             }
             bullets.forEach((bullet, bulletIndex) => {
                 currentPage.push(
-                    <div key={`bullet_additional_info_${bulletIndex}`} style={{
-                        display: 'flex',
-                        marginBottom: '0.25rem',
-                        fontFamily: 'Arial, sans-serif',
-                        fontSize: '10pt',
-                        textAlign: 'justify'
-                    }} className="text-gray-600 cv-body-text">
+                    <div
+                        key={`bullet_additional_info_${bulletIndex}`}
+                        style={{
+                            display: 'flex',
+                            marginBottom: '0.25rem',
+                            fontFamily: 'Arial, sans-serif',
+                            fontSize: '10pt',
+                            textAlign: 'justify',
+                        }}
+                        className="cv-body-text text-gray-600"
+                    >
                         <div style={{ width: '1em', flexShrink: 0 }}>•</div>
                         <div>{bullet}</div>
-                    </div>
+                    </div>,
                 );
                 currentPageHeight += BULLET_POINT_HEIGHT;
             });
         }
-        
+
         // Tambahkan halaman terakhir jika masih ada konten
         if (currentPage.length > 0) {
             pageContents.push(currentPage);
         }
-        
+
         // Jika tidak ada halaman yang dibuat, buat halaman dengan header saja
         if (pageContents.length === 0) {
             pageContents.push(currentPage);
         }
-        
+
         setPages(pageContents);
     }, [data]);
 
     // Fungsi helper untuk memastikan semua deskripsi di-render dengan benar (untuk kompatibilitas)
     const renderDescription = (description: string, itemIndex: number): React.ReactNode[] => {
         if (!description) return [];
-        
+
         // Jika deskripsi sudah berformat dengan bullet points
         if (description.includes('• ')) {
             const parts = description.split('• ');
             const result: React.ReactNode[] = [];
-            
+
             // Paragraph awal (jika ada)
             if (parts[0].trim()) {
                 result.push(<p key={`intro-${itemIndex}`}>{parts[0].trim()}</p>);
             }
-            
+
             // Bullet points
             for (let i = 1; i < parts.length; i++) {
                 if (parts[i].trim()) {
                     result.push(
-                        <div key={`bullet-${itemIndex}-${i}`} style={{
-                            display: 'flex',
-                            marginBottom: '0.25rem'
-                        }}>
+                        <div
+                            key={`bullet-${itemIndex}-${i}`}
+                            style={{
+                                display: 'flex',
+                                marginBottom: '0.25rem',
+                            }}
+                        >
                             <div style={{ width: '1em', flexShrink: 0 }}>•</div>
                             <div>{parts[i].trim()}</div>
-                        </div>
+                        </div>,
                     );
                 }
             }
-            
+
             return result;
         }
-        
+
         // Alternatif: coba deteksi format bullet dengan regex jika format '• ' tidak ditemukan
         if (description.match(/[\n\r][-*•][\s]/) || description.includes('\n- ')) {
             // Split by newlines and process each line
@@ -933,10 +1026,13 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 const trimmedLine = line.trim();
                 if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
                     return (
-                        <div key={`bullet-${itemIndex}-${i}`} style={{
-                            display: 'flex',
-                            marginBottom: '0.25rem'
-                        }}>
+                        <div
+                            key={`bullet-${itemIndex}-${i}`}
+                            style={{
+                                display: 'flex',
+                                marginBottom: '0.25rem',
+                            }}
+                        >
                             <div style={{ width: '1em', flexShrink: 0 }}>•</div>
                             <div>{trimmedLine.substring(2)}</div>
                         </div>
@@ -945,25 +1041,28 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 return <p key={`text-${itemIndex}-${i}`}>{trimmedLine}</p>;
             });
         }
-        
+
         // Jika tidak ada format khusus, tampilkan sebagai paragraf biasa
         return [<p key={`plain-${itemIndex}`}>{description}</p>];
     };
 
     if (!data || Object.keys(data).length === 0) {
         return (
-            <div className="cv-preview-empty flex items-center justify-center h-full">
+            <div className="cv-preview-empty flex h-full items-center justify-center">
                 <p className="text-gray-500">Preview CV will appear here</p>
             </div>
         );
     }
 
     return (
-        <div className={`cv-container mx-auto relative flex flex-col items-center justify-center ${!isPdfMode ? 'bg-gray-100' : ''}`} style={{ maxWidth: '100%' }}>
+        <div
+            className={`cv-container relative mx-auto flex flex-col items-center justify-center ${!isPdfMode ? 'bg-gray-100' : ''}`}
+            style={{ maxWidth: '100%' }}
+        >
             <style dangerouslySetInnerHTML={{ __html: pageBreakStyle }} />
-            
+
             {!isPdfMode && showZoomControls && (
-                <div className="zoom-controls absolute right-3 top-3 flex items-center gap-2 bg-white p-2 rounded-lg shadow-md z-10">
+                <div className="zoom-controls absolute top-3 right-3 z-10 flex items-center gap-2 rounded-lg bg-white p-2 shadow-md">
                     <span className="text-sm font-medium">25%</span>
                     <input
                         type="range"
@@ -976,39 +1075,51 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                         title="Zoom"
                     />
                     <span className="text-sm font-medium">200%</span>
-                    <span className="ml-2 px-2 py-1 bg-gray-100 rounded-md text-sm font-bold">{zoomLevel}%</span>
+                    <span className="ml-2 rounded-md bg-gray-100 px-2 py-1 text-sm font-bold">{zoomLevel}%</span>
                     <button
                         onClick={toggleZoomControls}
-                        className="ml-1 w-7 h-7 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full"
+                        className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
                         title="Hide Zoom Control"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                            />
                         </svg>
                     </button>
                 </div>
             )}
-            
+
             {!isPdfMode && !showZoomControls && (
                 <button
                     onClick={toggleZoomControls}
-                    className="absolute right-3 top-3 w-9 h-9 flex items-center justify-center bg-white hover:bg-gray-100 rounded-full shadow-md z-10"
+                    className="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-100"
                     title="Show Zoom Control"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
                     </svg>
                 </button>
             )}
 
-            <div className="cv-multi-page-container" 
-                 style={{
-                     transform: !isPdfMode ? `scale(${(zoomLevel / 100) * 0.65})` : 'none',
-                     transformOrigin: 'top center',
-                     transition: 'transform 0.2s ease',
-                 }}
-                 ref={cvContentRef}>
+            <div
+                className="cv-multi-page-container"
+                style={{
+                    transform: !isPdfMode ? `scale(${(zoomLevel / 100) * 0.65})` : 'none',
+                    transformOrigin: 'top center',
+                    transition: 'transform 0.2s ease',
+                }}
+                ref={cvContentRef}
+            >
                 {pages.map((pageContent, index) => (
                     <div key={`page-${index}`} className="relative mb-6">
                         {createPage(pageContent, index, pages.length)}

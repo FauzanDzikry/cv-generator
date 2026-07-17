@@ -1,7 +1,7 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Pencil, Printer } from 'lucide-react';
 import CV from '@/components/cv-format';
 import AppLayout from '@/layouts/layouts';
+import { Head, Link } from '@inertiajs/react';
+import { ArrowLeft, Pencil, Printer } from 'lucide-react';
 
 interface CvShowProps {
     cv: {
@@ -48,9 +48,9 @@ export default function CvShow({ cv }: CvShowProps) {
     return (
         <AppLayout>
             <Head title={`CV: ${cv.cv_name || cv.name || 'Untitled CV'}`} />
-            <div className="py-8 md:py-16 bg-gray-50 dark:bg-gray-800">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-wrap items-center gap-4 mb-6">
+            <div className="bg-gray-50 py-8 md:py-16 dark:bg-gray-800">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="mb-6 flex flex-wrap items-center gap-4">
                         <Link
                             href={route('cvs.index')}
                             className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
@@ -60,7 +60,7 @@ export default function CvShow({ cv }: CvShowProps) {
                         </Link>
                         <Link
                             href={route('cvs.edit', { id: cv.id })}
-                            className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                            className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:focus:ring-offset-gray-800"
                         >
                             <Pencil className="h-4 w-4" />
                             Edit

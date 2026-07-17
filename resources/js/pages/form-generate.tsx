@@ -1,9 +1,8 @@
-import React, { useState, ChangeEvent, FormEvent, useEffect, useRef } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/layouts';
-import FormProgress from '@/components/percentage';
 import CV, { pageBreakStyle } from '@/components/cv-format';
-import html2pdf from 'html2pdf.js';
+import FormProgress from '@/components/percentage';
+import AppLayout from '@/layouts/layouts';
+import { Head, router, usePage } from '@inertiajs/react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 
 const defaultFormData = {
     cv_name: '',
@@ -15,45 +14,53 @@ const defaultFormData = {
     summary: '',
     photo: null as File | null,
     is_use_photo: false,
-    work_experience: [{
-        company: '',
-        company_location: '',
-        position: '',
-        location_type: '',
-        start_date: '',
-        end_date: '',
-        description: '',
-        is_current: false
-    }],
-    education: [{
-        institution: '',
-        degree: '',
-        field: '',
-        start_date: '',
-        end_date: '',
-        description: ''
-    }],
+    work_experience: [
+        {
+            company: '',
+            company_location: '',
+            position: '',
+            location_type: '',
+            start_date: '',
+            end_date: '',
+            description: '',
+            is_current: false,
+        },
+    ],
+    education: [
+        {
+            institution: '',
+            degree: '',
+            field: '',
+            start_date: '',
+            end_date: '',
+            description: '',
+        },
+    ],
     skills: [{ name: '' }],
     portfolios: [{ title: '', link: '', description: '' }],
-    certifications: [{
-        name: '',
-        organization: '',
-        start_year: '',
-        end_year: '',
-        is_time_limited: false,
-        description: '',
-        credential_id: ''
-    }],
+    certifications: [
+        {
+            name: '',
+            organization: '',
+            start_year: '',
+            end_year: '',
+            is_time_limited: false,
+            description: '',
+            credential_id: '',
+        },
+    ],
     languages: [{ language: '', level: '' }],
     accomplishments: [{ description: '' }],
-    organizations: [{
-        name: '',
-        position: '',
-        start_date: '',
-        end_date: '',
-        is_current: false,
-        description: ''
-    }],
+    organizations: [
+        {
+            name: '',
+            position: '',
+            start_date: '',
+            end_date: '',
+            is_current: false,
+            description: '',
+        },
+    ],
     additional_info: '',
 };
 
@@ -63,7 +70,7 @@ const defaultAddOnSections = {
     accomplishments: false,
     organizations: false,
     languages: false,
-    additional_info: false
+    additional_info: false,
 };
 
 function getInitialFormData() {
@@ -77,14 +84,34 @@ function getInitialFormData() {
         return {
             ...defaultFormData,
             ...parsed,
-            work_experience: (parsed.work_experience?.length ? parsed.work_experience : defaultFormData.work_experience).map((item: typeof workDefault) => ({ ...workDefault, ...item })),
-            education: (parsed.education?.length ? parsed.education : defaultFormData.education).map((item: typeof eduDefault) => ({ ...eduDefault, ...item })),
+            work_experience: (parsed.work_experience?.length ? parsed.work_experience : defaultFormData.work_experience).map(
+                (item: typeof workDefault) => ({ ...workDefault, ...item }),
+            ),
+            education: (parsed.education?.length ? parsed.education : defaultFormData.education).map((item: typeof eduDefault) => ({
+                ...eduDefault,
+                ...item,
+            })),
             skills: (parsed.skills?.length ? parsed.skills : defaultFormData.skills).map((s: { name: string }) => ({ name: s?.name ?? '' })),
-            portfolios: (parsed.portfolios?.length ? parsed.portfolios : defaultFormData.portfolios).map((p: { title: string; link: string; description: string }) => ({ title: p?.title ?? '', link: p?.link ?? '', description: p?.description ?? '' })),
-            certifications: (parsed.certifications?.length ? parsed.certifications : defaultFormData.certifications).map((c: typeof defaultFormData.certifications[0]) => ({ ...defaultFormData.certifications[0], ...c })),
-            languages: (parsed.languages?.length ? parsed.languages : defaultFormData.languages).map((l: { language: string; level: string }) => ({ language: l?.language ?? '', level: l?.level ?? '' })),
-            accomplishments: (parsed.accomplishments?.length ? parsed.accomplishments : defaultFormData.accomplishments).map((a: { description: string }) => ({ description: a?.description ?? '' })),
-            organizations: (parsed.organizations?.length ? parsed.organizations : defaultFormData.organizations).map((o: typeof defaultFormData.organizations[0]) => ({ ...defaultFormData.organizations[0], ...o })),
+            portfolios: (parsed.portfolios?.length ? parsed.portfolios : defaultFormData.portfolios).map(
+                (p: { title: string; link: string; description: string }) => ({
+                    title: p?.title ?? '',
+                    link: p?.link ?? '',
+                    description: p?.description ?? '',
+                }),
+            ),
+            certifications: (parsed.certifications?.length ? parsed.certifications : defaultFormData.certifications).map(
+                (c: (typeof defaultFormData.certifications)[0]) => ({ ...defaultFormData.certifications[0], ...c }),
+            ),
+            languages: (parsed.languages?.length ? parsed.languages : defaultFormData.languages).map((l: { language: string; level: string }) => ({
+                language: l?.language ?? '',
+                level: l?.level ?? '',
+            })),
+            accomplishments: (parsed.accomplishments?.length ? parsed.accomplishments : defaultFormData.accomplishments).map(
+                (a: { description: string }) => ({ description: a?.description ?? '' }),
+            ),
+            organizations: (parsed.organizations?.length ? parsed.organizations : defaultFormData.organizations).map(
+                (o: (typeof defaultFormData.organizations)[0]) => ({ ...defaultFormData.organizations[0], ...o }),
+            ),
         };
     } catch {
         return defaultFormData;
@@ -121,11 +148,12 @@ type FormGenerateProps = {
 
 function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
     const customFields = (cv.custom_fields as Record<string, unknown>) ?? {};
-    const additionalInfo = typeof cv.additional_info === 'string'
-        ? cv.additional_info
-        : Array.isArray(cv.additional_info)
-            ? (cv.additional_info as string[]).join('')
-            : '';
+    const additionalInfo =
+        typeof cv.additional_info === 'string'
+            ? cv.additional_info
+            : Array.isArray(cv.additional_info)
+              ? (cv.additional_info as string[]).join('')
+              : '';
     return {
         ...defaultFormData,
         cv_name: (cv.cv_name as string) ?? '',
@@ -137,44 +165,56 @@ function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
         summary: (cv.summary as string) ?? '',
         photo: null,
         is_use_photo: Boolean(customFields.is_use_photo),
-        work_experience: Array.isArray(cv.work_experience) && (cv.work_experience as unknown[]).length
-            ? (cv.work_experience as typeof defaultFormData.work_experience)
-            : defaultFormData.work_experience,
-        education: Array.isArray(cv.education) && (cv.education as unknown[]).length
-            ? (cv.education as typeof defaultFormData.education)
-            : defaultFormData.education,
-        skills: Array.isArray(cv.skills) && (cv.skills as unknown[]).length
-            ? (cv.skills as typeof defaultFormData.skills)
-            : defaultFormData.skills,
-        portfolios: Array.isArray(cv.portfolios) && (cv.portfolios as unknown[]).length
-            ? (cv.portfolios as typeof defaultFormData.portfolios)
-            : defaultFormData.portfolios,
-        certifications: Array.isArray(cv.certifications) && (cv.certifications as unknown[]).length
-            ? (cv.certifications as typeof defaultFormData.certifications)
-            : defaultFormData.certifications,
-        languages: Array.isArray(cv.languages) && (cv.languages as unknown[]).length
-            ? (cv.languages as typeof defaultFormData.languages)
-            : defaultFormData.languages,
-        accomplishments: Array.isArray(cv.accomplishments) && (cv.accomplishments as unknown[]).length
-            ? (cv.accomplishments as typeof defaultFormData.accomplishments)
-            : defaultFormData.accomplishments,
-        organizations: Array.isArray(cv.organizations) && (cv.organizations as unknown[]).length
-            ? (cv.organizations as typeof defaultFormData.organizations)
-            : defaultFormData.organizations,
+        work_experience:
+            Array.isArray(cv.work_experience) && (cv.work_experience as unknown[]).length
+                ? (cv.work_experience as typeof defaultFormData.work_experience)
+                : defaultFormData.work_experience,
+        education:
+            Array.isArray(cv.education) && (cv.education as unknown[]).length
+                ? (cv.education as typeof defaultFormData.education)
+                : defaultFormData.education,
+        skills: Array.isArray(cv.skills) && (cv.skills as unknown[]).length ? (cv.skills as typeof defaultFormData.skills) : defaultFormData.skills,
+        portfolios:
+            Array.isArray(cv.portfolios) && (cv.portfolios as unknown[]).length
+                ? (cv.portfolios as typeof defaultFormData.portfolios)
+                : defaultFormData.portfolios,
+        certifications:
+            Array.isArray(cv.certifications) && (cv.certifications as unknown[]).length
+                ? (cv.certifications as typeof defaultFormData.certifications)
+                : defaultFormData.certifications,
+        languages:
+            Array.isArray(cv.languages) && (cv.languages as unknown[]).length
+                ? (cv.languages as typeof defaultFormData.languages)
+                : defaultFormData.languages,
+        accomplishments:
+            Array.isArray(cv.accomplishments) && (cv.accomplishments as unknown[]).length
+                ? (cv.accomplishments as typeof defaultFormData.accomplishments)
+                : defaultFormData.accomplishments,
+        organizations:
+            Array.isArray(cv.organizations) && (cv.organizations as unknown[]).length
+                ? (cv.organizations as typeof defaultFormData.organizations)
+                : defaultFormData.organizations,
         additional_info: additionalInfo,
     };
 }
 
 export default function CvForm() {
-    const { props } = usePage<{ auth: { user: unknown }; cv?: Record<string, unknown>; addOnSections?: Record<string, boolean>; isEdit?: boolean; cvId?: number }>();
+    const { props } = usePage<{
+        auth: { user: unknown };
+        cv?: Record<string, unknown>;
+        addOnSections?: Record<string, boolean>;
+        isEdit?: boolean;
+        cvId?: number;
+    }>();
     const isGuest = !props.auth?.user;
     const isEdit = props.isEdit === true && props.cvId;
     const cvId = props.cvId as number | undefined;
     const initialFormData = props.cv ? formDataFromCv(props.cv) : getInitialFormData();
     const initialAddOn = props.addOnSections ?? getInitialAddOnSections();
-    const initialPhoto = props.cv && (props.cv.custom_fields as Record<string, unknown>)?.photo_base64
-        ? String((props.cv.custom_fields as Record<string, unknown>).photo_base64)
-        : getInitialPhotoPreview();
+    const initialPhoto =
+        props.cv && (props.cv.custom_fields as Record<string, unknown>)?.photo_base64
+            ? String((props.cv.custom_fields as Record<string, unknown>).photo_base64)
+            : getInitialPhotoPreview();
 
     const [formData, setFormData] = useState(initialFormData);
     const [showPreview, setShowPreview] = useState(false);
@@ -189,61 +229,61 @@ export default function CvForm() {
         personal: {
             label: 'Personal Information',
             fields: ['name', 'address', 'phone', 'email', 'linkedin', 'summary', 'photo', 'is_use_photo'],
-            requiredFields: ['name', 'address', 'phone', 'email', 'summary']
+            requiredFields: ['name', 'address', 'phone', 'email', 'summary'],
         },
         work_experience: {
             label: 'Work Experience',
             fields: ['company', 'company_location', 'location_type', 'position', 'start_date', 'end_date', 'description'],
             isArray: true,
-            requiredFields: ['company', 'company_location', 'location_type', 'position', 'start_date', 'end_date', 'description']
+            requiredFields: ['company', 'company_location', 'location_type', 'position', 'start_date', 'end_date', 'description'],
         },
         education: {
             label: 'Education',
             fields: ['institution', 'degree', 'field', 'start_date', 'end_date', 'description'],
             isArray: true,
-            requiredFields: ['institution', 'start_date', 'end_date', 'field']
+            requiredFields: ['institution', 'start_date', 'end_date', 'field'],
         },
         skills: {
             label: 'Skills',
             fields: ['name'],
             isArray: true,
-            requiredFields: ['name']
+            requiredFields: ['name'],
         },
         portfolios: {
             label: 'Portfolios',
             fields: ['title', 'link', 'description'],
             isArray: true,
-            requiredFields: ['title', 'link', 'description']
+            requiredFields: ['title', 'link', 'description'],
         },
         accomplishments: {
             label: 'Accomplishments',
             fields: ['description'],
             isArray: true,
-            requiredFields: ['description']
+            requiredFields: ['description'],
         },
         certifications: {
             label: 'Certifications',
             fields: ['name', 'organization', 'start_year', 'end_year', 'description', 'credential_id'],
             isArray: true,
-            requiredFields: ['name', 'organization', 'start_year']
+            requiredFields: ['name', 'organization', 'start_year'],
         },
         languages: {
             label: 'Languages',
             fields: ['language', 'level'],
             isArray: true,
-            requiredFields: ['language', 'level']
+            requiredFields: ['language', 'level'],
         },
         organizations: {
             label: 'Organizations',
             fields: ['name', 'position', 'start_date', 'end_date', 'description'],
             isArray: true,
-            requiredFields: ['name', 'position', 'start_date', 'description']
+            requiredFields: ['name', 'position', 'start_date', 'description'],
         },
         additional_info: {
             label: 'Additional Information',
             fields: ['additional_info'],
-            requiredFields: ['additional_info']
-        }
+            requiredFields: ['additional_info'],
+        },
     };
     const [formTouched, setFormTouched] = useState(false);
 
@@ -263,7 +303,7 @@ export default function CvForm() {
 
     const formatPhoneForWhatsApp = (phone: string) => {
         if (!phone) return '';
-        let cleanNumber = phone.replace(/\D/g, '');
+        const cleanNumber = phone.replace(/\D/g, '');
         if (cleanNumber.startsWith('62')) {
             return cleanNumber;
         }
@@ -304,7 +344,7 @@ export default function CvForm() {
     const cleanupAllOverlays = () => {
         try {
             const allOverlays = document.querySelectorAll('[id*="pdf-loading-overlay"]');
-            allOverlays.forEach(overlay => {
+            allOverlays.forEach((overlay) => {
                 if (overlay.parentNode) {
                     overlay.parentNode.removeChild(overlay);
                 }
@@ -317,12 +357,15 @@ export default function CvForm() {
     useEffect(() => {
         setTimeout(() => setPageLoaded(true), 100);
 
-        if (!formTouched && (
-            formData.name || formData.email || formData.phone ||
-            formData.work_experience.some(exp => exp.company || exp.position) ||
-            formData.education.some(edu => edu.institution || edu.degree) ||
-            formData.skills.length > 0
-        )) {
+        if (
+            !formTouched &&
+            (formData.name ||
+                formData.email ||
+                formData.phone ||
+                formData.work_experience.some((exp) => exp.company || exp.position) ||
+                formData.education.some((edu) => edu.institution || edu.degree) ||
+                formData.skills.length > 0)
+        ) {
             setFormTouched(true);
         }
 
@@ -435,7 +478,7 @@ export default function CvForm() {
         const { name, value } = e.target;
         setFormData({
             ...formData,
-            [name]: value
+            [name]: value,
         });
     };
 
@@ -443,7 +486,7 @@ export default function CvForm() {
         const { name, checked } = e.target;
         setFormData({
             ...formData,
-            [name]: checked
+            [name]: checked,
         });
     };
 
@@ -459,7 +502,7 @@ export default function CvForm() {
 
             setFormData({
                 ...formData,
-                photo: file
+                photo: file,
             });
 
             const reader = new FileReader();
@@ -486,11 +529,7 @@ export default function CvForm() {
                         ctx.closePath();
                         ctx.clip();
 
-                        ctx.drawImage(
-                            img,
-                            offsetX, offsetY, size, size,
-                            0, 0, size, size
-                        );
+                        ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, size, size);
 
                         const dataUrl = canvas.toDataURL(file.type);
                         setPhotoPreview(dataUrl);
@@ -506,17 +545,21 @@ export default function CvForm() {
         }
     };
 
-    const handleArrayChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, index: number, arrayName: keyof typeof formData) => {
+    const handleArrayChange = (
+        e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+        index: number,
+        arrayName: keyof typeof formData,
+    ) => {
         const { name, value } = e.target;
-        const updatedArray = [...formData[arrayName] as any[]];
+        const updatedArray = [...(formData[arrayName] as any[])];
         updatedArray[index] = {
             ...updatedArray[index],
-            [name]: value
+            [name]: value,
         };
 
         setFormData({
             ...formData,
-            [arrayName]: updatedArray
+            [arrayName]: updatedArray,
         });
     };
 
@@ -524,17 +567,17 @@ export default function CvForm() {
         const currentArray = [...(formData[arrayName] as any[])] as any[];
         setFormData({
             ...formData,
-            [arrayName]: [...currentArray, emptyItem]
+            [arrayName]: [...currentArray, emptyItem],
         });
     };
 
     const removeArrayItem = (arrayName: keyof typeof formData, index: number) => {
-        const updatedArray = [...formData[arrayName] as any[]];
+        const updatedArray = [...(formData[arrayName] as any[])];
         updatedArray.splice(index, 1);
 
         setFormData({
             ...formData,
-            [arrayName]: updatedArray
+            [arrayName]: updatedArray,
         });
     };
 
@@ -1060,7 +1103,6 @@ export default function CvForm() {
                             alert('Print error occurred. Please try again or use a different browser.');
                         }
                     }, 500);
-
                 } catch (error) {
                     console.error('Error in iframe setup:', error);
                     cleanup();
@@ -1081,7 +1123,6 @@ export default function CvForm() {
             };
 
             printFrame.src = 'about:blank';
-
         } catch (error) {
             console.error('Error in handleGeneratePDF:', error);
             cleanup();
@@ -1138,7 +1179,7 @@ export default function CvForm() {
         const { name, checked } = e.target;
         setAddOnSections({
             ...addOnSections,
-            [name]: checked
+            [name]: checked,
         });
 
         if (!checked) {
@@ -1146,63 +1187,73 @@ export default function CvForm() {
                 case 'portfolios':
                     setFormData({
                         ...formData,
-                        portfolios: [{
-                            title: '',
-                            link: '',
-                            description: ''
-                        }]
+                        portfolios: [
+                            {
+                                title: '',
+                                link: '',
+                                description: '',
+                            },
+                        ],
                     });
                     break;
                 case 'certifications':
                     setFormData({
                         ...formData,
-                        certifications: [{
-                            name: '',
-                            organization: '',
-                            start_year: '',
-                            end_year: '',
-                            is_time_limited: false,
-                            description: '',
-                            credential_id: ''
-                        }]
+                        certifications: [
+                            {
+                                name: '',
+                                organization: '',
+                                start_year: '',
+                                end_year: '',
+                                is_time_limited: false,
+                                description: '',
+                                credential_id: '',
+                            },
+                        ],
                     });
                     break;
                 case 'accomplishments':
                     setFormData({
                         ...formData,
-                        accomplishments: [{
-                            // title: '',
-                            // date: '',
-                            description: ''
-                        }]
+                        accomplishments: [
+                            {
+                                // title: '',
+                                // date: '',
+                                description: '',
+                            },
+                        ],
                     });
                     break;
                 case 'organizations':
                     setFormData({
                         ...formData,
-                        organizations: [{
-                            name: '',
-                            position: '',
-                            start_date: '',
-                            end_date: '',
-                            is_current: false,
-                            description: ''
-                        }]
+                        organizations: [
+                            {
+                                name: '',
+                                position: '',
+                                start_date: '',
+                                end_date: '',
+                                is_current: false,
+                                description: '',
+                            },
+                        ],
                     });
                     break;
                 case 'languages':
                     setFormData({
                         ...formData,
-                        languages: [{
-                            language: '',
-                            level: ''
-                        }]
+                        languages: [
+                            {
+                                language: '',
+                                level: '',
+                            },
+                        ],
                     });
                     break;
                 case 'additional_info':
                     setFormData({
                         ...formData,
-                        additional_info: ''
+                        additional_info: '',
                     });
                     break;
             }
@@ -1213,42 +1264,40 @@ export default function CvForm() {
         <AppLayout>
             <Head title={isEdit ? `Edit CV - ${formData.name || 'CV'}` : 'Form - CV Generator'} />
 
-            <div className="py-8 md:py-16 bg-gray-50 dark:bg-gray-800">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-gray-50 py-8 md:py-16 dark:bg-gray-800">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     {!isEdit && (
                         <div
                             className="mb-8 text-center transition-all duration-700"
                             style={{
                                 opacity: pageLoaded ? 1 : 0,
-                                transform: `translateY(${pageLoaded ? 0 : 50}px)`
+                                transform: `translateY(${pageLoaded ? 0 : 50}px)`,
                             }}
                         >
                             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                                 Create Your <span className="text-red-600">Professional CV</span>
                             </h1>
-                            <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
-                                Complete the following form to create a professional CV
-                            </p>
+                            <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">Complete the following form to create a professional CV</p>
                         </div>
                     )}
 
                     <div
-                        className="flex flex-col md:flex-row gap-6 transition-all duration-700"
+                        className="flex flex-col gap-6 transition-all duration-700 md:flex-row"
                         style={{
                             opacity: pageLoaded ? 1 : 0,
                             transform: `translateY(${pageLoaded ? 0 : 50}px)`,
-                            transitionDelay: '0.2s'
+                            transitionDelay: '0.2s',
                         }}
                     >
                         {/* Form Section */}
                         <div className={`${showPreview ? 'md:w-1/2' : 'w-full'} transition-all duration-300`}>
-                            <div className="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
-                                <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+                            <div className="rounded-lg bg-white p-6 shadow-md dark:bg-gray-700">
+                                <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
                                     {isEdit && (
                                         <button
                                             type="button"
                                             onClick={handleSaveUpdate}
-                                            className="inline-flex items-center px-4 py-2 bg-gray-700 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-600 dark:hover:bg-gray-500 focus:outline-none focus:ring ring-gray-300 disabled:opacity-25 transition"
+                                            className="inline-flex items-center rounded-md border border-transparent bg-gray-700 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-gray-300 transition hover:bg-gray-600 focus:ring focus:outline-none disabled:opacity-25 dark:bg-gray-600 dark:hover:bg-gray-500"
                                         >
                                             Save changes
                                         </button>
@@ -1256,24 +1305,18 @@ export default function CvForm() {
                                     <button
                                         type="button"
                                         onClick={togglePreview}
-                                        className="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:border-red-700 focus:ring ring-red-300 disabled:opacity-25 transition"
+                                        className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-red-300 transition hover:bg-red-500 focus:border-red-700 focus:ring focus:outline-none active:bg-red-700 disabled:opacity-25"
                                     >
                                         {showPreview ? 'Close Preview' : 'Preview CV'}
                                     </button>
                                 </div>
 
                                 {/* Komponen Progress Form */}
-                                {formTouched && (
-                                    <FormProgress
-                                        formData={formData}
-                                        fieldGroups={fieldGroups}
-                                        addOnSections={addOnSections}
-                                    />
-                                )}
+                                {formTouched && <FormProgress formData={formData} fieldGroups={fieldGroups} addOnSections={addOnSections} />}
 
                                 <form onSubmit={handleSubmit}>
                                     <div className="mb-6">
-                                        <label htmlFor="cv_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        <label htmlFor="cv_name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             CV Name
                                         </label>
                                         <input
@@ -1283,18 +1326,18 @@ export default function CvForm() {
                                             value={formData.cv_name}
                                             onChange={handleChange}
                                             placeholder="e.g. CV for Google, Frontend 2024"
-                                            className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                            className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                         />
                                     </div>
                                     {/* Personal Information */}
                                     <div className="mb-8">
-                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                        <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                             Personal Information
                                         </h2>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                             <div className="mb-4">
-                                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                <label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                     Full Name <span className="text-red-600">*</span>
                                                 </label>
                                                 <input
@@ -1303,13 +1346,13 @@ export default function CvForm() {
                                                     name="name"
                                                     value={formData.name}
                                                     onChange={handleChange}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                     required
                                                 />
                                             </div>
 
                                             <div className="mb-4">
-                                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                     Email <span className="text-red-600">*</span>
                                                 </label>
                                                 <input
@@ -1319,13 +1362,13 @@ export default function CvForm() {
                                                     value={formData.email}
                                                     placeholder="eg: example@gmail.com"
                                                     onChange={handleChange}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                     required
                                                 />
                                             </div>
 
                                             <div className="mb-4">
-                                                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                <label htmlFor="phone" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                     Phone Number <span className="text-red-600">*</span>
                                                 </label>
                                                 <input
@@ -1335,13 +1378,13 @@ export default function CvForm() {
                                                     value={formData.phone}
                                                     placeholder="eg: +628123456789"
                                                     onChange={handleChange}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                     required
                                                 />
                                             </div>
 
                                             <div className="mb-4">
-                                                <label htmlFor="linkedin" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                <label htmlFor="linkedin" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                     LinkedIn (optional)
                                                 </label>
                                                 <input
@@ -1351,18 +1394,24 @@ export default function CvForm() {
                                                     value={formData.linkedin}
                                                     placeholder="linkedin.com/in/your-name"
                                                     onChange={handleChange}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="mb-4">
-                                            <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center">
+                                            <label
+                                                htmlFor="address"
+                                                className="mb-1 block flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+                                            >
                                                 Address <span className="text-red-600">*</span>
-                                                <div className="relative ml-1 group">
-                                                    <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                    <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
-                                                        Recommendation: To protect your personal information, specify only your city and country rather than providing a complete address.
+                                                <div className="group relative ml-1">
+                                                    <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                        ?
+                                                    </div>
+                                                    <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                                        Recommendation: To protect your personal information, specify only your city and country
+                                                        rather than providing a complete address.
                                                     </div>
                                                 </div>
                                             </label>
@@ -1373,13 +1422,13 @@ export default function CvForm() {
                                                 value={formData.address}
                                                 placeholder="eg: Central Jakarta, Indonesia"
                                                 onChange={handleChange}
-                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                 required
                                             />
                                         </div>
 
                                         <div className="mb-4">
-                                            <label htmlFor="summary" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label htmlFor="summary" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                 Summary <span className="text-red-600">*</span>
                                             </label>
                                             <textarea
@@ -1394,38 +1443,44 @@ export default function CvForm() {
                                                         const updatedValue = e.currentTarget.value.slice(0, -1) + '• ';
                                                         setFormData({
                                                             ...formData,
-                                                            summary: updatedValue
+                                                            summary: updatedValue,
                                                         });
                                                     }
                                                 }}
                                                 rows={4}
-                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                 required
                                             />
-                                            <div className="flex justify-end mt-1">
+                                            <div className="mt-1 flex justify-end">
                                                 <span className="text-xs text-gray-500 dark:text-gray-400">
                                                     words : {formData.summary.trim() ? formData.summary.trim().split(/\s+/).length : 0}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="mb-4">
-                                            <div className="flex items-center mb-2">
+                                            <div className="mb-2 flex items-center">
                                                 <input
                                                     type="checkbox"
                                                     id="is_use_photo"
                                                     name="is_use_photo"
                                                     checked={formData.is_use_photo}
                                                     onChange={handleCheckboxChange}
-                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                 />
-                                                <label htmlFor="is_use_photo" className="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                <label
+                                                    htmlFor="is_use_photo"
+                                                    className="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                                                >
                                                     Include Profile Photo
                                                 </label>
                                             </div>
 
                                             {formData.is_use_photo && (
                                                 <div>
-                                                    <label htmlFor="photo" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    <label
+                                                        htmlFor="photo"
+                                                        className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                                                    >
                                                         Profile Photo
                                                     </label>
                                                     <div className="flex items-start space-x-4">
@@ -1436,7 +1491,7 @@ export default function CvForm() {
                                                                 name="photo"
                                                                 accept="image/png, image/jpeg, image/jpg"
                                                                 onChange={handlePhotoChange}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             />
                                                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                                                 Accepted formats: JPG, JPEG, PNG. Max size: 2MB
@@ -1447,7 +1502,7 @@ export default function CvForm() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setShowPhotoModal(true)}
-                                                                    className="w-full text-sm bg-green-600 dark:bg-green-600 text-white dark:text-gray-200 py-2 px-3 rounded-md hover:bg-green-300 dark:hover:bg-green-500 transition-colors"
+                                                                    className="w-full rounded-md bg-green-600 px-3 py-2 text-sm text-white transition-colors hover:bg-green-300 dark:bg-green-600 dark:text-gray-200 dark:hover:bg-green-500"
                                                                 >
                                                                     See Photo
                                                                 </button>
@@ -1461,12 +1516,14 @@ export default function CvForm() {
 
                                     {/* Work Experience */}
                                     <div className="mb-8">
-                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                        <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                             Work Experience
                                             <span className="ml-1 inline-flex items-center">
-                                                <div className="relative ml-1 group">
-                                                    <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                    <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
+                                                <div className="group relative ml-1">
+                                                    <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                        ?
+                                                    </div>
+                                                    <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                                         Tip: Always arrange work experience with your current/most recent position at the first
                                                     </div>
                                                 </div>
@@ -1474,11 +1531,9 @@ export default function CvForm() {
                                         </h2>
 
                                         {formData.work_experience.map((exp, index) => (
-                                            <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-gray-600 rounded-md">
-                                                <div className="flex justify-between mb-2">
-                                                    <h3 className="text-lg font-medium text-gray-800 dark:text-white">
-                                                        Experience #{index + 1}
-                                                    </h3>
+                                            <div key={index} className="mb-6 rounded-md border border-gray-200 p-4 dark:border-gray-600">
+                                                <div className="mb-2 flex justify-between">
+                                                    <h3 className="text-lg font-medium text-gray-800 dark:text-white">Experience #{index + 1}</h3>
                                                     {formData.work_experience.length > 1 && (
                                                         <button
                                                             type="button"
@@ -1490,9 +1545,9 @@ export default function CvForm() {
                                                     )}
                                                 </div>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Company <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1500,13 +1555,13 @@ export default function CvForm() {
                                                             name="company"
                                                             value={exp.company}
                                                             onChange={(e) => handleArrayChange(e, index, 'work_experience')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Company Location <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1515,13 +1570,13 @@ export default function CvForm() {
                                                             value={exp.company_location}
                                                             placeholder="eg: Central Jakarta"
                                                             onChange={(e) => handleArrayChange(e, index, 'work_experience')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Position <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1530,20 +1585,20 @@ export default function CvForm() {
                                                             value={exp.position}
                                                             placeholder="eg: Software Engineer"
                                                             onChange={(e) => handleArrayChange(e, index, 'work_experience')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Location Type <span className="text-red-600">*</span>
                                                         </label>
                                                         <select
                                                             name="location_type"
                                                             value={exp.location_type}
                                                             onChange={(e) => handleArrayChange(e, index, 'work_experience')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         >
                                                             <option value="">Please select</option>
@@ -1554,7 +1609,7 @@ export default function CvForm() {
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Start Date <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1562,13 +1617,13 @@ export default function CvForm() {
                                                             name="start_date"
                                                             value={exp.start_date}
                                                             onChange={(e) => handleArrayChange(e, index, 'work_experience')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             End Date <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1576,7 +1631,7 @@ export default function CvForm() {
                                                             name="end_date"
                                                             value={exp.end_date}
                                                             onChange={(e) => handleArrayChange(e, index, 'work_experience')}
-                                                            className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white ${exp.is_current ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}`}
+                                                            className={`w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white ${exp.is_current ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : ''}`}
                                                             required={!exp.is_current}
                                                             disabled={exp.is_current}
                                                         />
@@ -1597,7 +1652,7 @@ export default function CvForm() {
                                                                 const newWorkExperience = [...formData.work_experience];
                                                                 newWorkExperience[index] = {
                                                                     ...newWorkExperience[index],
-                                                                    is_current: e.target.checked
+                                                                    is_current: e.target.checked,
                                                                 };
 
                                                                 if (e.target.checked) {
@@ -1606,19 +1661,22 @@ export default function CvForm() {
 
                                                                 setFormData({
                                                                     ...formData,
-                                                                    work_experience: newWorkExperience
+                                                                    work_experience: newWorkExperience,
                                                                 });
                                                             }}
-                                                            className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                            className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                         />
-                                                        <label htmlFor={`is_current_${index}`} className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                                        <label
+                                                            htmlFor={`is_current_${index}`}
+                                                            className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                                                        >
                                                             I am currently working in this role
                                                         </label>
                                                     </div>
                                                 </div>
 
                                                 <div className="mb-3">
-                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                         Description <span className="text-red-600">*</span>
                                                     </label>
                                                     <textarea
@@ -1633,16 +1691,16 @@ export default function CvForm() {
                                                                 const updatedArray = [...formData.work_experience];
                                                                 updatedArray[index] = {
                                                                     ...updatedArray[index],
-                                                                    description: updatedValue
+                                                                    description: updatedValue,
                                                                 };
                                                                 setFormData({
                                                                     ...formData,
-                                                                    work_experience: updatedArray
+                                                                    work_experience: updatedArray,
                                                                 });
                                                             }
                                                         }}
                                                         rows={3}
-                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                         required
                                                     />
                                                 </div>
@@ -1651,20 +1709,31 @@ export default function CvForm() {
 
                                         <button
                                             type="button"
-                                            onClick={() => addArrayItem('work_experience', {
-                                                company: '',
-                                                company_location: '',
-                                                position: '',
-                                                location_type: '',
-                                                start_date: '',
-                                                end_date: '',
-                                                description: '',
-                                                is_current: false
-                                            })}
-                                            className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                            onClick={() =>
+                                                addArrayItem('work_experience', {
+                                                    company: '',
+                                                    company_location: '',
+                                                    position: '',
+                                                    location_type: '',
+                                                    start_date: '',
+                                                    end_date: '',
+                                                    description: '',
+                                                    is_current: false,
+                                                })
+                                            }
+                                            className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                         >
-                                            <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                            <svg
+                                                className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
+                                                />
                                             </svg>
                                             Add Work Experience
                                         </button>
@@ -1672,12 +1741,14 @@ export default function CvForm() {
 
                                     {/* Education */}
                                     <div className="mb-8">
-                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                        <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                             Education
                                             <span className="ml-1 inline-flex items-center">
-                                                <div className="relative ml-1 group">
-                                                    <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                    <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
+                                                <div className="group relative ml-1">
+                                                    <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                        ?
+                                                    </div>
+                                                    <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                                         Tip: List your education in reverse chronological order (most recent degree first)
                                                     </div>
                                                 </div>
@@ -1685,11 +1756,9 @@ export default function CvForm() {
                                         </h2>
 
                                         {formData.education.map((edu, index) => (
-                                            <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-gray-600 rounded-md">
-                                                <div className="flex justify-between mb-2">
-                                                    <h3 className="text-lg font-medium text-gray-800 dark:text-white">
-                                                        Education #{index + 1}
-                                                    </h3>
+                                            <div key={index} className="mb-6 rounded-md border border-gray-200 p-4 dark:border-gray-600">
+                                                <div className="mb-2 flex justify-between">
+                                                    <h3 className="text-lg font-medium text-gray-800 dark:text-white">Education #{index + 1}</h3>
                                                     {formData.education.length > 1 && (
                                                         <button
                                                             type="button"
@@ -1701,9 +1770,9 @@ export default function CvForm() {
                                                     )}
                                                 </div>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Institution <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1712,20 +1781,20 @@ export default function CvForm() {
                                                             value={edu.institution}
                                                             placeholder="eg: University of Indonesia"
                                                             onChange={(e) => handleArrayChange(e, index, 'education')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Degree
                                                         </label>
                                                         <select
                                                             name="degree"
                                                             value={edu.degree}
                                                             onChange={(e) => handleArrayChange(e, index, 'education')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                         >
                                                             <option value="">Please select</option>
                                                             <option value="Doctoral Degree">Doctoral Degree (PhD)</option>
@@ -1742,7 +1811,7 @@ export default function CvForm() {
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Field of Study <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1751,15 +1820,15 @@ export default function CvForm() {
                                                             value={edu.field || ''}
                                                             placeholder="eg: Computer Science"
                                                             onChange={(e) => handleArrayChange(e, index, 'education')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Start Date <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1767,13 +1836,13 @@ export default function CvForm() {
                                                             name="start_date"
                                                             value={edu.start_date}
                                                             onChange={(e) => handleArrayChange(e, index, 'education')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             End Date (or expected) <span className="text-red-600">*</span>
                                                         </label>
                                                         <input
@@ -1781,23 +1850,34 @@ export default function CvForm() {
                                                             name="end_date"
                                                             value={edu.end_date}
                                                             onChange={(e) => handleArrayChange(e, index, 'education')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
                                                 </div>
 
                                                 <div className="mb-3">
-                                                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center">
+                                                    <label
+                                                        htmlFor="address"
+                                                        className="mb-1 block flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+                                                    >
                                                         Description <span className="text-red-600">*</span>
-                                                        <div className="relative ml-1 group">
-                                                            <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                            <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
+                                                        <div className="group relative ml-1">
+                                                            <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                                ?
+                                                            </div>
+                                                            <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                                                 Tip :
-                                                                <ul className="mt-1 pl-4 list-disc">
+                                                                <ul className="mt-1 list-disc pl-4">
                                                                     <li>Only include GPA if it's impressive (typically 3.5/4.0 or higher)</li>
-                                                                    <li>Include relevant coursework and academic projects that showcase skills applicable to the job</li>
-                                                                    <li>Mention academic honors, scholarships, or awards to highlight your achievements</li>
+                                                                    <li>
+                                                                        Include relevant coursework and academic projects that showcase skills
+                                                                        applicable to the job
+                                                                    </li>
+                                                                    <li>
+                                                                        Mention academic honors, scholarships, or awards to highlight your
+                                                                        achievements
+                                                                    </li>
                                                                 </ul>
                                                             </div>
                                                         </div>
@@ -1814,16 +1894,16 @@ export default function CvForm() {
                                                                 const updatedArray = [...formData.education];
                                                                 updatedArray[index] = {
                                                                     ...updatedArray[index],
-                                                                    description: updatedValue
+                                                                    description: updatedValue,
                                                                 };
                                                                 setFormData({
                                                                     ...formData,
-                                                                    education: updatedArray
+                                                                    education: updatedArray,
                                                                 });
                                                             }
                                                         }}
                                                         rows={3}
-                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                     />
                                                 </div>
                                             </div>
@@ -1831,18 +1911,29 @@ export default function CvForm() {
 
                                         <button
                                             type="button"
-                                            onClick={() => addArrayItem('education', {
-                                                institution: '',
-                                                degree: '',
-                                                field: '',
-                                                start_date: '',
-                                                end_date: '',
-                                                description: ''
-                                            })}
-                                            className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                            onClick={() =>
+                                                addArrayItem('education', {
+                                                    institution: '',
+                                                    degree: '',
+                                                    field: '',
+                                                    start_date: '',
+                                                    end_date: '',
+                                                    description: '',
+                                                })
+                                            }
+                                            className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                         >
-                                            <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                            <svg
+                                                className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
+                                                />
                                             </svg>
                                             Add Education
                                         </button>
@@ -1850,12 +1941,14 @@ export default function CvForm() {
 
                                     {/* Skills */}
                                     <div className="mb-8">
-                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                        <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                             Skills
                                             <span className="ml-1 inline-flex items-center">
-                                                <div className="relative ml-1 group">
-                                                    <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                    <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
+                                                <div className="group relative ml-1">
+                                                    <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                        ?
+                                                    </div>
+                                                    <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                                         Tip: List your skills from the most relevant first
                                                     </div>
                                                 </div>
@@ -1871,7 +1964,7 @@ export default function CvForm() {
                                                         value={skill.name}
                                                         placeholder="eg: JavaScript"
                                                         onChange={(e) => handleArrayChange(e, index, 'skills')}
-                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                         required
                                                     />
                                                 </div>
@@ -1882,8 +1975,17 @@ export default function CvForm() {
                                                         onClick={() => removeArrayItem('skills', index)}
                                                         className="text-red-600 hover:text-red-800"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5"
+                                                            viewBox="0 0 20 20"
+                                                            fill="currentColor"
+                                                        >
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                                                clipRule="evenodd"
+                                                            />
                                                         </svg>
                                                     </button>
                                                 )}
@@ -1893,29 +1995,40 @@ export default function CvForm() {
                                         <button
                                             type="button"
                                             onClick={() => addArrayItem('skills', { name: '' })}
-                                            className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                            className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                         >
-                                            <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                            <svg
+                                                className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
+                                                />
                                             </svg>
                                             Add Skill
                                         </button>
                                     </div>
 
                                     <div className="mb-8">
-                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                        <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                             Add-ons
                                             <span className="ml-1 inline-flex items-center">
-                                                <div className="relative ml-1 group">
-                                                    <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                    <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
+                                                <div className="group relative ml-1">
+                                                    <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                        ?
+                                                    </div>
+                                                    <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                                         Select which additional sections to include in your CV
                                                     </div>
                                                 </div>
                                             </span>
                                         </h2>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                             <div className="flex items-center">
                                                 <input
                                                     type="checkbox"
@@ -1923,7 +2036,7 @@ export default function CvForm() {
                                                     name="portfolios"
                                                     checked={addOnSections.portfolios}
                                                     onChange={handleAddOnChange}
-                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                 />
                                                 <label htmlFor="portfolios" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                                                     Portfolio
@@ -1937,7 +2050,7 @@ export default function CvForm() {
                                                     name="certifications"
                                                     checked={addOnSections.certifications}
                                                     onChange={handleAddOnChange}
-                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                 />
                                                 <label htmlFor="certifications" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                                                     Licenses & Certifications
@@ -1951,7 +2064,7 @@ export default function CvForm() {
                                                     name="accomplishments"
                                                     checked={addOnSections.accomplishments}
                                                     onChange={handleAddOnChange}
-                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                 />
                                                 <label htmlFor="accomplishments" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                                                     Accomplishments
@@ -1965,7 +2078,7 @@ export default function CvForm() {
                                                     name="organizations"
                                                     checked={addOnSections.organizations}
                                                     onChange={handleAddOnChange}
-                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                 />
                                                 <label htmlFor="organizations" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                                                     Organizations
@@ -1979,7 +2092,7 @@ export default function CvForm() {
                                                     name="languages"
                                                     checked={addOnSections.languages}
                                                     onChange={handleAddOnChange}
-                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                 />
                                                 <label htmlFor="languages" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                                                     Languages
@@ -1993,7 +2106,7 @@ export default function CvForm() {
                                                     name="additional_info"
                                                     checked={addOnSections.additional_info}
                                                     onChange={handleAddOnChange}
-                                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                 />
                                                 <label htmlFor="additional_info" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                                                     Additional Information
@@ -2005,21 +2118,24 @@ export default function CvForm() {
                                     {/* 1. Portfolio section - muncul jika checkbox dicentang */}
                                     {addOnSections.portfolios && (
                                         <div className="mb-8">
-                                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                            <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                                 Portfolio
                                                 <span className="ml-1 inline-flex items-center">
-                                                    <div className="relative ml-1 group">
-                                                        <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                        <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
-                                                            Include your best projects, websites, apps, or other work samples that showcase your skills
+                                                    <div className="group relative ml-1">
+                                                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                            ?
+                                                        </div>
+                                                        <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                                            Include your best projects, websites, apps, or other work samples that showcase your
+                                                            skills
                                                         </div>
                                                     </div>
                                                 </span>
                                             </h2>
 
                                             {formData.portfolios.map((portfolio, index) => (
-                                                <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-gray-600 rounded-md">
-                                                    <div className="flex justify-between mb-2">
+                                                <div key={index} className="mb-6 rounded-md border border-gray-200 p-4 dark:border-gray-600">
+                                                    <div className="mb-2 flex justify-between">
                                                         <h3 className="text-lg font-medium text-gray-800 dark:text-white">
                                                             Portfolio Item #{index + 1}
                                                         </h3>
@@ -2034,9 +2150,9 @@ export default function CvForm() {
                                                         )}
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Project Title <span className="text-red-600">*</span>
                                                             </label>
                                                             <input
@@ -2045,13 +2161,13 @@ export default function CvForm() {
                                                                 value={portfolio.title}
                                                                 placeholder="eg: E-commerce app"
                                                                 onChange={(e) => handleArrayChange(e, index, 'portfolios')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 required
                                                             />
                                                         </div>
 
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Link
                                                             </label>
                                                             <input
@@ -2060,13 +2176,13 @@ export default function CvForm() {
                                                                 value={portfolio.link}
                                                                 placeholder="eg: example.com"
                                                                 onChange={(e) => handleArrayChange(e, index, 'portfolios')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             />
                                                         </div>
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Description <span className="text-red-600">*</span>
                                                         </label>
                                                         <textarea
@@ -2081,16 +2197,16 @@ export default function CvForm() {
                                                                     const updatedArray = [...formData.portfolios];
                                                                     updatedArray[index] = {
                                                                         ...updatedArray[index],
-                                                                        description: updatedValue
+                                                                        description: updatedValue,
                                                                     };
                                                                     setFormData({
                                                                         ...formData,
-                                                                        portfolios: updatedArray
+                                                                        portfolios: updatedArray,
                                                                     });
                                                                 }
                                                             }}
                                                             rows={3}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
@@ -2099,15 +2215,26 @@ export default function CvForm() {
 
                                             <button
                                                 type="button"
-                                                onClick={() => addArrayItem('portfolios', {
-                                                    title: '',
-                                                    link: '',
-                                                    description: ''
-                                                })}
-                                                className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                onClick={() =>
+                                                    addArrayItem('portfolios', {
+                                                        title: '',
+                                                        link: '',
+                                                        description: '',
+                                                    })
+                                                }
+                                                className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             >
-                                                <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                                <svg
+                                                    className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                        clipRule="evenodd"
+                                                    />
                                                 </svg>
                                                 Add Portfolio Item
                                             </button>
@@ -2117,13 +2244,13 @@ export default function CvForm() {
                                     {/* 2. Certifications section - muncul jika checkbox dicentang */}
                                     {addOnSections.certifications && (
                                         <div className="mb-8">
-                                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                            <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                                 Licenses & Certifications
                                             </h2>
 
                                             {formData.certifications.map((cert, index) => (
-                                                <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-gray-600 rounded-md">
-                                                    <div className="flex justify-between mb-2">
+                                                <div key={index} className="mb-6 rounded-md border border-gray-200 p-4 dark:border-gray-600">
+                                                    <div className="mb-2 flex justify-between">
                                                         <h3 className="text-lg font-medium text-gray-800 dark:text-white">
                                                             License / Certification #{index + 1}
                                                         </h3>
@@ -2138,9 +2265,9 @@ export default function CvForm() {
                                                         )}
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Name <span className="text-red-600">*</span>
                                                             </label>
                                                             <input
@@ -2149,13 +2276,13 @@ export default function CvForm() {
                                                                 value={cert.name}
                                                                 placeholder="e.g. AWS Certified Solutions Architect"
                                                                 onChange={(e) => handleArrayChange(e, index, 'certifications')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 required
                                                             />
                                                         </div>
 
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Issuing Organization <span className="text-red-600">*</span>
                                                             </label>
                                                             <input
@@ -2164,15 +2291,15 @@ export default function CvForm() {
                                                                 value={cert.organization}
                                                                 placeholder="e.g. Amazon Web Services"
                                                                 onChange={(e) => handleArrayChange(e, index, 'certifications')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 required
                                                             />
                                                         </div>
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Issue Date <span className="text-red-600">*</span>
                                                             </label>
                                                             <input
@@ -2180,13 +2307,13 @@ export default function CvForm() {
                                                                 name="start_year"
                                                                 value={cert.start_year}
                                                                 onChange={(e) => handleArrayChange(e, index, 'certifications')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 required
                                                             />
                                                         </div>
 
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Expiration Date
                                                             </label>
                                                             <input
@@ -2194,7 +2321,7 @@ export default function CvForm() {
                                                                 name="end_year"
                                                                 value={cert.end_year}
                                                                 onChange={(e) => handleArrayChange(e, index, 'certifications')}
-                                                                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white ${!cert.is_time_limited ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}`}
+                                                                className={`w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white ${!cert.is_time_limited ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : ''}`}
                                                                 disabled={!cert.is_time_limited}
                                                             />
                                                         </div>
@@ -2210,22 +2337,25 @@ export default function CvForm() {
                                                                 const newCertifications = [...formData.certifications];
                                                                 newCertifications[index] = {
                                                                     ...newCertifications[index],
-                                                                    is_time_limited: e.target.checked
+                                                                    is_time_limited: e.target.checked,
                                                                 };
                                                                 setFormData({
                                                                     ...formData,
-                                                                    certifications: newCertifications
+                                                                    certifications: newCertifications,
                                                                 });
                                                             }}
-                                                            className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                            className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                         />
-                                                        <label htmlFor={`is_time_limited_${index}`} className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                                        <label
+                                                            htmlFor={`is_time_limited_${index}`}
+                                                            className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                                                        >
                                                             This certification has an expiration date
                                                         </label>
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Credential ID
                                                         </label>
                                                         <input
@@ -2234,7 +2364,7 @@ export default function CvForm() {
                                                             value={cert.credential_id}
                                                             placeholder="e.g. AWS-1234567890"
                                                             onChange={(e) => handleArrayChange(e, index, 'certifications')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                         />
                                                     </div>
                                                 </div>
@@ -2242,18 +2372,29 @@ export default function CvForm() {
 
                                             <button
                                                 type="button"
-                                                onClick={() => addArrayItem('certifications', {
-                                                    name: '',
-                                                    organization: '',
-                                                    start_year: '',
-                                                    end_year: '',
-                                                    is_time_limited: false,
-                                                    description: ''
-                                                })}
-                                                className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                onClick={() =>
+                                                    addArrayItem('certifications', {
+                                                        name: '',
+                                                        organization: '',
+                                                        start_year: '',
+                                                        end_year: '',
+                                                        is_time_limited: false,
+                                                        description: '',
+                                                    })
+                                                }
+                                                className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             >
-                                                <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                                <svg
+                                                    className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                        clipRule="evenodd"
+                                                    />
                                                 </svg>
                                                 Add License / Certification
                                             </button>
@@ -2263,12 +2404,14 @@ export default function CvForm() {
                                     {/* 3. Accomplishments section - muncul jika checkbox dicentang */}
                                     {addOnSections.accomplishments && (
                                         <div className="mb-8">
-                                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                            <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                                 Accomplishments
                                                 <span className="ml-1 inline-flex items-center">
-                                                    <div className="relative ml-1 group">
-                                                        <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                        <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
+                                                    <div className="group relative ml-1">
+                                                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                            ?
+                                                        </div>
+                                                        <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                                             Include awards, honors, publications, or any other notable achievements
                                                         </div>
                                                     </div>
@@ -2276,8 +2419,8 @@ export default function CvForm() {
                                             </h2>
 
                                             {formData.accomplishments.map((accomplishment, index) => (
-                                                <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-gray-600 rounded-md">
-                                                    <div className="flex justify-between mb-2">
+                                                <div key={index} className="mb-6 rounded-md border border-gray-200 p-4 dark:border-gray-600">
+                                                    <div className="mb-2 flex justify-between">
                                                         <h3 className="text-lg font-medium text-gray-800 dark:text-white">
                                                             Accomplishment #{index + 1}
                                                         </h3>
@@ -2292,7 +2435,7 @@ export default function CvForm() {
                                                         )}
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                         {/* <div className="mb-3">
                                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                                 Title <span className="text-red-600">*</span>
@@ -2323,7 +2466,7 @@ export default function CvForm() {
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Description <span className="text-red-600">*</span>
                                                         </label>
                                                         <textarea
@@ -2338,16 +2481,16 @@ export default function CvForm() {
                                                                     const updatedArray = [...formData.accomplishments];
                                                                     updatedArray[index] = {
                                                                         ...updatedArray[index],
-                                                                        description: updatedValue
+                                                                        description: updatedValue,
                                                                     };
                                                                     setFormData({
                                                                         ...formData,
-                                                                        accomplishments: updatedArray
+                                                                        accomplishments: updatedArray,
                                                                     });
                                                                 }
                                                             }}
                                                             rows={3}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
@@ -2357,10 +2500,19 @@ export default function CvForm() {
                                             <button
                                                 type="button"
                                                 onClick={() => addArrayItem('accomplishments', { description: '' })}
-                                                className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             >
-                                                <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                                <svg
+                                                    className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                        clipRule="evenodd"
+                                                    />
                                                 </svg>
                                                 Add Accomplishment
                                             </button>
@@ -2370,12 +2522,14 @@ export default function CvForm() {
                                     {/* 4. Organizations section - muncul jika checkbox dicentang */}
                                     {addOnSections.organizations && (
                                         <div className="mb-8">
-                                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                            <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                                 Organizations
                                                 <span className="ml-1 inline-flex items-center">
-                                                    <div className="relative ml-1 group">
-                                                        <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 cursor-help">?</div>
-                                                        <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white dark:bg-gray-800 rounded shadow-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10">
+                                                    <div className="group relative ml-1">
+                                                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                            ?
+                                                        </div>
+                                                        <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-64 rounded border border-gray-200 bg-white p-2 text-xs text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                                             Include professional organizations, clubs, volunteer work, or community involvement
                                                         </div>
                                                     </div>
@@ -2383,8 +2537,8 @@ export default function CvForm() {
                                             </h2>
 
                                             {formData.organizations.map((org, index) => (
-                                                <div key={index} className="mb-6 p-4 border border-gray-200 dark:border-gray-600 rounded-md">
-                                                    <div className="flex justify-between mb-2">
+                                                <div key={index} className="mb-6 rounded-md border border-gray-200 p-4 dark:border-gray-600">
+                                                    <div className="mb-2 flex justify-between">
                                                         <h3 className="text-lg font-medium text-gray-800 dark:text-white">
                                                             Organization #{index + 1}
                                                         </h3>
@@ -2399,9 +2553,9 @@ export default function CvForm() {
                                                         )}
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Organization Name <span className="text-red-600">*</span>
                                                             </label>
                                                             <input
@@ -2410,13 +2564,13 @@ export default function CvForm() {
                                                                 value={org.name}
                                                                 placeholder="eg: IEEE"
                                                                 onChange={(e) => handleArrayChange(e, index, 'organizations')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 required
                                                             />
                                                         </div>
 
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Position <span className="text-red-600">*</span>
                                                             </label>
                                                             <input
@@ -2425,15 +2579,15 @@ export default function CvForm() {
                                                                 value={org.position}
                                                                 placeholder="eg: Member"
                                                                 onChange={(e) => handleArrayChange(e, index, 'organizations')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 required
                                                             />
                                                         </div>
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 Start Date <span className="text-red-600">*</span>
                                                             </label>
                                                             <input
@@ -2441,13 +2595,13 @@ export default function CvForm() {
                                                                 name="start_date"
                                                                 value={org.start_date}
                                                                 onChange={(e) => handleArrayChange(e, index, 'organizations')}
-                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 required
                                                             />
                                                         </div>
 
                                                         <div className="mb-3">
-                                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 End Date
                                                             </label>
                                                             <input
@@ -2455,7 +2609,7 @@ export default function CvForm() {
                                                                 name="end_date"
                                                                 value={org.end_date}
                                                                 onChange={(e) => handleArrayChange(e, index, 'organizations')}
-                                                                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white ${org.is_current ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}`}
+                                                                className={`w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white ${org.is_current ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : ''}`}
                                                                 disabled={org.is_current}
                                                             />
                                                         </div>
@@ -2471,22 +2625,25 @@ export default function CvForm() {
                                                                 const newOrganizations = [...formData.organizations];
                                                                 newOrganizations[index] = {
                                                                     ...newOrganizations[index],
-                                                                    is_current: e.target.checked
+                                                                    is_current: e.target.checked,
                                                                 };
                                                                 setFormData({
                                                                     ...formData,
-                                                                    organizations: newOrganizations
+                                                                    organizations: newOrganizations,
                                                                 });
                                                             }}
-                                                            className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                            className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                                                         />
-                                                        <label htmlFor={`is_current_org_${index}`} className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                                        <label
+                                                            htmlFor={`is_current_org_${index}`}
+                                                            className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                                                        >
                                                             I am currently active in this organization
                                                         </label>
                                                     </div>
 
                                                     <div className="mb-3">
-                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             Description <span className="text-red-600">*</span>
                                                         </label>
                                                         <textarea
@@ -2501,16 +2658,16 @@ export default function CvForm() {
                                                                     const updatedArray = [...formData.organizations];
                                                                     updatedArray[index] = {
                                                                         ...updatedArray[index],
-                                                                        description: updatedValue
+                                                                        description: updatedValue,
                                                                     };
                                                                     setFormData({
                                                                         ...formData,
-                                                                        organizations: updatedArray
+                                                                        organizations: updatedArray,
                                                                     });
                                                                 }
                                                             }}
                                                             rows={3}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                         />
                                                     </div>
                                                 </div>
@@ -2518,18 +2675,29 @@ export default function CvForm() {
 
                                             <button
                                                 type="button"
-                                                onClick={() => addArrayItem('organizations', {
-                                                    name: '',
-                                                    position: '',
-                                                    start_date: '',
-                                                    end_date: '',
-                                                    is_current: false,
-                                                    description: ''
-                                                })}
-                                                className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                onClick={() =>
+                                                    addArrayItem('organizations', {
+                                                        name: '',
+                                                        position: '',
+                                                        start_date: '',
+                                                        end_date: '',
+                                                        is_current: false,
+                                                        description: '',
+                                                    })
+                                                }
+                                                className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             >
-                                                <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                                <svg
+                                                    className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                        clipRule="evenodd"
+                                                    />
                                                 </svg>
                                                 Add Organization
                                             </button>
@@ -2539,12 +2707,12 @@ export default function CvForm() {
                                     {/* 5. Languages section - muncul jika checkbox dicentang */}
                                     {addOnSections.languages && (
                                         <div className="mb-8">
-                                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                            <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                                 Languages
                                             </h2>
 
                                             {formData.languages.map((lang, index) => (
-                                                <div key={index} className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                                <div key={index} className="mb-4 grid grid-cols-1 items-center gap-4 md:grid-cols-3">
                                                     <div className="col-span-1 md:col-span-1">
                                                         <input
                                                             type="text"
@@ -2552,7 +2720,7 @@ export default function CvForm() {
                                                             value={lang.language}
                                                             placeholder="eg: English"
                                                             onChange={(e) => handleArrayChange(e, index, 'languages')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         />
                                                     </div>
@@ -2562,7 +2730,7 @@ export default function CvForm() {
                                                             name="level"
                                                             value={lang.level}
                                                             onChange={(e) => handleArrayChange(e, index, 'languages')}
-                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                             required
                                                         >
                                                             <option value="">Please select</option>
@@ -2574,15 +2742,24 @@ export default function CvForm() {
                                                         </select>
                                                     </div>
 
-                                                    <div className="col-span-1 md:col-span-1 flex justify-end">
+                                                    <div className="col-span-1 flex justify-end md:col-span-1">
                                                         {formData.languages.length > 1 && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => removeArrayItem('languages', index)}
                                                                 className="text-red-600 hover:text-red-800"
                                                             >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    className="h-5 w-5"
+                                                                    viewBox="0 0 20 20"
+                                                                    fill="currentColor"
+                                                                >
+                                                                    <path
+                                                                        fillRule="evenodd"
+                                                                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                                                        clipRule="evenodd"
+                                                                    />
                                                                 </svg>
                                                             </button>
                                                         )}
@@ -2593,10 +2770,19 @@ export default function CvForm() {
                                             <button
                                                 type="button"
                                                 onClick={() => addArrayItem('languages', { language: '', level: '' })}
-                                                className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             >
-                                                <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                                <svg
+                                                    className="mr-2 -ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                        clipRule="evenodd"
+                                                    />
                                                 </svg>
                                                 Add Language
                                             </button>
@@ -2606,7 +2792,7 @@ export default function CvForm() {
                                     {/* 6. Additional Information section - muncul jika checkbox dicentang */}
                                     {addOnSections.additional_info && (
                                         <div className="mb-8">
-                                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                            <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
                                                 Additional Information
                                             </h2>
 
@@ -2621,30 +2807,30 @@ export default function CvForm() {
                                                             const updatedValue = e.currentTarget.value.slice(0, -1) + '• ';
                                                             setFormData({
                                                                 ...formData,
-                                                                additional_info: updatedValue
+                                                                additional_info: updatedValue,
                                                             });
                                                         }
                                                     }}
                                                     placeholder="Include any other information you'd like to share, such as hobbies, volunteer work, or personal interests relevant to your application"
                                                     rows={5}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                 ></textarea>
                                             </div>
                                         </div>
                                     )}
 
-                                    <div className="mt-6 flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0 sm:space-x-4">
+                                    <div className="mt-6 flex flex-col justify-between space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
                                         <button
                                             type="button"
                                             onClick={handleGeneratePDF}
-                                            className="inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:border-red-700 focus:ring ring-red-300 disabled:opacity-25 transition w-full"
+                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-red-300 transition hover:bg-red-500 focus:border-red-700 focus:ring focus:outline-none active:bg-red-700 disabled:opacity-25"
                                         >
                                             Generate PDF
                                         </button>
                                         <button
                                             type="button"
                                             onClick={togglePreview}
-                                            className="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-gray-900 dark:text-white uppercase tracking-widest hover:bg-gray-300 dark:hover:bg-gray-500 active:bg-gray-400 dark:active:bg-gray-700 focus:outline-none focus:ring ring-gray-300 disabled:opacity-25 transition w-full"
+                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-gray-200 px-4 py-2 text-xs font-semibold tracking-widest text-gray-900 uppercase ring-gray-300 transition hover:bg-gray-300 focus:ring focus:outline-none active:bg-gray-400 disabled:opacity-25 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-500 dark:active:bg-gray-700"
                                         >
                                             {showPreview ? 'Close Preview' : 'Preview CV'}
                                         </button>
@@ -2655,12 +2841,10 @@ export default function CvForm() {
 
                         {/* Preview Section */}
                         {showPreview && (
-                            <div className="md:w-1/2 transition-all duration-300">
-                                <div className="bg-white dark:bg-gray-700 shadow-md rounded-lg p-5 h-full">
-                                    <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                                            Preview CV
-                                        </h2>
+                            <div className="transition-all duration-300 md:w-1/2">
+                                <div className="h-full rounded-lg bg-white p-5 shadow-md dark:bg-gray-700">
+                                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Preview CV</h2>
                                         <div className="flex items-center gap-3">
                                             <button
                                                 type="button"
@@ -2668,7 +2852,11 @@ export default function CvForm() {
                                                 className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                                        clipRule="evenodd"
+                                                    />
                                                 </svg>
                                             </button>
                                         </div>
@@ -2687,12 +2875,16 @@ export default function CvForm() {
 
             {/* Modal profile photo */}
             {showPhotoModal && photoPreview && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-white/30 dark:bg-black/30" onClick={() => setShowPhotoModal(false)}>
-                    <div className="bg-white/90 dark:bg-gray-800/90 rounded-lg p-6 max-w-md w-full shadow-xl backdrop-blur" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                                Preview Profile Photo
-                            </h3>
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm dark:bg-black/30"
+                    onClick={() => setShowPhotoModal(false)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-lg bg-white/90 p-6 shadow-xl backdrop-blur dark:bg-gray-800/90"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Preview Profile Photo</h3>
                             <button
                                 type="button"
                                 onClick={() => setShowPhotoModal(false)}
@@ -2704,35 +2896,40 @@ export default function CvForm() {
                             </button>
                         </div>
 
-                        <div className="mx-auto rounded-full overflow-hidden border-4 border-gray-300 dark:border-gray-600 mb-4" style={{ width: '256px', height: '256px' }}>
-                            <img
-                                src={photoPreview}
-                                alt="Larger profile preview"
-                                className="h-full w-full object-cover"
-                            />
+                        <div
+                            className="mx-auto mb-4 overflow-hidden rounded-full border-4 border-gray-300 dark:border-gray-600"
+                            style={{ width: '256px', height: '256px' }}
+                        >
+                            <img src={photoPreview} alt="Larger profile preview" className="h-full w-full object-cover" />
                         </div>
                     </div>
                 </div>
             )}
 
             {showLoginSaveModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30" onClick={() => setShowLoginSaveModal(false)}>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Save this CV to your account?</h3>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                    onClick={() => setShowLoginSaveModal(false)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Save this CV to your account?</h3>
+                        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
                             Log in and we will save this CV to your account so you can access it later.
                         </p>
-                        <div className="flex gap-3 justify-end">
+                        <div className="flex justify-end gap-3">
                             <button
                                 type="button"
                                 onClick={() => setShowLoginSaveModal(false)}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                                className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                             >
                                 Later
                             </button>
                             <a
                                 href={`${route('login')}?redirect=${encodeURIComponent('/generate-cv')}`}
-                                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-md"
+                                className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500"
                             >
                                 Log in
                             </a>
@@ -2743,10 +2940,8 @@ export default function CvForm() {
 
             {saveMessage && (
                 <div
-                    className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
-                        saveMessage.type === 'success'
-                            ? 'bg-green-600 text-white'
-                            : 'bg-red-600 text-white'
+                    className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-3 text-sm font-medium shadow-lg ${
+                        saveMessage.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
                     }`}
                     role="alert"
                 >
@@ -2770,10 +2965,10 @@ export default function CvForm() {
                         boxShadow: 'none',
                         fontSize: '11pt',
                         lineHeight: '1.5',
-                        fontFamily: 'Arial, sans-serif'
+                        fontFamily: 'Arial, sans-serif',
                     }}
                 >
-                    <CV data={{...formData, photoPreview}} isPdfMode={true} />
+                    <CV data={{ ...formData, photoPreview }} isPdfMode={true} />
                 </div>
             </div>
         </AppLayout>

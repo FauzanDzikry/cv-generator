@@ -12,9 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('CREATE SCHEMA IF NOT EXISTS cv');
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement('CREATE SCHEMA IF NOT EXISTS cv');
+        }
 
-        Schema::create('cv.cv_data', function (Blueprint $table) {
+        $tableName = DB::connection()->getDriverName() === 'sqlite' ? 'cv_data' : 'cv.cv_data';
+
+        Schema::create($tableName, function (Blueprint $table) {
             $table->id();
             $table->integer('user_id')->nullable();
             $table->string('name');
@@ -43,6 +47,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cv.cv_data');
+        $tableName = DB::connection()->getDriverName() === 'sqlite' ? 'cv_data' : 'cv.cv_data';
+        Schema::dropIfExists($tableName);
     }
 };

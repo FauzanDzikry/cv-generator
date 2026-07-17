@@ -39,5 +39,5 @@ declare module 'html2pdf.js' {
         get(key: string): any;
     }
 
-    export default function(): Html2PdfInstance;
-} 
+    export default function (): Html2PdfInstance;
+}
