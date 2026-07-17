@@ -43,38 +43,41 @@ RUN chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
 
 # Configure Nginx for Laravel
-RUN echo 'server { \
-    listen 80; \
-    server_name _; \
-    root /var/www/html/public; \
-    index index.php index.html; \
-    location / { \
-    try_files $uri $uri/ /index.php?$query_string; \
-    } \
-    location ~ \.php$ { \
-    include fastcgi_params; \
-    fastcgi_pass 127.0.0.1:9000; \
-    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
-    fastcgi_index index.php; \
-    } \
-    }' > /etc/nginx/http.d/default.conf
+RUN { \
+    echo 'server {'; \
+    echo '    listen 80;'; \
+    echo '    server_name _;'; \
+    echo '    root /var/www/html/public;'; \
+    echo '    index index.php index.html;'; \
+    echo '    location / {'; \
+    echo '        try_files $uri $uri/ /index.php?$query_string;'; \
+    echo '    }'; \
+    echo '    location ~ \.php$ {'; \
+    echo '        include fastcgi_params;'; \
+    echo '        fastcgi_pass 127.0.0.1:9000;'; \
+    echo '        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;'; \
+    echo '        fastcgi_index index.php;'; \
+    echo '    }'; \
+    echo '}'; \
+} > /etc/nginx/http.d/default.conf
 
 # Configure Supervisord to run PHP-FPM and Nginx in one container
-RUN echo '[supervisord] \
-    nodaemon=true \
-    [program:php-fpm] \
-    command=php-fpm -F \
-    stdout_logfile=/dev/stdout \
-    stdout_logfile_maxbytes=0 \
-    stderr_logfile=/dev/stderr \
-    stderr_logfile_maxbytes=0 \
-    [program:nginx] \
-    command=nginx -g "daemon off;" \
-    stdout_logfile=/dev/stdout \
-    stdout_logfile_maxbytes=0 \
-    stderr_logfile=/dev/stderr \
-    stderr_logfile_maxbytes=0 \
-    ' > /etc/supervisord.conf
+RUN { \
+    echo '[supervisord]'; \
+    echo 'nodaemon=true'; \
+    echo '[program:php-fpm]'; \
+    echo 'command=php-fpm -F'; \
+    echo 'stdout_logfile=/dev/stdout'; \
+    echo 'stdout_logfile_maxbytes=0'; \
+    echo 'stderr_logfile=/dev/stderr'; \
+    echo 'stderr_logfile_maxbytes=0'; \
+    echo '[program:nginx]'; \
+    echo 'command=nginx -g "daemon off;"'; \
+    echo 'stdout_logfile=/dev/stdout'; \
+    echo 'stdout_logfile_maxbytes=0'; \
+    echo 'stderr_logfile=/dev/stderr'; \
+    echo 'stderr_logfile_maxbytes=0'; \
+} > /etc/supervisord.conf
 
 EXPOSE 80
 
