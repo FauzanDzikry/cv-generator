@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class CVData extends Model
 {
-    protected $table = 'cv.cv_data';
+    public function getTable()
+    {
+        return $this->getConnection()->getDriverName() === 'sqlite' ? 'cv_data' : 'cv.cv_data';
+    }
 
     protected $fillable = [
         'user_id',
