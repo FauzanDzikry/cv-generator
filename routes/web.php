@@ -8,18 +8,18 @@ Route::get('/', function () {
     return Inertia::render('home');
 })->name('home');
 
-Route::get('/welcome', function () {
+/* Route::get('/welcome', function () {
     return Inertia::render('welcome');
-})->name('welcome');
+})->name('welcome'); */
 
 Route::get('/generate-cv', function () {
     return Inertia::render('form-generate');
 })->name('form-generate');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
+    /* Route::get('dashboard', function () {
         return Inertia::render('dashboard');
-    })->name('dashboard');
+    })->name('dashboard'); */
 
     Route::get('cvs', [CVDataController::class, 'index'])->name('cvs.index');
     Route::post('cvs', [CVDataController::class, 'store'])->name('cvs.store');
@@ -28,5 +28,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('cvs/{id}', [CVDataController::class, 'update'])->name('cvs.update')->whereNumber('id');
 });
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';
