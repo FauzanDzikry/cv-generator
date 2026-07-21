@@ -132,11 +132,6 @@ export default function Register() {
                             Log in
                         </TextLink>
                     </p>
-                    <p>
-                        <TextLink href={route('password.request')} className="text-red-600 hover:underline dark:text-red-400" tabIndex={7}>
-                            Forgot password?
-                        </TextLink>
-                    </p>
                 </div>
             </form>
         </AuthLayout>

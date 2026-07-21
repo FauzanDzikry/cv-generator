@@ -1,23 +1,34 @@
 import { type SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
-
 export default function HowToUse() {
     const { auth } = usePage<SharedData>().props;
     const isLoggedIn = !!auth.user;
-    const [currentStep, setCurrentStep] = useState(0);
-
-    // Auto-rotate through steps every 3 seconds
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentStep((prev) => (prev === 0 ? 1 : 0));
-        }, 3000);
-
-        return () => clearInterval(interval);
-    }, []);
 
     return (
         <>
+            <style>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-8px); }
+                }
+                @keyframes slideRight {
+                    0%, 100% { transform: translateX(0); }
+                    50% { transform: translateX(6px); }
+                }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-float { animation: float 3s ease-in-out infinite; }
+                .animate-slide-right { animation: slideRight 2s ease-in-out infinite; }
+                .fade-in-up {
+                    opacity: 0;
+                    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+                .delay-100 { animation-delay: 100ms; }
+                .delay-200 { animation-delay: 200ms; }
+                .delay-300 { animation-delay: 300ms; }
+            `}</style>
             {/* Section How to Use */}
             <section
                 id="how-to-use"
@@ -26,9 +37,9 @@ export default function HowToUse() {
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="mx-auto max-w-6xl">
                         {/* Header Section */}
-                        <div className="mb-20 text-center">
-                            <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                                <svg className="h-10 w-10 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="mb-16 text-center fade-in-up delay-100">
+                            <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50/50 dark:bg-red-900/30 dark:ring-red-900/20 animate-float shadow-sm cursor-default hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors duration-300">
+                                <svg className="h-7 w-7 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -37,279 +48,172 @@ export default function HowToUse() {
                                     />
                                 </svg>
                             </div>
-                            <h2 className="mb-6 text-4xl font-bold text-gray-900 md:text-5xl dark:text-white">How to Use CV Generator</h2>
-                            <p className="mx-auto max-w-3xl text-xl text-gray-600 dark:text-gray-300">
+                            <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white cursor-default">How to Use CV Generator</h2>
+                            <p className="mx-auto max-w-3xl text-lg text-gray-500 dark:text-gray-400 cursor-default">
                                 Only 2 simple steps to create a professional CV that is ready to use
                             </p>
                         </div>
 
-                        {/* Main Steps with Flowchart Flow */}
+                        {/* Main Steps */}
                         <div className="relative mb-20">
-                            {/* Step Flow Container */}
-                            <div className="flex flex-col items-center justify-center gap-8 lg:flex-row lg:gap-12">
+                            <div className="relative flex flex-col items-stretch justify-center gap-8 lg:flex-row lg:items-center">
                                 {/* Step 1 */}
-                                <div
-                                    className={`group relative transition-all duration-700 ${currentStep === 0 ? 'scale-105 opacity-100' : 'scale-100 opacity-100'}`}
-                                >
-                                    <div className="w-full max-w-md transform rounded-2xl bg-white p-8 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl dark:bg-gray-800">
-                                        {/* Step Label */}
-                                        <div className="absolute -top-4 -left-4 rounded-full bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
-                                            1
+                                <div className="group relative z-10 mx-auto w-full max-w-md cursor-pointer lg:w-1/2 fade-in-up delay-200">
+                                    <div className="h-full rounded-[2rem] border border-gray-100 bg-white p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(239,68,68,0.1)] sm:p-10 dark:border-gray-700 dark:bg-gray-800 dark:shadow-none dark:hover:shadow-[0_20px_40px_rgb(239,68,68,0.05)]">
+                                        <div className="mb-6 flex items-center space-x-4">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-xl font-bold text-red-500 shadow-sm transition-all duration-300 group-hover:rotate-12 group-hover:scale-110 group-hover:bg-red-500 group-hover:text-white dark:bg-red-900/30 dark:text-red-400 dark:group-hover:bg-red-500 dark:group-hover:text-white">
+                                                1
+                                            </div>
+                                            <h3 className="text-2xl font-bold text-gray-900 transition-colors duration-300 group-hover:text-red-500 dark:text-white dark:group-hover:text-red-400">Fill the Form</h3>
                                         </div>
-
-                                        <h3 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Fill the Form</h3>
-                                        <p className="mb-6 leading-relaxed text-gray-600 dark:text-gray-300">
+                                        <p className="mb-8 leading-relaxed text-gray-500 dark:text-gray-400">
                                             Complete all required information such as personal data, work experience, education, and skills with
                                             accurate details.
                                         </p>
 
                                         {/* Feature List */}
-                                        <ul className="space-y-3">
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                Complete personal data
-                                            </li>
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                Detailed work experience
-                                            </li>
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                Education and skills
-                                            </li>
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                Real-time preview
-                                            </li>
+                                        <ul className="space-y-4">
+                                            {['Complete personal data', 'Detailed work experience', 'Education and skills', 'Real-time preview'].map((text, i) => (
+                                                <li key={i} className="flex items-center text-gray-600 transition-all duration-200 hover:translate-x-1 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400">
+                                                    <div className="mr-4 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-red-50 transition-colors duration-300 group-hover:bg-red-100 dark:bg-red-900/30 dark:group-hover:bg-red-900/50">
+                                                        <svg className="h-3.5 w-3.5 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </div>
+                                                    {text}
+                                                </li>
+                                            ))}
                                         </ul>
                                     </div>
                                 </div>
 
-                                {/* Flowchart Connection Line */}
-                                <div className="relative hidden items-center justify-center lg:flex">
-                                    {/* Horizontal Line */}
-                                    <div
-                                        className={`h-2 rounded-full bg-gradient-to-r from-red-500 to-green-500 transition-all duration-1000 ${currentStep === 0 ? 'w-0' : 'w-32'}`}
-                                    ></div>
-                                </div>
-
-                                {/* Mobile Flowchart Connection */}
-                                <div className="relative my-4 flex items-center justify-center lg:hidden">
-                                    {/* Vertical Line */}
-                                    <div
-                                        className={`w-2 rounded-full bg-gradient-to-b from-red-500 to-green-500 transition-all duration-1000 ${currentStep === 0 ? 'h-0' : 'h-20'}`}
-                                    ></div>
+                                {/* Arrow Connector */}
+                                <div className="absolute left-1/2 top-1/2 z-0 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center lg:flex fade-in-up delay-300">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-100 bg-white text-gray-400 shadow-md dark:border-gray-700 dark:bg-gray-800">
+                                        <svg className="h-6 w-6 text-gray-500 animate-slide-right dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                        </svg>
+                                    </div>
                                 </div>
 
                                 {/* Step 2 */}
-                                <div
-                                    className={`group relative transition-all duration-700 ${currentStep === 1 ? 'scale-105 opacity-100' : 'scale-100 opacity-70'}`}
-                                >
-                                    <div className="w-full max-w-md transform rounded-2xl bg-white p-8 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl dark:bg-gray-800">
-                                        {/* Step Label */}
-                                        <div className="absolute -top-4 -left-4 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
-                                            2
+                                <div className="group relative z-10 mx-auto w-full max-w-md cursor-pointer lg:w-1/2 fade-in-up delay-300">
+                                    <div className="h-full rounded-[2rem] border border-gray-100 bg-white p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(34,197,94,0.1)] sm:p-10 dark:border-gray-700 dark:bg-gray-800 dark:shadow-none dark:hover:shadow-[0_20px_40px_rgb(34,197,94,0.05)]">
+                                        <div className="mb-6 flex items-center space-x-4">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-xl font-bold text-green-500 shadow-sm transition-all duration-300 group-hover:-rotate-12 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white dark:bg-green-900/30 dark:text-green-400 dark:group-hover:bg-green-500 dark:group-hover:text-white">
+                                                2
+                                            </div>
+                                            <h3 className="text-2xl font-bold text-gray-900 transition-colors duration-300 group-hover:text-green-500 dark:text-white dark:group-hover:text-green-400">Download CV</h3>
                                         </div>
-
-                                        <h3 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Download CV</h3>
-                                        <p className="mb-6 leading-relaxed text-gray-600 dark:text-gray-300">
+                                        <p className="mb-8 leading-relaxed text-gray-500 dark:text-gray-400">
                                             Preview your CV and download it in PDF format, ready to use for job applications.
                                         </p>
 
                                         {/* Feature List */}
-                                        <ul className="space-y-3">
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                High quality PDF format
-                                            </li>
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                Preview before download
-                                            </li>
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                Ready to print and send
-                                            </li>
-                                            <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                                                <svg className="mr-3 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                                Free without limits
-                                            </li>
+                                        <ul className="space-y-4">
+                                            {['High quality PDF format', 'Preview before download', 'Ready to print and send', 'Free without limits'].map((text, i) => (
+                                                <li key={i} className="flex items-center text-gray-600 transition-all duration-200 hover:translate-x-1 hover:text-green-600 dark:text-gray-300 dark:hover:text-green-400">
+                                                    <div className="mr-4 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-50 transition-colors duration-300 group-hover:bg-green-100 dark:bg-green-900/30 dark:group-hover:bg-green-900/50">
+                                                        <svg className="h-3.5 w-3.5 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </div>
+                                                    {text}
+                                                </li>
+                                            ))}
                                         </ul>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Step Indicators */}
-                            <div className="mt-8 flex justify-center space-x-2">
-                                <button
-                                    onClick={() => setCurrentStep(0)}
-                                    className={`h-3 w-3 rounded-full transition-all duration-300 ${currentStep === 0 ? 'scale-125 bg-red-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-                                />
-                                <button
-                                    onClick={() => setCurrentStep(1)}
-                                    className={`h-3 w-3 rounded-full transition-all duration-300 ${currentStep === 1 ? 'scale-125 bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-                                />
-                            </div>
                         </div>
 
                         {/* Login Feature Section */}
-                        <div className="mx-auto w-full max-w-2xl rounded-2xl bg-gradient-to-r from-red-50 to-red-100 p-8 shadow-2xl md:p-10 dark:from-red-900/20 dark:to-red-800/20">
-                            <div className="mb-8 text-center">
-                                <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                                    <svg className="h-8 w-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                        />
-                                    </svg>
-                                </div>
-                                <h3 className="mb-3 text-2xl font-bold text-gray-900 md:text-3xl dark:text-white">Save & Manage Your CVs</h3>
-                                <p className="text-base text-gray-600 md:text-lg dark:text-gray-300">
-                                    Login to save, manage, and access all your created CVs anytime, anywhere.
-                                </p>
-                            </div>
-                            <div>
-                                <ul className="space-y-3 text-base text-gray-600 md:text-lg dark:text-gray-300">
-                                    <li className="flex items-center">
-                                        <svg className="mr-3 h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                        Your CVs are automatically saved to your account
-                                    </li>
-                                    <li className="flex items-center">
-                                        <svg className="mr-3 h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                        Access & edit your CVs from any device
-                                    </li>
-                                    <li className="flex items-center">
-                                        <svg className="mr-3 h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                        Easily manage multiple CVs
-                                    </li>
-                                    <li className="flex items-center">
-                                        <svg className="mr-3 h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                        Your CV data is safe and secure
-                                    </li>
-                                </ul>
-                            </div>
+                        <div className="mx-auto w-full max-w-5xl rounded-[2.5rem] bg-white p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-red-50 dark:border-gray-700 md:p-12 dark:bg-gray-800 fade-in-up delay-200 relative overflow-hidden">
+                            {/* Decorative background element */}
+                            <div className="absolute -top-24 -right-24 w-64 h-64 bg-red-50 rounded-full blur-3xl opacity-50 dark:bg-red-900/20 z-0 pointer-events-none"></div>
 
-                            {/* Conditional CTA based on login status */}
-                            <div className="mt-8 text-center">
-                                {isLoggedIn ? (
-                                    <>
-                                        <p className="mb-3 text-sm text-gray-600 md:text-base dark:text-gray-300">
-                                            You are already logged in. Start creating your CV now!
-                                        </p>
-                                        <div className="flex justify-center">
-                                            <a
-                                                href="#cvgen"
-                                                className="inline-flex transform items-center rounded-full bg-gradient-to-r from-red-600 to-red-700 px-8 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:from-red-700 hover:to-red-800 hover:shadow-xl"
-                                            >
-                                                <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                                    />
+                            <div className="relative z-10 flex flex-col lg:flex-row gap-12 items-center">
+                                {/* Left Content */}
+                                <div className="w-full lg:w-1/2">
+                                    <h3 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">Save & Manage Your CVs</h3>
+                                    <p className="mb-8 text-base text-gray-600 md:text-lg dark:text-gray-300">
+                                        Login to save, manage, and access all your created CVs anytime, anywhere.
+                                    </p>
+                                    
+                                    <ul className="space-y-5 text-gray-700 dark:text-gray-300 font-medium">
+                                        <li className="flex items-center gap-4">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400">
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                 </svg>
-                                                Create CV Now
-                                            </a>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="mb-3 text-sm text-gray-600 md:text-base dark:text-gray-300">
-                                            Don't have an account? Register for free now!
-                                        </p>
-                                        <div className="flex justify-center">
-                                            <a
-                                                href="/login"
-                                                className="inline-flex items-center rounded-md bg-red-600 px-5 py-3 text-base font-semibold text-white shadow-md transition-all duration-300 hover:bg-red-700 hover:shadow-lg"
-                                            >
-                                                <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-                                                    />
+                                            </div>
+                                            Access & edit your CVs from any device
+                                        </li>
+                                        <li className="flex items-center gap-4">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400">
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
-                                                Login with Google
-                                            </a>
-                                        </div>
-                                    </>
-                                )}
+                                            </div>
+                                            Easily manage multiple CVs
+                                        </li>
+                                        <li className="flex items-center gap-4">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400">
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                                </svg>
+                                            </div>
+                                            Your CV data is safe and secure
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                {/* Right Content (CTA Box) */}
+                                <div className="w-full lg:w-1/2">
+                                    <div className="rounded-[2rem] bg-slate-50 p-8 sm:p-10 text-center border border-slate-100 dark:bg-gray-900/50 dark:border-gray-700">
+                                        {isLoggedIn ? (
+                                            <>
+                                                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-500 dark:bg-green-900/30 dark:text-green-400">
+                                                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <p className="mb-8 text-lg font-medium text-slate-800 dark:text-gray-200">
+                                                    You are already logged in. Start creating your CV now!
+                                                </p>
+                                                <a
+                                                    href="#cvgen"
+                                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-4 font-semibold text-white transition-all hover:bg-slate-800 hover:shadow-lg dark:bg-white dark:text-slate-900 dark:hover:bg-gray-100"
+                                                >
+                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                    </svg>
+                                                    Create CV Now
+                                                </a>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400">
+                                                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                                    </svg>
+                                                </div>
+                                                <p className="mb-8 text-lg font-medium text-slate-800 dark:text-gray-200">
+                                                    Login to save and manage your CVs!
+                                                </p>
+                                                <a
+                                                    href="/login"
+                                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-4 font-semibold text-white transition-all hover:bg-slate-800 hover:shadow-lg dark:bg-white dark:text-slate-900 dark:hover:bg-gray-100"
+                                                >
+                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                                    </svg>
+                                                    Login
+                                                </a>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -413,26 +317,24 @@ export default function HowToUse() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
 
-                        {/* Call to Action */}
-                        <div className="text-center">
-                            <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                                <svg className="h-8 w-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <h3 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Ready to Create a Professional CV?</h3>
-                            <p className="mb-8 text-lg text-gray-600 dark:text-gray-300">Start now and create an impressive CV in minutes</p>
-                            <a
-                                href="#cvgen"
-                                className="inline-flex transform items-center rounded-full bg-gradient-to-r from-red-600 to-red-700 px-8 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:from-red-700 hover:to-red-800 hover:shadow-xl"
-                            >
-                                <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                Create CV Now
-                            </a>
-                        </div>
+            {/* Call to Action Section */}
+            <section className="bg-slate-900 py-20 md:py-28">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="mx-auto max-w-4xl text-center fade-in-up delay-100">
+                        <h2 className="mb-6 text-4xl font-bold text-white md:text-5xl">Ready to Create a Professional CV?</h2>
+                        <p className="mb-12 text-lg text-slate-400 md:text-xl">
+                            Start now and create an impressive CV in minutes.
+                        </p>
+                        <a
+                            href="#cvgen"
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-rose-600 px-10 py-4 text-lg font-bold text-white shadow-[0_0_40px_-5px_rgba(225,29,72,0.6)] transition-all duration-300 hover:-translate-y-1 hover:bg-rose-500 hover:shadow-[0_0_60px_-5px_rgba(225,29,72,0.8)]"
+                        >
+                            <span className="text-xl leading-none">+</span> Create CV Now
+                        </a>
                     </div>
                 </div>
             </section>

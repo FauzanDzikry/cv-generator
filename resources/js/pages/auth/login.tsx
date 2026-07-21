@@ -101,15 +101,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Password
                             </label>
-                            {canResetPassword && (
-                                <TextLink
-                                    href={route('password.request')}
-                                    className="ml-auto text-sm text-red-600 hover:underline dark:text-red-400"
-                                    tabIndex={5}
-                                >
-                                    Forgot password?
-                                </TextLink>
-                            )}
                         </div>
                         <input
                             id="password"

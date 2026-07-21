@@ -17,9 +17,6 @@ export default function Home() {
             {/* How to Use Section */}
             <HowToUse />
 
-            {/* Spasi vertikal antara HowToUse dan About */}
-            <div className="py-16 md:py-1 lg:py-1"></div>
-
             {/* About Section */}
             {/*    */}
         </AppLayout>

@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import TextLogo from '@/components/text-logo';
 import ThemeToggle from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 import { type SharedData, type User } from '@/types';
@@ -141,8 +142,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
                 <div className="flex h-14 justify-between md:h-16">
                     <div className="flex items-center">
                         <Link href="/" className="flex flex-shrink-0 items-center">
-                            <span className="text-lg font-bold text-red-600 md:text-xl dark:text-white">CV</span>
-                            <span className="text-lg font-bold text-gray-900 md:text-xl dark:text-red-600"> Generator</span>
+                            <TextLogo className="text-lg md:text-xl" />
                         </Link>
                     </div>
 

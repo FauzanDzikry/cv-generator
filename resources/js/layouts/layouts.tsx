@@ -11,9 +11,9 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children, breadcrumbs, navItems = [], ...props }: AppLayoutProps) {
     return (
-        <div className="min-h-screen bg-transparent dark:bg-gray-900">
+        <div className="flex min-h-screen flex-col bg-transparent dark:bg-gray-900">
             <Navbar items={navItems} />
-            <main className="w-full">{children}</main>
+            <main className="w-full flex-1">{children}</main>
             <Footer />
         </div>
     );
