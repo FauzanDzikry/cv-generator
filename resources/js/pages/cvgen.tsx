@@ -141,19 +141,20 @@ export default function CvGen() {
                             {showFeatures && (
                                 <div className="flex flex-row space-x-2">
                                     {features.map((feature, index) => (
-                                        <span
-                                            key={feature}
-                                            className={`cursor-pointer transition-all duration-300 ${hoveredFeature === feature ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}
-                                            style={{
-                                                opacity: featuresVisible[index] ? 1 : 0,
-                                                transform: `translateX(${featuresVisible[index] ? 0 : 50}px)`,
-                                                transitionDelay: `${index * 0.2}s`,
-                                            }}
-                                            onMouseEnter={() => setHoveredFeature(feature)}
-                                            onMouseLeave={() => setHoveredFeature(null)}
-                                        >
-                                            {index > 0 ? ' • ' : ''}
-                                            {feature}
+                                        <span key={feature} className="flex items-center">
+                                            {index > 0 && <span className="mx-2 text-gray-900 dark:text-white">•</span>}
+                                            <span
+                                                className={`inline-block cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:scale-110 ${hoveredFeature === feature ? 'text-red-600 drop-shadow-sm' : 'text-gray-900 dark:text-white'}`}
+                                                style={{
+                                                    opacity: featuresVisible[index] ? 1 : 0,
+                                                    transform: `translateX(${featuresVisible[index] ? 0 : 50}px)`,
+                                                    transitionDelay: `${index * 0.2}s`,
+                                                }}
+                                                onMouseEnter={() => setHoveredFeature(feature)}
+                                                onMouseLeave={() => setHoveredFeature(null)}
+                                            >
+                                                {feature}
+                                            </span>
                                         </span>
                                     ))}
                                 </div>
@@ -162,20 +163,23 @@ export default function CvGen() {
                         {isTypingFeaturesComplete ? (
                             <a
                                 href="/generate-cv"
-                                className="inline-block w-40 rounded-md bg-red-600 px-6 py-2 text-center text-sm font-medium text-white transition-all duration-500 hover:bg-red-700 md:w-48 md:px-8 md:text-base"
+                                className="group relative inline-flex w-48 overflow-hidden rounded-lg bg-red-600 px-6 py-2.5 text-center text-sm font-bold text-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-red-500 hover:shadow-xl hover:shadow-red-600/40 md:w-56 md:px-8 md:text-base justify-center"
                                 style={{
                                     opacity: buttonVisible ? 1 : 0,
                                     transform: `translateY(${buttonVisible ? 0 : 20}px)`,
                                 }}
                             >
-                                try now for free!
+                                <span className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-12deg)_translateX(-150%)] group-hover:duration-1000 group-hover:[transform:skew(-12deg)_translateX(150%)]">
+                                    <div className="relative h-full w-8 bg-white/20" />
+                                </span>
+                                <span className="relative">try now for free!</span>
                             </a>
                         ) : null}
                     </div>
                     <img
                         src="/assets/images/cv.svg"
                         alt="form illustration"
-                        className="w-full max-w-md transition-all duration-900 md:w-3/5 lg:h-3/5"
+                        className="w-full max-w-md transition-all duration-500 hover:-translate-y-4 hover:scale-[1.02] hover:drop-shadow-2xl md:w-3/5 lg:h-3/5 drop-shadow-xl"
                         style={{
                             opacity: imageVisible ? 1 : 0,
                             transform: `translateX(${imageVisible ? 0 : 100}px)`,
