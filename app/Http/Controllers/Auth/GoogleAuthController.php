@@ -33,7 +33,7 @@ class GoogleAuthController extends Controller
                 // User sudah ada, login
                 Auth::login($user);
 
-                return redirect()->intended(route('dashboard'));
+                return redirect()->intended(route('cvs.index'));
             }
 
             // Cek apakah user sudah ada berdasarkan email
@@ -50,7 +50,7 @@ class GoogleAuthController extends Controller
 
                 Auth::login($existingUser);
 
-                return redirect()->intended(route('home'));
+                return redirect()->intended(route('cvs.index'));
             }
 
             // Buat user baru
@@ -66,7 +66,7 @@ class GoogleAuthController extends Controller
 
             Auth::login($newUser);
 
-            return redirect()->intended(route('dashboard'));
+            return redirect()->intended(route('cvs.index'));
 
         } catch (\Exception $e) {
             return redirect()->route('login')->with('error', 'Terjadi kesalahan saat login dengan Google: '.$e->getMessage());

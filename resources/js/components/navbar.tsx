@@ -85,13 +85,17 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
         }
     };
 
-    const navItems: NavItem[] =
+    const baseNavItems: NavItem[] =
         items.length > 0
             ? items
             : [
                   { title: 'Home', href: '#cvgen', isSection: true },
                   { title: 'How to use', href: '#how-to-use', isSection: true },
               ];
+
+    const navItems: NavItem[] = auth.user
+        ? [...baseNavItems, { title: 'My CVs', href: '/cvs' }]
+        : baseNavItems;
 
     const getItemClass = (item: NavItem) => {
         if (item.isSection) {
@@ -106,7 +110,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
         }
         return cn(
             'rounded-md px-3 py-2 text-sm font-medium transition-colors',
-            page.url === item.href
+            page.url === item.href || (item.href !== '/' && page.url.startsWith(item.href))
                 ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                 : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700',
         );
@@ -125,7 +129,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
         }
         return cn(
             'block rounded-md px-3 py-3 text-base font-medium transition-colors',
-            page.url === item.href
+            page.url === item.href || (item.href !== '/' && page.url.startsWith(item.href))
                 ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                 : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700',
         );
@@ -188,15 +192,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
                                             <div className="text-xs text-gray-500 dark:text-gray-400">{(auth.user as User).email}</div>
                                         </div>
 
-                                        <Link
-                                            href={route('cvs.index')}
-                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                                            onClick={() => setIsUserDropdownOpen(false)}
-                                        >
-                                            <span>My CVs</span>
-                                        </Link>
-
-                                        <div className="my-1 border-t border-gray-200 dark:border-gray-700"></div>
+                                        <div className="mt-1"></div>
 
                                         <Link
                                             href="/logout"
