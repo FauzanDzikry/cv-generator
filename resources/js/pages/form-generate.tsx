@@ -1092,6 +1092,12 @@ export default function CvForm() {
                                 if (isGuest) {
                                     localStorage.setItem(PENDING_CV_SAVE_KEY, 'true');
                                     setShowLoginSaveModal(true);
+                                } else {
+                                    if (!isEdit) {
+                                        handleSaveNewCV();
+                                    } else {
+                                        handleSaveUpdate();
+                                    }
                                 }
                             }, 1000);
                         } catch (printError) {
@@ -1169,6 +1175,43 @@ export default function CvForm() {
             },
         };
         router.put(route('cvs.update', cvId), payload);
+    };
+
+    const handleSaveNewCV = () => {
+        const { photo: _p, ...rest } = formData;
+        const payload = {
+            ...rest,
+            custom_fields: {
+                is_use_photo: formData.is_use_photo,
+                photo_base64: photoPreview ?? null,
+            },
+        };
+
+        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.getAttribute('content');
+        fetch(route('cvs.store'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(payload),
+            credentials: 'same-origin',
+        })
+            .then((res) => {
+                if (res.ok) {
+                    localStorage.removeItem('cvFormData');
+                    localStorage.removeItem('cvAddOnSections');
+                    localStorage.removeItem('cvPhotoPreview');
+                    setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
+                } else {
+                    setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
+                }
+            })
+            .catch(() => {
+                setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
+            });
     };
 
     const togglePreview = () => {
@@ -2827,6 +2870,15 @@ export default function CvForm() {
                                         >
                                             Generate PDF
                                         </button>
+                                        {!isGuest && (
+                                            <button
+                                                type="button"
+                                                onClick={!isEdit ? handleSaveNewCV : handleSaveUpdate}
+                                                className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-blue-300 transition hover:bg-blue-500 focus:border-blue-700 focus:ring focus:outline-none active:bg-blue-700 disabled:opacity-25"
+                                            >
+                                                Save CV
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={togglePreview}
