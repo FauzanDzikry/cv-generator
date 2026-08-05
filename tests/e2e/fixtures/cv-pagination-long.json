@@ -1,0 +1,84 @@
+{
+    "cvFormData": {
+        "name": "John Doe Synthetic",
+        "address": "123 Synthetic Avenue, Tech District, Metropolis",
+        "phone": "+1-555-0199",
+        "email": "johndoe.synthetic@example.com",
+        "linkedin": "linkedin.com/in/johndoe-synthetic",
+        "summary": "Experienced software developer and technology architect with extensive expertise in scalable web applications, relational data modeling, performance optimization, and distributed cloud computing architecture. Committed to building robust, resilient systems that maintain data integrity and deliver exceptional user experiences across multiple platforms and screen sizes.",
+        "is_use_photo": false,
+        "photo": null,
+        "work_experience": [
+            {
+                "company": "Acme Synthetic Corp",
+                "company_location": "Metropolis",
+                "position": "Principal Software Engineer",
+                "location_type": "Hybrid",
+                "start_date": "2020-01-01",
+                "end_date": "2025-12-31",
+                "description": "- Architected enterprise-grade workflow automation engines handling millions of asynchronous events and processing large volumes of data daily with zero downtime.\n- Spearheaded enterprise cloud migrations resulting in 45% infrastructure cost savings and a 3x improvement in system resilience and latency.\n- Mentored junior and mid-level engineering cohorts across global teams on test-driven development, Clean Architecture principles, and domain-driven design.\n- Designed fault-tolerant message queues and microservice boundaries to isolate failure domains and maintain high availability during peak traffic events.\n- Re-engineered core database schemas from legacy document structures into highly indexed PostgreSQL relational models with enforced cascading referential integrity.",
+                "is_current": false
+            }
+        ],
+        "education": [
+            {
+                "institution": "Institute of Synthetic Technology",
+                "degree": "Bachelor of Science",
+                "field": "Computer Science",
+                "start_date": "2015-08-01",
+                "end_date": "2019-05-30",
+                "description": "- Specialized in advanced distributed algorithms, concurrent operating systems, compiler construction, and database design with honors distinction.\n- Capstone Project: Built an automated layout calculation and documentation generator utilizing real-time DOM measurements and greedy packing heuristics."
+            }
+        ],
+        "skills": [
+            { "name": "TypeScript / JavaScript (ES6+), React, Node.js" },
+            { "name": "PHP, Laravel, Eloquent ORM, PHPUnit, Architecture" },
+            { "name": "PostgreSQL, SQLite, Docker, Playwright, Tailwind CSS" }
+        ],
+        "portfolios": [
+            {
+                "title": "Document Pagination & PDF Layout Engine",
+                "link": "https://example.com/portfolio/pdf-engine",
+                "description": "Developed a high-performance frontend engine that computes deterministic page breaks and renders canonical A4 print layouts directly inside browser runtimes."
+            }
+        ],
+        "certifications": [
+            {
+                "name": "Certified Senior Solution Architect",
+                "organization": "Cloud Native Architecture Academy",
+                "start_year": "2023",
+                "end_year": "2026",
+                "is_time_limited": true,
+                "description": "Comprehensive certification validating advanced expertise in designing fault-tolerant distributed cloud architectures and scalable enterprise systems.",
+                "credential_id": "CERT-8899-ARCH-2023"
+            }
+        ],
+        "languages": [
+            { "language": "English", "level": "Native / Bilingual" }
+        ],
+        "accomplishments": [
+            {
+                "description": "Awarded Outstanding Engineering Contribution Award in 2024 for resolving critical production latency bottlenecks and standardizing core automated E2E testing pipelines across eighteen disparate microservice repositories."
+            }
+        ],
+        "organizations": [
+            {
+                "name": "Open Source Developers Guild",
+                "position": "Technical Committee Member & Reviewer",
+                "start_date": "2021-03-01",
+                "end_date": "2025-12-31",
+                "is_current": true,
+                "description": "Collaborated with open-source contributors to establish rigorous code review standards, documentation conventions, and automated integration pipelines for community tooling."
+            }
+        ],
+        "additional_info": "Available for technical architecture consulting, system design audits, and code optimizations. Enthusiast of clean design systems, typography, and reactive user interfaces."
+    },
+    "cvAddOnSections": {
+        "portfolios": true,
+        "certifications": true,
+        "accomplishments": true,
+        "organizations": true,
+        "languages": true,
+        "additional_info": true
+    }
+}

@@ -40,6 +40,7 @@ export default function CvShow({ cv }: CvShowProps) {
 
     const viewData = {
         ...cv,
+        linkedin: cv.linkedin || '',
         is_use_photo: isUsePhoto,
         photoPreview: photoPreview as string | null,
         additional_info: additionalInfo,
@@ -74,7 +75,14 @@ export default function CvShow({ cv }: CvShowProps) {
                         </Link>
                     </div>
                     <div className="overflow-auto rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-                        <CV data={viewData} isPdfMode={false} />
+                        <CV
+                            data={
+                                viewData as unknown as React.ComponentProps<
+                                    typeof CV
+                                >['data']
+                            }
+                            isPdfMode={false}
+                        />
                     </div>
                 </div>
             </div>
