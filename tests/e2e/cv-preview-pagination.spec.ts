@@ -171,4 +171,44 @@ test.describe('CV Preview & Pagination Regression', () => {
             expect(currentKeys).toEqual(initialKeys);
         }
     });
+
+    test('Phase 6: PDF export produces direct download with identical page count to preview and valid %PDF header', async ({ page }) => {
+        await page.addInitScript((data) => {
+            window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+            window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+        }, fixtureData);
+
+        await page.goto('/generate-cv');
+
+        const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+        await previewButton.click();
+
+        const previewPages = page.locator('.cv-multi-page-container').first().locator('.cv-page');
+        await expect(previewPages.first()).toBeVisible();
+        await page.waitForTimeout(300);
+
+        const previewPageCount = await previewPages.count();
+        expect(previewPageCount).toBeGreaterThan(1);
+
+        const exportPages = page.locator('#cv-to-export .cv-page');
+        const exportPageCount = await exportPages.count();
+        expect(exportPageCount).toBe(previewPageCount);
+
+        const [download] = await Promise.all([
+            page.waitForEvent('download', { timeout: 30000 }),
+            page.getByRole('button', { name: /Generate PDF/i }).first().click(),
+        ]);
+
+        expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
+
+        const downloadPath = await download.path();
+        expect(downloadPath).not.toBeNull();
+        if (downloadPath) {
+            const fs = await import('fs');
+            const buffer = fs.readFileSync(downloadPath);
+            expect(buffer.length).toBeGreaterThan(0);
+            const header = buffer.toString('utf8', 0, 4);
+            expect(header).toBe('%PDF');
+        }
+    });
 });

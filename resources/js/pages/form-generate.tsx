@@ -9,6 +9,7 @@ import {
     PAGE_HEIGHT_MM,
     PAGE_WIDTH_MM,
 } from '@/lib/cv-page-layout';
+import { sanitizeOklchColors } from '@/lib/utils';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 
@@ -294,6 +295,7 @@ export default function CvForm() {
         },
     };
     const [formTouched, setFormTouched] = useState(false);
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
     const cvRef = useRef<HTMLDivElement>(null);
 
@@ -595,581 +597,77 @@ export default function CvForm() {
             return;
         }
 
-        const loadingOverlay = document.createElement('div');
-        loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        loadingOverlay.id = 'pdf-loading-overlay-main';
-        loadingOverlay.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg text-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-700 mx-auto mb-3"></div>
-                <p class="text-gray-800 dark:text-gray-200">Preparing to print...</p>
-            </div>
-        `;
-        document.body.appendChild(loadingOverlay);
-
-        const cleanup = () => {
-            try {
-                const existingOverlay = document.getElementById('pdf-loading-overlay-main');
-                if (existingOverlay && existingOverlay.parentNode) {
-                    existingOverlay.parentNode.removeChild(existingOverlay);
-                }
-            } catch (error) {
-                console.error('Error during cleanup:', error);
-            }
-        };
+        setIsGeneratingPDF(true);
 
         try {
-            const printFrame = document.createElement('iframe');
-            printFrame.style.position = 'absolute';
-            printFrame.style.left = '-9999px';
-            printFrame.style.top = '-9999px';
-            printFrame.style.width = '0px';
-            printFrame.style.height = '0px';
-            printFrame.style.border = 'none';
-            document.body.appendChild(printFrame);
-
-            printFrame.onload = () => {
+            if (typeof document !== 'undefined' && 'fonts' in document) {
                 try {
-                    const printDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
-                    if (!printDoc) {
-                        throw new Error('Cannot access iframe document');
+                    await document.fonts.ready;
+                } catch (e) {
+                    // ignore font ready errors
+                }
+            }
+
+            const images = Array.from(cvRef.current.querySelectorAll('img'));
+            await Promise.all(
+                images.map(async (img) => {
+                    if (!img.complete) {
+                        await new Promise((resolve) => {
+                            img.onload = resolve;
+                            img.onerror = resolve;
+                        });
                     }
-
-                    const cvElement = cvRef.current;
-                    if (!cvElement) {
-                        throw new Error('CV element not available');
-                    }
-
-                    const printStyles = `
-                        @page {
-                            size: A4 portrait;
-                            margin: 0;
-                        }
-                        
-                        * {
-                            box-sizing: border-box;
-                        }
-                        
-                        body {
-                            margin: 0;
-                            padding: 0;
-                            font-family: Arial, sans-serif;
-                            background-color: white;
-                            color: #000;
-                            line-height: 1.5;
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                        }
-                        
-                        .print-container {
-                            width: 100%;
-                            background: white;
-                            color: #000;
-                        }
-                        
-                        ${pageBreakStyle}
-                        
-                        .cv-container {
-                            background: white !important;
-                            max-width: none !important;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            color: #000;
-                        }
-                        
-                        .cv-multi-page-container {
-                            transform: none !important;
-                        }
-                        
-                        .cv-page {
-                            width: ${PAGE_WIDTH_MM}mm !important;
-                            height: auto !important;
-                            min-height: ${PAGE_HEIGHT_MM}mm !important;
-                            padding: ${MARGIN_TOP}mm ${MARGIN_RIGHT}mm ${MARGIN_BOTTOM}mm ${MARGIN_LEFT}mm !important;
-                            box-sizing: border-box !important;
-                            background: white !important;
-                            box-shadow: none !important;
-                            margin: 0 auto !important;
-                            margin-bottom: 0 !important;
-                            page-break-after: always;
-                            position: relative;
-                            border-radius: 0 !important;
-                            color: #000 !important;
-                        }
-                        
-                        .cv-page * {
-                            color: #000 !important;
-                        }
-                        
-                        .cv-page:last-child {
-                            page-break-after: auto;
-                        }
-                        
-                        /* Hide unnecessary elements */
-                        .zoom-controls {
-                            display: none !important;
-                        }
-                        
-                        .page-number-indicator {
-                            display: block !important;
-                            position: absolute;
-                            bottom: ${MARGIN_BOTTOM}mm;
-                            left: ${MARGIN_LEFT}mm;
-                            right: ${MARGIN_RIGHT}mm;
-                            text-align: center;
-                            font-size: 10pt;
-                            color: #000;
-                        }
-                        
-                        /* Header styles */
-                        .cv-header {
-                            padding-bottom: 1rem;
-                            margin-bottom: 1rem;
-                        }
-                        
-                        /* Flexbox utilities */
-                        .flex {
-                            display: flex;
-                        }
-                        
-                        .items-start {
-                            align-items: flex-start;
-                        }
-                        
-                        .items-center {
-                            align-items: center;
-                        }
-                        
-                        .justify-between {
-                            justify-content: space-between;
-                        }
-                        
-                        .justify-center {
-                            justify-content: center;
-                        }
-                        
-                        .flex-wrap {
-                            flex-wrap: wrap;
-                        }
-                        
-                        /* Width utilities */
-                        .w-1\\/4 {
-                            width: 25%;
-                        }
-                        
-                        .w-3\\/4 {
-                            width: 75%;
-                        }
-                        
-                        .w-full {
-                            width: 100%;
-                        }
-                        
-                        .w-32 {
-                            width: 8rem;
-                        }
-                        
-                        .h-32 {
-                            height: 8rem;
-                        }
-                        
-                        .h-full {
-                            height: 100%;
-                        }
-                        
-                        /* Spacing utilities */
-                        .gap-1 {
-                            gap: 0.25rem;
-                        }
-                        
-                        .gap-2 {
-                            gap: 0.5rem;
-                        }
-                        
-                        .mt-1 {
-                            margin-top: 0.25rem;
-                        }
-                        
-                        .mt-3 {
-                            margin-top: 0.75rem;
-                        }
-                        
-                        .mt-6 {
-                            margin-top: 1.5rem;
-                        }
-                        
-                        .mb-1 {
-                            margin-bottom: 0.25rem;
-                        }
-                        
-                        .mb-2 {
-                            margin-bottom: 0.5rem;
-                        }
-                        
-                        .mb-4 {
-                            margin-bottom: 1rem;
-                        }
-                        
-                        .mb-8 {
-                            margin-bottom: 2rem;
-                        }
-                        
-                        .ml-2 {
-                            margin-left: 0.5rem;
-                        }
-                        
-                        .pb-2 {
-                            padding-bottom: 0.5rem;
-                        }
-                        
-                        .pb-4 {
-                            padding-bottom: 1rem;
-                        }
-                        
-                        .pl-5 {
-                            padding-left: 1.25rem;
-                        }
-                        
-                        /* Grid utilities */
-                        .grid {
-                            display: grid;
-                        }
-                        
-                        .grid-cols-1 {
-                            grid-template-columns: repeat(1, minmax(0, 1fr));
-                        }
-                        
-                        .grid-cols-2 {
-                            grid-template-columns: repeat(2, minmax(0, 1fr));
-                        }
-                        
-                        .grid-cols-4 {
-                            grid-template-columns: repeat(4, minmax(0, 1fr));
-                        }
-                        
-                        /* Text utilities */
-                        .text-center {
-                            text-align: center;
-                        }
-                        
-                        .text-sm {
-                            font-size: 0.875rem;
-                            line-height: 1.25rem;
-                        }
-                        
-                        .text-md {
-                            font-size: 1rem;
-                            line-height: 1.5rem;
-                        }
-                        
-                        .text-lg {
-                            font-size: 1.125rem;
-                            line-height: 1.75rem;
-                        }
-                        
-                        .text-xl {
-                            font-size: 1.25rem;
-                            line-height: 1.75rem;
-                        }
-                        
-                        .text-3xl {
-                            font-size: 1.875rem;
-                            line-height: 2.25rem;
-                        }
-                        
-                        .font-medium {
-                            font-weight: 500;
-                        }
-                        
-                        .font-semibold {
-                            font-weight: 600;
-                        }
-                        
-                        .font-bold {
-                            font-weight: 700;
-                        }
-                        
-                        /* Colors */
-                        .text-gray-600 {
-                            color: rgb(75, 85, 99);
-                        }
-                        
-                        .text-gray-700 {
-                            color: rgb(55, 65, 81);
-                        }
-                        
-                        .text-gray-800 {
-                            color: rgb(31, 41, 55);
-                        }
-                        
-                        .text-gray-900 {
-                            color: rgb(17, 24, 39);
-                        }
-                        
-                        /* Border utilities */
-                        .border-2 {
-                            border-width: 2px;
-                        }
-                        
-                        .border-b-2 {
-                            border-bottom-width: 2px;
-                        }
-                        
-                        .border-gray-200 {
-                            border-color: rgb(229, 231, 235);
-                        }
-                        
-                        .border-gray-300 {
-                            border-color: rgb(209, 213, 219);
-                        }
-                        
-                        .rounded-full {
-                            border-radius: 9999px;
-                        }
-                        
-                        /* Overflow utilities */
-                        .overflow-hidden {
-                            overflow: hidden;
-                        }
-                        
-                        .overflow-hidden {
-                            overflow: hidden;
-                        }
-                        
-                        .text-ellipsis {
-                            text-overflow: ellipsis;
-                        }
-                        
-                        .whitespace-nowrap {
-                            white-space: nowrap;
-                        }
-                        
-                        .break-words {
-                            word-wrap: break-word;
-                        }
-                        
-                        /* Object fit */
-                        .object-cover {
-                            object-fit: cover;
-                        }
-                        
-                        /* Lists */
-                        .list-disc {
-                            list-style-type: disc;
-                        }
-                        
-                        ul.list-disc {
-                            list-style-type: disc;
-                            margin: 0;
-                        }
-                        
-                        /* Typography: name 12pt, section 12pt, subsection 11pt, body 10pt; justify */
-                        h1 {
-                            font-size: 12pt !important;
-                            margin-top: 0 !important;
-                            margin-bottom: 6pt !important;
-                            font-weight: bold !important;
-                            color: #000 !important;
-                            line-height: 1.2 !important;
-                        }
-                        
-                        h2 {
-                            font-size: 12pt !important;
-                            font-weight: 600 !important;
-                            color: #000 !important;
-                            margin-bottom: 4pt !important;
-                            margin-top: 1rem !important;
-                            line-height: 1.3 !important;
-                            padding-bottom: 0.5rem !important;
-                            border-bottom: 2px solid #000 !important;
-                        }
-                        
-                        h3, h4 {
-                            font-size: 11pt !important;
-                            font-weight: 600 !important;
-                            color: #000 !important;
-                            margin: 0 0 0.25rem 0 !important;
-                            line-height: 1.4 !important;
-                        }
-                        
-                        p, .cv-body-text {
-                            font-size: 10pt !important;
-                            line-height: 1.5 !important;
-                            margin: 0.25rem 0 !important;
-                            color: #000 !important;
-                            text-align: justify !important;
-                        }
-                        
-                        span {
-                            font-size: 10pt !important;
-                            line-height: 1.5 !important;
-                            color: #000 !important;
-                        }
-                        
-                        div {
-                            font-size: 10pt !important;
-                            line-height: 1.5 !important;
-                            color: #000 !important;
-                        }
-                        
-                        .cv-body-text, .cv-page p, .cv-page div[style*="justify"] {
-                            text-align: justify !important;
-                        }
-                        
-                        /* Link styles */
-                        a {
-                            color: inherit !important;
-                            text-decoration: none !important;
-                        }
-                        
-                        /* Section spacing */
-                        .cv-section {
-                            margin-bottom: 1rem !important;
-                        }
-                        
-                        .cv-section-heading {
-                            margin-bottom: 1rem !important;
-                            margin-top: 1.5rem !important;
-                        }
-                        
-                        /* Page break handling */
-                        .html2pdf__page-break {
-                            page-break-before: always;
-                            height: 0;
-                            margin: 0;
-                            border: none;
-                        }
-                        
-                        /* Print media queries */
-                        @media print {
-                            html, body {
-                                width: ${PAGE_WIDTH_MM}mm;
-                                height: ${PAGE_HEIGHT_MM}mm;
-                                margin: 0;
-                                padding: 0;
-                            }
-                            
-                            .html2pdf__page-break {
-                                page-break-before: always;
-                                height: 0;
-                                margin: 0;
-                                border: none;
-                            }
-                            
-                            .cv-page {
-                                margin-bottom: 0 !important;
-                                page-break-after: always;
-                            }
-                            
-                            .cv-page:last-child {
-                                page-break-after: auto;
-                            }
-                        }
-                    `;
-
-                    // Write content to iframe
-                    printDoc.open();
-                    printDoc.write(`
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <title>CV ${formData.name || 'Preview'}</title>
-                            <style>${printStyles}</style>
-                        </head>
-                        <body>
-                            <div class="print-container">
-                                ${cvElement.innerHTML}
-                            </div>
-                        </body>
-                        </html>
-                    `);
-                    printDoc.close();
-
-                    setTimeout(() => {
+                    if (img.decode) {
                         try {
-                            printFrame.contentWindow?.focus();
-                            printFrame.contentWindow?.print();
-
-                            setTimeout(() => {
-                                cleanup();
-                                if (printFrame.parentNode) {
-                                    printFrame.parentNode.removeChild(printFrame);
-                                }
-                                if (isGuest) {
-                                    localStorage.setItem(PENDING_CV_SAVE_KEY, 'true');
-                                    setShowLoginSaveModal(true);
-                                } else {
-                                    if (!isEdit) {
-                                        handleSaveNewCV();
-                                    } else {
-                                        handleSaveUpdate();
-                                    }
-                                }
-                            }, 1000);
-                        } catch (printError) {
-                            console.error('Error during print:', printError);
-                            cleanup();
-                            if (printFrame.parentNode) {
-                                printFrame.parentNode.removeChild(printFrame);
-                            }
-                            alert('Print error occurred. Please try again or use a different browser.');
+                            await img.decode();
+                        } catch (e) {
+                            // ignore decode errors
                         }
-                    }, 500);
-                } catch (error) {
-                    console.error('Error in iframe setup:', error);
-                    cleanup();
-                    if (printFrame.parentNode) {
-                        printFrame.parentNode.removeChild(printFrame);
                     }
-                    alert('Error preparing print. Please try again.');
-                }
+                }),
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 300));
+
+            const rawName = formData.cv_name || formData.name || 'cv';
+            const safeName =
+                rawName
+                    .replace(/[^a-z0-9_\-\.]/gi, '_')
+                    .replace(/_+/g, '_')
+                    .replace(/^_|_$/g, '') || 'cv';
+            const filename = `${safeName}.pdf`;
+
+            const opt = {
+                margin: 0,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    onclone: sanitizeOklchColors,
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait',
+                },
             };
 
-            printFrame.onerror = () => {
-                console.error('Error loading iframe');
-                cleanup();
-                if (printFrame.parentNode) {
-                    printFrame.parentNode.removeChild(printFrame);
-                }
-                alert('Error loading print preview. Please try again.');
-            };
-
-            printFrame.src = 'about:blank';
+            const html2pdfModule = await import('html2pdf.js');
+            const html2pdf = html2pdfModule.default || html2pdfModule;
+            await html2pdf().set(opt).from(cvRef.current).save();
         } catch (error) {
-            console.error('Error in handleGeneratePDF:', error);
-            cleanup();
-            alert('Cannot generate print preview. Please try again or use a different browser.');
+            console.error('Error generating PDF:', error);
+            alert('An error occurred while generating the PDF. Please try again.');
+        } finally {
+            setIsGeneratingPDF(false);
         }
-    };
-
-    const handleDirectGeneratePDF = () => {
-        handleGeneratePDF();
-    };
-
-    const handleFallbackPDF = () => {
-        handleGeneratePDF();
-    };
-
-    const handleDirectPrint = () => {
-        handleGeneratePDF();
-    };
-
-    const generatePDFWithFallback = () => {
-        handleGeneratePDF();
     };
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!showPreview) {
-            setShowPreview(true);
-            setTimeout(() => {
-                generatePDFWithFallback();
-            }, 500);
-        } else {
-            generatePDFWithFallback();
-        }
+        handleGeneratePDF();
     };
 
     const handleSaveUpdate = () => {
@@ -2873,9 +2371,10 @@ export default function CvForm() {
                                         <button
                                             type="button"
                                             onClick={handleGeneratePDF}
-                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-red-300 transition hover:bg-red-500 focus:border-red-700 focus:ring focus:outline-none active:bg-red-700 disabled:opacity-25"
+                                            disabled={isGeneratingPDF}
+                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-red-300 transition hover:bg-red-500 focus:border-red-700 focus:ring focus:outline-none active:bg-red-700 disabled:opacity-50"
                                         >
-                                            Generate PDF
+                                            {isGeneratingPDF ? 'Generating...' : 'Generate PDF'}
                                         </button>
                                         {!isGuest && (
                                             <button
@@ -3009,23 +2508,28 @@ export default function CvForm() {
                 </div>
             )}
 
-            {/* Hidden CV Component untuk generate PDF */}
-            <div style={{ display: 'none' }}>
+            {/* Off-screen exact A4 canonical render surface without preview zoom/gap/guide */}
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute',
+                    top: '-99999px',
+                    left: '-99999px',
+                    width: `${PAGE_WIDTH_MM}mm`,
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                }}
+            >
                 <div
                     ref={cvRef}
                     id="cv-to-export"
-                    className="cv-for-pdf"
+                    className="cv-for-pdf pdf-export-mode"
                     style={{
                         backgroundColor: 'white',
                         width: `${PAGE_WIDTH_MM}mm`,
-                        minHeight: `${PAGE_HEIGHT_MM}mm`,
-                        padding: `${MARGIN_TOP * 2}mm`,
+                        padding: 0,
+                        margin: 0,
                         boxSizing: 'border-box',
-                        margin: '0 auto',
-                        boxShadow: 'none',
-                        fontSize: '11pt',
-                        lineHeight: '1.5',
-                        fontFamily: 'Arial, sans-serif',
                     }}
                 >
                     <CV data={{ ...formData, photoPreview }} isPdfMode={true} />

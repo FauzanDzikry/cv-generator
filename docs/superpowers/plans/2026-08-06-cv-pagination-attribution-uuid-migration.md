@@ -434,15 +434,15 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Hapus iframe, `printDoc.write`, timeout print, duplicate utility CSS, dan wrapper functions yang semuanya memanggil `handleGeneratePDF()`.
-- [ ] Ubah export tree dari `display: none` menjadi offscreen render surface dengan exact A4, `aria-hidden`, tanpa preview zoom/gap/guide.
-- [ ] Gunakan pages hasil engine yang sama; jangan menjalankan algoritme pagination kedua untuk PDF.
-- [ ] Tunggu `document.fonts.ready`, semua image decode, dan status pagination ready sebelum export.
-- [ ] Panggil `html2pdf().set()` dengan `margin: 0`, `unit: 'mm'`, `format: 'a4'`, `orientation: 'portrait'`, html2canvas `scale: 2`, `useCORS: true`, dan background putih.
-- [ ] Terapkan satu page-break rule pada `.cv-page`; hapus `.html2pdf__page-break` spacer dan duplicate `page-break-after` rules.
-- [ ] Sanitasi filename dari `cv_name || name || 'cv'` menggunakan replace karakter filesystem ilegal dan append `.pdf`.
-- [ ] Disable tombol selama export, tampilkan loading state React, tangkap error, dan selalu pulihkan state dalam `finally`.
-- [ ] Jangan otomatis menyimpan CV setelah PDF selesai; save tetap aksi tombol terpisah agar download tidak mempunyai side effect database.
+- [x] Hapus iframe, `printDoc.write`, timeout print, duplicate utility CSS, dan wrapper functions yang semuanya memanggil `handleGeneratePDF()`.
+- [x] Ubah export tree dari `display: none` menjadi offscreen render surface dengan exact A4, `aria-hidden`, tanpa preview zoom/gap/guide.
+- [x] Gunakan pages hasil engine yang sama; jangan menjalankan algoritme pagination kedua untuk PDF.
+- [x] Tunggu `document.fonts.ready`, semua image decode, dan status pagination ready sebelum export.
+- [x] Panggil `html2pdf().set()` dengan `margin: 0`, `unit: 'mm'`, `format: 'a4'`, `orientation: 'portrait'`, html2canvas `scale: 2`, `useCORS: true`, dan background putih.
+- [x] Terapkan satu page-break rule pada `.cv-page`; hapus `.html2pdf__page-break` spacer dan duplicate `page-break-after` rules.
+- [x] Sanitasi filename dari `cv_name || name || 'cv'` menggunakan replace karakter filesystem ilegal dan append `.pdf`.
+- [x] Disable tombol selama export, tampilkan loading state React, tangkap error, dan selalu pulihkan state dalam `finally`.
+- [x] Jangan otomatis menyimpan CV setelah PDF selesai; save tetap aksi tombol terpisah agar download tidak mempunyai side effect database.
 
 **Test:** Playwright menunggu event `download`, memastikan suffix `.pdf`, file tidak kosong, header bytes `%PDF`, dan preview page count sama dengan jumlah `.cv-page` pada export surface sebelum save.
 

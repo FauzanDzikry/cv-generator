@@ -9,6 +9,7 @@ declare module 'html2pdf.js' {
         html2canvas?: {
             scale?: number;
             useCORS?: boolean;
+            backgroundColor?: string | null;
             letterRendering?: boolean;
             logging?: boolean;
             allowTaint?: boolean;

@@ -12,16 +12,18 @@ import {
 import { MAX_CONTENT_HEIGHT_PX, SemanticBlock, measureBlocks, paginateBlocks } from '@/lib/cv-pagination';
 
 export const pageBreakStyle = `
-.html2pdf__page-break {
-    margin-top: 30px;
-    page-break-before: always;
-}
 @media print {
-    .html2pdf__page-break {
-        height: 0;
-        page-break-before: always;
-        margin: 0;
-        border-top: none;
+    .cv-page {
+        page-break-after: always !important;
+        break-after: page !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    .cv-page:last-of-type, .cv-page:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
     }
     
     .zoom-controls {
@@ -29,13 +31,30 @@ export const pageBreakStyle = `
     }
 }
 
+.pdf-export-mode .cv-page {
+    page-break-after: always !important;
+    break-after: page !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.pdf-export-mode .cv-page:last-of-type,
+.pdf-export-mode .cv-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+}
+
+.pdf-export-mode .zoom-controls {
+    display: none !important;
+}
+
 .pdf-export-mode {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
     background-color: white !important;
-    height: auto !important;
     width: ${PAGE_WIDTH_MM}mm !important;
-    padding: ${MARGIN_TOP}mm ${MARGIN_RIGHT}mm ${MARGIN_BOTTOM}mm ${MARGIN_LEFT}mm !important;
+    padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
@@ -53,6 +72,7 @@ export const pageBreakStyle = `
 .cv-for-pdf-mode .cv-page {
     box-shadow: none !important;
     border: none !important;
+    margin: 0 !important;
 }
 
 .cv-for-pdf-mode h1 {
@@ -94,21 +114,7 @@ export const pageBreakStyle = `
     display: none !important;
 }
 
-.cv-for-pdf-mode .skills-container {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 2rem !important;
-    justify-content: flex-start !important;
-    width: 100% !important;
-}
-
-.cv-for-pdf-mode .skills-column {
-    flex: 1 1 auto !important;
-    min-width: 120px !important;
-    max-width: 200px !important;
-    font-family: Arial, sans-serif !important;
-}
-
+.cv-for-pdf-mode .skills-container,
 .pdf-export-mode .skills-container {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -117,6 +123,7 @@ export const pageBreakStyle = `
     width: 100% !important;
 }
 
+.cv-for-pdf-mode .skills-column,
 .pdf-export-mode .skills-column {
     flex: 1 1 auto !important;
     min-width: 120px !important;
@@ -881,7 +888,16 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const activePageKeys = pageKeys.length > 0 ? pageKeys : [blocks.map((b) => b.key)];
 
     const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
-        <div className="cv-page mb-8 rounded-lg bg-white shadow-lg" style={pageOuterStyle}>
+        <div
+            className={`cv-page ${!isPdfMode ? 'mb-8 rounded-lg shadow-lg' : 'm-0 rounded-none shadow-none border-none'}`}
+            style={{
+                ...pageOuterStyle,
+                marginBottom: !isPdfMode ? undefined : '0',
+                marginTop: !isPdfMode ? undefined : '0',
+                boxShadow: !isPdfMode ? undefined : 'none',
+                border: !isPdfMode ? undefined : 'none',
+            }}
+        >
             <div
                 className="cv-page-content flex flex-col"
                 style={{ ...pageContentStyle, minHeight: 'calc(100% - 60px)', paddingBottom: '20px' }}
@@ -1011,7 +1027,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 ref={cvContentRef}
             >
                 {activePageKeys.map((pageContentKeys, index) => (
-                    <div key={`page-${index}`} className="relative mb-6">
+                    <div key={`page-${index}`} className={`relative ${!isPdfMode ? 'mb-6' : 'm-0 p-0'}`}>
                         {createPage(
                             pageContentKeys.map((key) => {
                                 if (key.startsWith('cont::')) {
@@ -1042,7 +1058,6 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             index,
                             activePageKeys.length,
                         )}
-                        {index < activePageKeys.length - 1 && <div className="html2pdf__page-break"></div>}
                     </div>
                 ))}
             </div>
