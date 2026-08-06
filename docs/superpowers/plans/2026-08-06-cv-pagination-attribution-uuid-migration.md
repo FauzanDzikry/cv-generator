@@ -499,12 +499,12 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Tambahkan shadow UUID columns dengan Schema Builder agar PostgreSQL dan SQLite test kompatibel.
-- [ ] Backfill UUID menggunakan `Str::uuid7()` per row dalam chunk yang deterministik berdasarkan legacy ID.
-- [ ] Isi `cv_data.user_uuid` melalui mapping `user_id -> users.uuid`; fail migration bila ada user_id orphan/non-null yang tidak terpetakan.
-- [ ] Isi `sessions.user_uuid` untuk authenticated sessions; guest sessions tetap null.
-- [ ] Tambahkan unique indexes pada shadow UUID.
-- [ ] Jangan mengubah model key atau route pada migration ini.
+- [x] Tambahkan shadow UUID columns dengan Schema Builder agar PostgreSQL dan SQLite test kompatibel.
+- [x] Backfill UUID menggunakan `Str::uuid7()` per row dalam chunk yang deterministik berdasarkan legacy ID.
+- [x] Isi `cv_data.user_uuid` melalui mapping `user_id -> users.uuid`; fail migration bila ada user_id orphan/non-null yang tidak terpetakan.
+- [x] Isi `sessions.user_uuid` untuk authenticated sessions; guest sessions tetap null.
+- [x] Tambahkan unique indexes pada shadow UUID.
+- [x] Jangan mengubah model key atau route pada migration ini.
 
 **Test:** Assert seluruh rows `users`/`cv_data` mempunyai valid UUID unik dan CV legacy ID `1` memiliki mapped `user_uuid`.
 
