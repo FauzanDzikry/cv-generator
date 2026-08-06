@@ -1,12 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+    CONTENT_WIDTH_MM,
     MARGIN_BOTTOM,
     MARGIN_LEFT,
     MARGIN_RIGHT,
     MARGIN_TOP,
     PAGE_WIDTH_MM,
+    pageContentStyle,
     pageOuterStyle,
 } from '@/lib/cv-page-layout';
+import { MAX_CONTENT_HEIGHT_PX, SemanticBlock, measureBlocks, paginateBlocks } from '@/lib/cv-pagination';
 
 export const pageBreakStyle = `
 .html2pdf__page-break {
@@ -103,8 +106,7 @@ export const pageBreakStyle = `
     flex: 1 1 auto !important;
     min-width: 120px !important;
     max-width: 200px !important;
-    display: flex !important;
-    flex-direction: column !important;
+    font-family: Arial, sans-serif !important;
 }
 
 .pdf-export-mode .skills-container {
@@ -119,97 +121,65 @@ export const pageBreakStyle = `
     flex: 1 1 auto !important;
     min-width: 120px !important;
     max-width: 200px !important;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-.cv-page {
     font-family: Arial, sans-serif !important;
-    color: #000 !important;
-    font-size: 10pt !important;
 }
-
-.cv-page * {
-    font-family: Arial, sans-serif !important;
-    color: #000 !important;
-}
-
-.cv-page h1 { font-size: 12pt !important; }
-.cv-page h2 { font-size: 12pt !important; }
-.cv-page h3, .cv-page h4 { font-size: 11pt !important; }
-.cv-page p, .cv-page span, .cv-page div, .cv-page li { font-size: 10pt !important; }
-.cv-page .cv-body-text,
-.cv-page p, .cv-page div.cv-body-text { text-align: justify !important; }
 `;
 
 const formatDate = (dateString: string) => {
     if (!dateString) return '';
 
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString;
-
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${months[date.getMonth()]} ${date.getFullYear()}`;
-    } catch (e) {
-        return dateString;
+    const parts = dateString.split('-');
+    if (parts.length === 2 || parts.length === 3) {
+        const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }
+
+    return dateString;
 };
 
 const formatPhoneForWhatsApp = (phone: string) => {
-    if (!phone) return '';
-    const cleanNumber = phone.replace(/\D/g, '');
-    if (cleanNumber.startsWith('62')) {
-        return cleanNumber;
+    let cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.startsWith('0')) {
+        cleanPhone = '62' + cleanPhone.substring(1);
     }
-    if (cleanNumber.startsWith('0')) {
-        return '62' + cleanNumber.substring(1);
-    }
-    return '62' + cleanNumber;
+    return cleanPhone;
 };
 
 const calculateDuration = (startDate: string, endDate: string, isCurrent: boolean = false) => {
-    try {
-        const start = new Date(startDate);
-        const end = isCurrent ? new Date() : new Date(endDate);
+    if (!startDate) return '';
 
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            return '';
-        }
+    const start = new Date(startDate);
+    const end = isCurrent ? new Date() : new Date(endDate || startDate);
 
-        let months = (end.getFullYear() - start.getFullYear()) * 12;
-        months += end.getMonth() - start.getMonth();
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
 
-        if (end.getDate() < start.getDate()) {
-            months--;
-        }
-
-        const years = Math.floor(months / 12);
-        const remainingMonths = months % 12;
-
-        if (years > 0 && remainingMonths > 0) {
-            return `(${years}y ${remainingMonths}m)`;
-        } else if (years > 0) {
-            return `(${years}y)`;
-        } else if (remainingMonths > 0) {
-            return `(${remainingMonths}m)`;
-        } else {
-            return '(< 1m)';
-        }
-    } catch (e) {
-        return '';
+    if (months < 0) {
+        years--;
+        months += 12;
     }
+
+    let durationStr = '(';
+    if (years > 0) {
+        durationStr += `${years} yr${years > 1 ? 's' : ''} `;
+    }
+    if (months > 0 || years === 0) {
+        durationStr += `${months} mo${months > 1 ? 's' : ''}`;
+    }
+    durationStr += ')';
+
+    return durationStr;
 };
 
 interface WorkExperience {
     company: string;
     company_location: string;
     position: string;
+    location_type: string;
     start_date: string;
     end_date: string;
     description: string;
-    is_current?: boolean;
-    location_type: string;
+    is_current: boolean;
 }
 
 interface Education {
@@ -284,87 +254,58 @@ interface CVProps {
     isPdfMode?: boolean;
 }
 
-const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
-    const [zoomLevel, setZoomLevel] = useState(100);
-    const [showZoomControls, setShowZoomControls] = useState(false);
-    const [pages, setPages] = useState<React.ReactNode[]>([]);
-    const cvContentRef = useRef<HTMLDivElement>(null);
-    const contentObserverRef = useRef<ResizeObserver | null>(null);
-    const PAGE_HEIGHT = 890;
+const extractBulletPoints = (description: string): { intro?: string; bullets: string[] } => {
+    if (!description) return { bullets: [] };
+    const result: { intro?: string; bullets: string[] } = { bullets: [] };
 
-    useEffect(() => {
-        const styleElement = document.createElement('style');
-        styleElement.innerHTML = pageBreakStyle;
-        document.head.appendChild(styleElement);
-
-        return () => {
-            document.head.removeChild(styleElement);
-        };
-    }, []);
-
-    useEffect(() => {
-        setShowZoomControls(!isPdfMode);
-    }, [isPdfMode]);
-
-    const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setZoomLevel(parseInt(e.target.value));
-    };
-
-    const toggleZoomControls = () => {
-        if (!isPdfMode) {
-            setShowZoomControls((prev) => !prev);
+    if (description.includes('• ')) {
+        const parts = description.split('• ');
+        if (parts[0].trim()) {
+            result.intro = parts[0].trim();
         }
-    };
+        for (let i = 1; i < parts.length; i++) {
+            if (parts[i].trim()) {
+                result.bullets.push(parts[i].trim());
+            }
+        }
+        return result;
+    }
 
-    const SECTION_HEADING_HEIGHT = 40;
-    const ITEM_HEADING_HEIGHT = 45;
-    const BULLET_POINT_HEIGHT = 20;
-    const WORK_BULLET_POINT_HEIGHT = 25;
-    const PARAGRAPH_HEIGHT = 30;
-    const SPACING_HEIGHT = 10;
-    const SECTION_SPACING_HEIGHT = 15;
-    const LINE_HEIGHT = 16;
-    const BORDER_LINE_HEIGHT = 8;
-    const RESERVED_BOTTOM_HEIGHT = 60;
+    if (description.match(/[\n\r][-*•][\s]/) || description.includes('\n- ')) {
+        const lines = description.split(/[\n\r]+/);
+        const introLines: string[] = [];
 
-    const SECTION_TITLE_LINES = Math.ceil(SECTION_HEADING_HEIGHT / LINE_HEIGHT);
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
+                result.bullets.push(trimmedLine.substring(2));
+            } else if (trimmedLine) {
+                introLines.push(trimmedLine);
+            }
+        }
 
-    const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
-        <div
-            className="cv-page mb-8 rounded-lg bg-white shadow-lg"
-            style={pageOuterStyle}
-        >
-            <div style={{ minHeight: 'calc(100% - 60px)', paddingBottom: '20px', position: 'relative', zIndex: 1 }}>{content}</div>
-            {typeof pageIndex === 'number' && typeof totalPages === 'number' && (
-                <div
-                    className="page-number-indicator"
-                    style={{
-                        position: 'absolute',
-                        bottom: `${MARGIN_BOTTOM}mm`,
-                        left: `${MARGIN_LEFT}mm`,
-                        right: `${MARGIN_RIGHT}mm`,
-                        textAlign: 'center',
-                        fontSize: '10pt',
-                        color: '#000',
-                        fontFamily: 'Arial, sans-serif',
-                        height: '20px',
-                        lineHeight: '20px',
-                    }}
-                >
-                    Page {pageIndex + 1} of {totalPages}
-                </div>
-            )}
-        </div>
-    );
+        if (introLines.length > 0) {
+            result.intro = introLines.join('\n');
+        }
+        return result;
+    }
 
-    useEffect(() => {
-        if (!data || Object.keys(data).length === 0) return;
+    if (description.trim()) {
+        result.intro = description.trim();
+    }
+    return result;
+};
 
-        const pageContents: React.ReactNode[][] = [];
-        let currentPage: React.ReactNode[] = [];
+function buildSemanticBlocks(data: CVData): SemanticBlock[] {
+    const blocks: SemanticBlock[] = [];
+    if (!data || Object.keys(data).length === 0) return blocks;
 
-        currentPage.push(
-            <div key="header" className="cv-header pb-4">
+    blocks.push({
+        key: 'cv-header',
+        kind: 'header',
+        keepWithNext: Boolean(data.summary),
+        content: (
+            <div className="cv-header pb-4">
                 <div className="flex items-start justify-between">
                     {data.is_use_photo && (data.photo || data.photoPreview) && (
                         <div className="flex w-1/4 justify-start">
@@ -393,13 +334,13 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             >
                                 {data.address && (
                                     <p className="flex items-center gap-2">
-                                        <span>{data.is_use_photo ? '📍' : ''}</span>
+                                        <span>📍</span>
                                         {data.address}
                                     </p>
                                 )}
                                 {data.phone && (
                                     <p className="flex items-center gap-2">
-                                        <span>{data.is_use_photo ? '📱' : ''}</span>
+                                        <span>📱</span>
                                         <a
                                             href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`}
                                             target="_blank"
@@ -413,13 +354,13 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                                 )}
                                 {data.email && (
                                     <p className="flex items-center gap-2">
-                                        <span>{data.is_use_photo ? '✉️' : ''}</span>
+                                        <span>✉️</span>
                                         {data.email}
                                     </p>
                                 )}
                                 {data.linkedin && (
                                     <p className="flex items-center gap-2">
-                                        <span>{data.is_use_photo ? '🔗' : ''}</span>
+                                        <span>🔗</span>
                                         {data.linkedin}
                                     </p>
                                 )}
@@ -451,210 +392,87 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                         )}
                     </div>
                 </div>
-            </div>,
-        );
+            </div>
+        ),
+    });
 
-        // Perkiraan tinggi header (dioptimalkan)
-        const headerHeight = data.is_use_photo && (data.photo || data.photoPreview) ? 120 : 100;
-        let currentPageHeight = headerHeight;
-
-        // Summary juga biasanya di halaman pertama
-        if (data.summary) {
-            currentPage.push(
-                <div key="summary" className="cv-section mb-4">
+    const addSectionHeading = (title: string, key: string) => {
+        blocks.push({
+            key,
+            kind: 'section-heading',
+            keepWithNext: true,
+            content: (
+                <div className="cv-section mt-4 mb-3">
                     <h2
-                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
+                        className="mb-2 border-b-2 border-gray-200 pb-1 font-semibold text-gray-800"
                         style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
                     >
-                        Summary
+                        {title}
                     </h2>
-                    <p className="cv-body-text text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}>
-                        {data.summary}
+                </div>
+            ),
+        });
+    };
+
+    const pushDescriptionBlocks = (description: string, parentKey?: string, prefix = '') => {
+        if (!description) return;
+        const { intro, bullets } = extractBulletPoints(description);
+        if (intro) {
+            blocks.push({
+                key: `${prefix || parentKey}-intro`,
+                kind: 'paragraph',
+                keepWithNext: false,
+                parentItemKey: parentKey,
+                content: (
+                    <p
+                        className="cv-body-text mb-1 text-gray-600"
+                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}
+                    >
+                        {intro}
                     </p>
-                </div>,
-            );
-
-            // Tambahkan tinggi summary dan spacing setelah section
-            currentPageHeight += SECTION_HEADING_HEIGHT + SECTION_SPACING_HEIGHT;
-        }
-
-        // Fungsi untuk menganalisis bullet points dari deskripsi
-        const extractBulletPoints = (description: string): { intro?: string; bullets: string[] } => {
-            if (!description) return { bullets: [] };
-
-            const result: { intro?: string; bullets: string[] } = { bullets: [] };
-
-            if (description.includes('• ')) {
-                const parts = description.split('• ');
-                if (parts[0].trim()) {
-                    result.intro = parts[0].trim();
-                }
-
-                for (let i = 1; i < parts.length; i++) {
-                    if (parts[i].trim()) {
-                        result.bullets.push(parts[i].trim());
-                    }
-                }
-
-                return result;
-            }
-
-            if (description.match(/[\n\r][-*•][\s]/) || description.includes('\n- ')) {
-                const lines = description.split(/[\n\r]+/);
-                const introLines: string[] = [];
-
-                for (const line of lines) {
-                    const trimmedLine = line.trim();
-                    if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
-                        result.bullets.push(trimmedLine.substring(2));
-                    } else if (trimmedLine) {
-                        introLines.push(trimmedLine);
-                    }
-                }
-
-                if (introLines.length > 0) {
-                    result.intro = introLines.join('\n');
-                }
-
-                return result;
-            }
-
-            if (description.trim()) {
-                result.intro = description.trim();
-            }
-
-            return result;
-        };
-
-        const calculateTextHeight = (text: string, maxWidth: number = 400): number => {
-            if (!text) return 0;
-            const charsPerLine = Math.floor(maxWidth / 7.2);
-            const lines = Math.ceil(text.length / charsPerLine);
-            return Math.max(1, lines) * LINE_HEIGHT;
-        };
-
-        if (data.summary) {
-            const summaryTextHeight = calculateTextHeight(data.summary, 500);
-            currentPageHeight += summaryTextHeight;
-        }
-
-        const calculateItemHeight = (item: any, bulletHeight: number = BULLET_POINT_HEIGHT): number => {
-            const description = item.description || '';
-            const { intro, bullets } = extractBulletPoints(description);
-            let totalHeight = ITEM_HEADING_HEIGHT;
-
-            if (intro) {
-                totalHeight += calculateTextHeight(intro);
-            }
-
-            bullets.forEach((bullet: string) => {
-                totalHeight += calculateTextHeight(bullet);
+                ),
             });
-            totalHeight += SPACING_HEIGHT;
-            return totalHeight;
-        };
-
-        const processSectionWithPreciseLineBreak = (
-            sectionTitle: string,
-            items: any[],
-            renderItem: (item: any, index: number) => React.ReactNode,
-            bulletHeight: number = BULLET_POINT_HEIGHT,
-            marginThreshold: number = 15,
-            itemHeaderLines: number = 2,
-        ) => {
-            currentPageHeight += SECTION_SPACING_HEIGHT;
-
-            const sectionTitleHeightPx = SECTION_TITLE_LINES * LINE_HEIGHT;
-            if (currentPageHeight + sectionTitleHeightPx > PAGE_HEIGHT - marginThreshold) {
-                pageContents.push(currentPage);
-                currentPage = [];
-                currentPageHeight = 0;
-            }
-
-            currentPage.push(
-                <div key={`${sectionTitle}_title`} className="cv-section-heading mt-3 mb-4">
-                    <h2
-                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
-                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
-                    >
-                        {sectionTitle}
-                    </h2>
-                </div>,
-            );
-            currentPageHeight += sectionTitleHeightPx;
-
-            const itemHeaderHeight = itemHeaderLines * LINE_HEIGHT;
-
-            items.forEach((item, index) => {
-                const isFirstItem = index === 0;
-                if (!isFirstItem && currentPageHeight + itemHeaderHeight > PAGE_HEIGHT - marginThreshold) {
-                    pageContents.push(currentPage);
-                    currentPage = [];
-                    currentPageHeight = 0;
-                }
-
-                currentPage.push(renderItem(item, index));
-                currentPageHeight += itemHeaderHeight;
-
-                const description = item.description || '';
-                const { intro, bullets } = extractBulletPoints(description);
-                if (intro) {
-                    const introHeight = calculateTextHeight(intro);
-                    if (!isFirstItem && currentPageHeight + introHeight > PAGE_HEIGHT - marginThreshold) {
-                        pageContents.push(currentPage);
-                        currentPage = [];
-                        currentPageHeight = 0;
-                    }
-                    currentPage.push(
-                        <p
-                            key={`intro_${sectionTitle}_${index}`}
-                            className="cv-body-text mt-1 text-gray-600"
-                            style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}
+        }
+        if (bullets && bullets.length > 0) {
+            bullets.forEach((bullet, idx) => {
+                blocks.push({
+                    key: `${prefix || parentKey}-bullet-${idx}`,
+                    kind: 'bullet',
+                    keepWithNext: false,
+                    parentItemKey: parentKey,
+                    content: (
+                        <div
+                            style={{
+                                display: 'flex',
+                                marginBottom: '0.25rem',
+                                fontFamily: 'Arial, sans-serif',
+                                fontSize: '10pt',
+                                textAlign: 'justify',
+                            }}
+                            className="cv-body-text text-gray-600"
                         >
-                            {intro}
-                        </p>,
-                    );
-                    currentPageHeight += introHeight;
-                }
-                if (bullets.length > 0) {
-                    bullets.forEach((bullet: string, bulletIndex: number) => {
-                        const bHeight = calculateTextHeight(bullet);
-                        if (!isFirstItem && currentPageHeight + bHeight > PAGE_HEIGHT - marginThreshold) {
-                            pageContents.push(currentPage);
-                            currentPage = [];
-                            currentPageHeight = 0;
-                        }
-                        currentPage.push(
-                            <div
-                                key={`bullet_${sectionTitle}_${index}_${bulletIndex}`}
-                                style={{
-                                    display: 'flex',
-                                    marginBottom: '0.25rem',
-                                    fontFamily: 'Arial, sans-serif',
-                                    fontSize: '10pt',
-                                    textAlign: 'justify',
-                                }}
-                                className="cv-body-text text-gray-600"
-                            >
-                                <div style={{ width: '1em', flexShrink: 0 }}>•</div>
-                                <div>{bullet}</div>
-                            </div>,
-                        );
-                        currentPageHeight += bHeight;
-                    });
-                }
-
-                currentPageHeight += SPACING_HEIGHT;
+                            <div style={{ width: '1em', flexShrink: 0 }}>•</div>
+                            <div>{bullet}</div>
+                        </div>
+                    ),
+                });
             });
-        };
+        }
+    };
 
-        // Proses Work Experience dengan pagination per baris
-        if (data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company) {
-            processSectionWithPreciseLineBreak(
-                'Work Experience',
-                data.work_experience.filter((work: WorkExperience) => work.company),
-                (work: WorkExperience, index: number) => (
-                    <div key={`work_header_${index}`} className="mb-2">
+    if (data.summary) {
+        addSectionHeading('Summary', 'sec-summary');
+        pushDescriptionBlocks(data.summary, undefined, 'summary');
+    }
+
+    if (data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company) {
+        addSectionHeading('Work Experience', 'sec-work');
+        data.work_experience
+            .filter((work) => work.company)
+            .forEach((work, index) => {
+                const itemKey = `work-head-${index}`;
+                const headContent = (
+                    <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {work.position}
@@ -668,19 +486,44 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             {work.company}, {work.company_location} ({work.location_type})
                         </h4>
                     </div>
-                ),
-                WORK_BULLET_POINT_HEIGHT,
-                80,
-                3,
-            );
-        }
+                );
+                const contContent = (
+                    <div className="mt-2 mb-1">
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {work.position} <span className="font-normal italic text-gray-500">(continued)</span>
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {formatDate(work.start_date)} - {work.is_current ? 'Present' : formatDate(work.end_date)}{' '}
+                                {calculateDuration(work.start_date, work.end_date, work.is_current)}
+                            </span>
+                        </div>
+                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                            {work.company}, {work.company_location} ({work.location_type})
+                        </h4>
+                    </div>
+                );
 
-        if (data.education && data.education.length > 0 && data.education[0].institution) {
-            processSectionWithPreciseLineBreak(
-                'Education',
-                data.education.filter((edu: Education) => edu.institution),
-                (edu: Education, index: number) => (
-                    <div key={`edu_header_${index}`} className="mb-2">
+                blocks.push({
+                    key: itemKey,
+                    kind: 'item-heading',
+                    keepWithNext: true,
+                    content: headContent,
+                    continuedContent: contContent,
+                });
+
+                pushDescriptionBlocks(work.description || '', itemKey);
+            });
+    }
+
+    if (data.education && data.education.length > 0 && data.education[0].institution) {
+        addSectionHeading('Education', 'sec-edu');
+        data.education
+            .filter((edu) => edu.institution)
+            .forEach((edu, index) => {
+                const itemKey = `edu-head-${index}`;
+                const headContent = (
+                    <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {edu.degree} {edu.degree ? ',' : ''} {edu.field}
@@ -693,48 +536,51 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             {edu.institution}
                         </h4>
                     </div>
-                ),
-                BULLET_POINT_HEIGHT,
-                0,
-                2,
-            );
+                );
+                const contContent = (
+                    <div className="mt-2 mb-1">
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {edu.degree} {edu.degree ? ',' : ''} {edu.field} <span className="font-normal italic text-gray-500">(continued)</span>
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {formatDate(edu.start_date)} - {formatDate(edu.end_date)}
+                            </span>
+                        </div>
+                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                            {edu.institution}
+                        </h4>
+                    </div>
+                );
+
+                blocks.push({
+                    key: itemKey,
+                    kind: 'item-heading',
+                    keepWithNext: true,
+                    content: headContent,
+                    continuedContent: contContent,
+                });
+                pushDescriptionBlocks(edu.description || '', itemKey);
+            });
+    }
+
+    if (data.skills && data.skills.length > 0 && data.skills[0].name) {
+        addSectionHeading('Skills', 'sec-skills');
+        const skillsPerColumn = 3;
+        const totalColumns = Math.ceil(data.skills.length / skillsPerColumn);
+        const skillColumns: Skill[][] = [];
+        for (let i = 0; i < totalColumns; i++) {
+            const startIndex = i * skillsPerColumn;
+            const endIndex = startIndex + skillsPerColumn;
+            skillColumns.push(data.skills.slice(startIndex, endIndex));
         }
-
-        // Proses Skills section
-        if (data.skills && data.skills.length > 0 && data.skills[0].name) {
-            currentPageHeight += SECTION_SPACING_HEIGHT;
-
-            const skillsSectionTitleHeight = SECTION_TITLE_LINES * LINE_HEIGHT;
-            // Tambahkan heading skills
-            currentPage.push(
-                <div key="skills_title" className="cv-section mt-6 mb-4">
-                    <h2
-                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
-                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
-                    >
-                        Skills
-                    </h2>
-                </div>,
-            );
-            currentPageHeight += skillsSectionTitleHeight;
-
-            // Organisir skills dalam kolom (3 item per kolom)
-            const skillsPerColumn = 3;
-            const totalColumns = Math.ceil(data.skills.length / skillsPerColumn);
-            const skillColumns: Skill[][] = [];
-
-            // Bagi skills ke dalam kolom-kolom
-            for (let i = 0; i < totalColumns; i++) {
-                const startIndex = i * skillsPerColumn;
-                const endIndex = startIndex + skillsPerColumn;
-                skillColumns.push(data.skills.slice(startIndex, endIndex));
-            }
-
-            // Tambahkan container untuk skills dengan layout kolom yang konsisten untuk PDF dan preview
-            currentPage.push(
+        blocks.push({
+            key: 'skills-grid',
+            kind: 'skills-grid',
+            keepWithNext: false,
+            content: (
                 <div
-                    key="skills_container"
-                    className="skills-container"
+                    className="skills-container mt-2"
                     style={{
                         display: 'flex',
                         flexWrap: 'wrap',
@@ -744,7 +590,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 >
                     {skillColumns.map((column, columnIndex) => (
                         <div
-                            key={`skills_column_${columnIndex}`}
+                            key={`skills_col_${columnIndex}`}
                             className="skills-column"
                             style={{
                                 flex: '1 1 auto',
@@ -762,27 +608,24 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             ))}
                         </div>
                     ))}
-                </div>,
-            );
+                </div>
+            ),
+        });
+    }
 
-            // Hitung tinggi total skills section
-            const maxSkillsInColumn = Math.max(...skillColumns.map((col) => col.length));
-            const totalSkillsHeight = maxSkillsInColumn * 25; // 25px per skill item
-            currentPageHeight += totalSkillsHeight;
-        }
-
-        // Proses Portfolios dengan pagination per baris
-        if (data.portfolios && data.portfolios.length > 0 && data.portfolios[0].title) {
-            processSectionWithPreciseLineBreak(
-                'Portfolios',
-                data.portfolios.filter((portfolio: Portfolio) => portfolio.title),
-                (portfolio: Portfolio, index: number) => (
-                    <div key={`portfolio_header_${index}`} className="mb-2">
+    if (data.portfolios && data.portfolios.length > 0 && data.portfolios[0].title) {
+        addSectionHeading('Portfolios', 'sec-portfolios');
+        data.portfolios
+            .filter((p) => p.title)
+            .forEach((portfolio, index) => {
+                const itemKey = `portfolio-head-${index}`;
+                const headContent = (
+                    <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {portfolio.title} (
                                 <a
-                                    href={portfolio.link.startsWith('http') ? portfolio.link : `https://${portfolio.link}`}
+                                    href={portfolio.link && portfolio.link.startsWith('http') ? portfolio.link : `https://${portfolio.link}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-gray-600 hover:underline"
@@ -794,30 +637,81 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             </h3>
                         </div>
                     </div>
-                ),
-                BULLET_POINT_HEIGHT,
-                -100,
-                2,
-            );
-        }
+                );
+                blocks.push({
+                    key: itemKey,
+                    kind: 'item-heading',
+                    keepWithNext: Boolean(portfolio.description),
+                    content: headContent,
+                });
+                pushDescriptionBlocks(portfolio.description || '', itemKey);
+            });
+    }
 
-        if (data.accomplishments && data.accomplishments.length > 0 && data.accomplishments[0].description) {
-            processSectionWithPreciseLineBreak(
-                'Accomplishments',
-                data.accomplishments.filter((acc: Accomplishment) => acc.description),
-                (accomplishment: Accomplishment, index: number) => <div key={`accomplishment_header_${index}`} className="mb-2" />,
-                BULLET_POINT_HEIGHT,
-                -100,
-                0,
-            );
-        }
+    if (data.certifications && data.certifications.length > 0 && data.certifications[0].name) {
+        addSectionHeading('Certifications', 'sec-certifications');
+        data.certifications
+            .filter((c) => c.name)
+            .forEach((cert, index) => {
+                const itemKey = `cert-head-${index}`;
+                const headContent = (
+                    <div className="mt-2 mb-1">
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {cert.name}
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {cert.start_year} - {cert.end_year || (cert.is_time_limited ? '' : 'No Expiration')}
+                            </span>
+                        </div>
+                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                            {cert.organization} {cert.credential_id ? `(ID: ${cert.credential_id})` : ''}
+                        </h4>
+                    </div>
+                );
+                const contContent = (
+                    <div className="mt-2 mb-1">
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {cert.name} <span className="font-normal italic text-gray-500">(continued)</span>
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {cert.start_year} - {cert.end_year || (cert.is_time_limited ? '' : 'No Expiration')}
+                            </span>
+                        </div>
+                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                            {cert.organization} {cert.credential_id ? `(ID: ${cert.credential_id})` : ''}
+                        </h4>
+                    </div>
+                );
+                blocks.push({
+                    key: itemKey,
+                    kind: 'item-heading',
+                    keepWithNext: Boolean(cert.description),
+                    content: headContent,
+                    continuedContent: contContent,
+                });
+                pushDescriptionBlocks(cert.description || '', itemKey);
+            });
+    }
 
-        if (data.organizations && data.organizations.length > 0 && data.organizations[0].name) {
-            processSectionWithPreciseLineBreak(
-                'Organization',
-                data.organizations.filter((org: Organization) => org.name),
-                (org: Organization, index: number) => (
-                    <div key={`org_header_${index}`} className="mb-2">
+    if (data.accomplishments && data.accomplishments.length > 0 && data.accomplishments[0].description) {
+        addSectionHeading('Accomplishments', 'sec-accomp');
+        data.accomplishments
+            .filter((a) => a.description)
+            .forEach((acc, index) => {
+                pushDescriptionBlocks(acc.description, undefined, `accomp-${index}`);
+            });
+    }
+
+    if (data.organizations && data.organizations.length > 0 && data.organizations[0].name) {
+        addSectionHeading('Organization', 'sec-org');
+        data.organizations
+            .filter((o) => o.name)
+            .forEach((org, index) => {
+                const itemKey = `org-head-${index}`;
+                const headContent = (
+                    <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {org.position}, {org.name}
@@ -827,43 +721,35 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                             </span>
                         </div>
                     </div>
-                ),
-                BULLET_POINT_HEIGHT,
-                -100,
-                2,
-            );
-        }
+                );
+                const contContent = (
+                    <div className="mt-2 mb-1">
+                        <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {org.position}, {org.name} <span className="font-normal italic text-gray-500">(continued)</span>
+                            </h3>
+                            <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                                {formatDate(org.start_date)} - {formatDate(org.end_date)}
+                            </span>
+                        </div>
+                    </div>
+                );
+                blocks.push({
+                    key: itemKey,
+                    kind: 'item-heading',
+                    keepWithNext: Boolean(org.description),
+                    content: headContent,
+                    continuedContent: contContent,
+                });
+                pushDescriptionBlocks(org.description || '', itemKey);
+            });
+    }
 
-        // Proses Languages dengan pagination per baris
-        if (data.languages && data.languages.length > 0 && data.languages[0].language) {
-            currentPageHeight += SECTION_SPACING_HEIGHT;
-
-            const languagesSectionTitleHeight = SECTION_TITLE_LINES * LINE_HEIGHT;
-            const languagesLimit = PAGE_HEIGHT - RESERVED_BOTTOM_HEIGHT;
-            if (currentPageHeight + languagesSectionTitleHeight > languagesLimit) {
-                pageContents.push(currentPage);
-                currentPage = [];
-                currentPageHeight = 0;
-            }
-
-            // Tambahkan heading languages
-            currentPage.push(
-                <div key="languages_title" className="cv-section mt-6 mb-4">
-                    <h2
-                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
-                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
-                    >
-                        Languages
-                    </h2>
-                </div>,
-            );
-            currentPageHeight += languagesSectionTitleHeight;
-
-            // Tambahkan container untuk languages
-            currentPage.push(<ul key="languages_list" className="list-disc pl-5"></ul>);
-
-            // Proses setiap language
-            data.languages.forEach((lang, index) => {
+    if (data.languages && data.languages.length > 0 && data.languages[0].language) {
+        addSectionHeading('Languages', 'sec-languages');
+        const langItems = data.languages
+            .filter((l) => l.language)
+            .map((lang, index) => {
                 let levelText = '';
                 switch (lang.level) {
                     case 'Native':
@@ -884,160 +770,145 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     default:
                         levelText = lang.level;
                 }
-
-                const langItemHeight = 30;
-
-                if (currentPageHeight + langItemHeight > languagesLimit) {
-                    pageContents.push(currentPage);
-                    currentPage = [];
-                    currentPageHeight = 0;
-                }
-
-                // Tambahkan language item
-                currentPage.push(
+                return (
                     <li key={`lang_${index}`} className="mb-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
                         <span className="font-medium text-gray-700">{lang.language}</span>
                         <span className="ml-2 text-gray-600">({levelText})</span>
-                    </li>,
+                    </li>
                 );
-                currentPageHeight += langItemHeight;
             });
-        }
+        blocks.push({
+            key: 'languages-list',
+            kind: 'languages-list',
+            keepWithNext: false,
+            content: <ul className="mt-2 list-disc pl-5">{langItems}</ul>,
+        });
+    }
 
-        // Proses Additional Info dengan pagination per baris
-        if (data.additional_info) {
-            const { intro, bullets } = extractBulletPoints(data.additional_info);
+    if (data.additional_info) {
+        addSectionHeading('Additional Info', 'sec-additional');
+        pushDescriptionBlocks(data.additional_info, undefined, 'additional-info');
+    }
 
-            currentPageHeight += SECTION_SPACING_HEIGHT;
+    return blocks;
+}
 
-            const additionalInfoSectionTitleHeight = SECTION_TITLE_LINES * LINE_HEIGHT;
-            const contentLimit = PAGE_HEIGHT - RESERVED_BOTTOM_HEIGHT;
-            if (currentPageHeight + additionalInfoSectionTitleHeight > contentLimit) {
-                pageContents.push(currentPage);
-                currentPage = [];
-                currentPageHeight = 0;
-            }
+const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
+    const [zoomLevel, setZoomLevel] = useState(100);
+    const [showZoomControls, setShowZoomControls] = useState(false);
+    const [pageKeys, setPageKeys] = useState<string[][]>([]);
+    const cvContentRef = useRef<HTMLDivElement>(null);
+    const measurementRef = useRef<HTMLDivElement>(null);
+    const lastSignatureRef = useRef<string>('');
 
-            currentPage.push(
-                <div key="additional_info_title" className="cv-section mt-6 mb-4">
-                    <h2
-                        className="mb-2 border-b-2 border-gray-200 pb-2 font-semibold text-gray-800"
-                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}
-                    >
-                        Additional Info
-                    </h2>
-                </div>,
-            );
-            currentPageHeight += additionalInfoSectionTitleHeight;
+    useEffect(() => {
+        const styleElement = document.createElement('style');
+        styleElement.innerHTML = pageBreakStyle;
+        document.head.appendChild(styleElement);
 
-            if (intro) {
-                currentPage.push(
-                    <p
-                        key="additional_info_intro"
-                        className="cv-body-text mt-1 text-gray-600"
-                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', textAlign: 'justify' }}
-                    >
-                        {intro}
-                    </p>,
-                );
-                currentPageHeight += PARAGRAPH_HEIGHT;
-            }
-            bullets.forEach((bullet, bulletIndex) => {
-                currentPage.push(
-                    <div
-                        key={`bullet_additional_info_${bulletIndex}`}
-                        style={{
-                            display: 'flex',
-                            marginBottom: '0.25rem',
-                            fontFamily: 'Arial, sans-serif',
-                            fontSize: '10pt',
-                            textAlign: 'justify',
-                        }}
-                        className="cv-body-text text-gray-600"
-                    >
-                        <div style={{ width: '1em', flexShrink: 0 }}>•</div>
-                        <div>{bullet}</div>
-                    </div>,
-                );
-                currentPageHeight += BULLET_POINT_HEIGHT;
-            });
-        }
+        return () => {
+            document.head.removeChild(styleElement);
+        };
+    }, []);
 
-        // Tambahkan halaman terakhir jika masih ada konten
-        if (currentPage.length > 0) {
-            pageContents.push(currentPage);
-        }
+    useEffect(() => {
+        setShowZoomControls(!isPdfMode);
+    }, [isPdfMode]);
 
-        // Jika tidak ada halaman yang dibuat, buat halaman dengan header saja
-        if (pageContents.length === 0) {
-            pageContents.push(currentPage);
-        }
-
-        setPages(pageContents);
-    }, [data]);
-
-    // Fungsi helper untuk memastikan semua deskripsi di-render dengan benar (untuk kompatibilitas)
-    const renderDescription = (description: string, itemIndex: number): React.ReactNode[] => {
-        if (!description) return [];
-
-        // Jika deskripsi sudah berformat dengan bullet points
-        if (description.includes('• ')) {
-            const parts = description.split('• ');
-            const result: React.ReactNode[] = [];
-
-            // Paragraph awal (jika ada)
-            if (parts[0].trim()) {
-                result.push(<p key={`intro-${itemIndex}`}>{parts[0].trim()}</p>);
-            }
-
-            // Bullet points
-            for (let i = 1; i < parts.length; i++) {
-                if (parts[i].trim()) {
-                    result.push(
-                        <div
-                            key={`bullet-${itemIndex}-${i}`}
-                            style={{
-                                display: 'flex',
-                                marginBottom: '0.25rem',
-                            }}
-                        >
-                            <div style={{ width: '1em', flexShrink: 0 }}>•</div>
-                            <div>{parts[i].trim()}</div>
-                        </div>,
-                    );
-                }
-            }
-
-            return result;
-        }
-
-        // Alternatif: coba deteksi format bullet dengan regex jika format '• ' tidak ditemukan
-        if (description.match(/[\n\r][-*•][\s]/) || description.includes('\n- ')) {
-            // Split by newlines and process each line
-            const lines = description.split(/[\n\r]+/);
-            return lines.map((line, i) => {
-                const trimmedLine = line.trim();
-                if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
-                    return (
-                        <div
-                            key={`bullet-${itemIndex}-${i}`}
-                            style={{
-                                display: 'flex',
-                                marginBottom: '0.25rem',
-                            }}
-                        >
-                            <div style={{ width: '1em', flexShrink: 0 }}>•</div>
-                            <div>{trimmedLine.substring(2)}</div>
-                        </div>
-                    );
-                }
-                return <p key={`text-${itemIndex}-${i}`}>{trimmedLine}</p>;
-            });
-        }
-
-        // Jika tidak ada format khusus, tampilkan sebagai paragraf biasa
-        return [<p key={`plain-${itemIndex}`}>{description}</p>];
+    const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setZoomLevel(parseInt(e.target.value));
     };
+
+    const toggleZoomControls = () => {
+        if (!isPdfMode) {
+            setShowZoomControls((prev) => !prev);
+        }
+    };
+
+    const blocks: SemanticBlock[] = useMemo(() => buildSemanticBlocks(data), [data]);
+    const blockMap = useMemo(() => {
+        const map = new Map<string, SemanticBlock>();
+        blocks.forEach((b) => map.set(b.key, b));
+        return map;
+    }, [blocks]);
+
+    useEffect(() => {
+        let active = true;
+
+        const performPagination = async () => {
+            if (typeof document !== 'undefined' && 'fonts' in document) {
+                try {
+                    await document.fonts.ready;
+                } catch (e) {
+                    // Ignore font ready errors
+                }
+            }
+
+            if (measurementRef.current) {
+                const images = Array.from(measurementRef.current.querySelectorAll('img'));
+                await Promise.all(
+                    images.map((img) => {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise((resolve) => {
+                            img.onload = resolve;
+                            img.onerror = resolve;
+                        });
+                    }),
+                );
+            }
+
+            if (!active || !measurementRef.current) return;
+
+            const measured = measureBlocks(measurementRef.current, blocks);
+            const computedPages = paginateBlocks(measured, MAX_CONTENT_HEIGHT_PX);
+
+            const signature = JSON.stringify(computedPages);
+            if (signature !== lastSignatureRef.current) {
+                lastSignatureRef.current = signature;
+                setPageKeys(computedPages);
+            }
+        };
+
+        performPagination();
+        const timer = setTimeout(performPagination, 150);
+
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+    }, [blocks]);
+
+    const activePageKeys = pageKeys.length > 0 ? pageKeys : [blocks.map((b) => b.key)];
+
+    const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
+        <div className="cv-page mb-8 rounded-lg bg-white shadow-lg" style={pageOuterStyle}>
+            <div
+                className="cv-page-content flex flex-col"
+                style={{ ...pageContentStyle, minHeight: 'calc(100% - 60px)', paddingBottom: '20px' }}
+            >
+                {content}
+            </div>
+            {typeof pageIndex === 'number' && typeof totalPages === 'number' && (
+                <div
+                    className="page-number-indicator"
+                    style={{
+                        position: 'absolute',
+                        bottom: `${MARGIN_BOTTOM}mm`,
+                        left: `${MARGIN_LEFT}mm`,
+                        right: `${MARGIN_RIGHT}mm`,
+                        textAlign: 'center',
+                        fontSize: '10pt',
+                        color: '#000',
+                        fontFamily: 'Arial, sans-serif',
+                        height: '20px',
+                        lineHeight: '20px',
+                    }}
+                >
+                    Page {pageIndex + 1} of {totalPages}
+                </div>
+            )}
+        </div>
+    );
 
     if (!data || Object.keys(data).length === 0) {
         return (
@@ -1104,6 +975,32 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 </button>
             )}
 
+            {/* Offscreen exact-width measurement surface without zoom or transitions */}
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute',
+                    top: '-99999px',
+                    left: '-99999px',
+                    width: `${CONTENT_WIDTH_MM}mm`,
+                    visibility: 'hidden',
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                }}
+            >
+                <div
+                    ref={measurementRef}
+                    className="cv-page-content flex flex-col"
+                    style={{ ...pageContentStyle, width: '100%', minHeight: 'auto', paddingBottom: '0' }}
+                >
+                    {blocks.map((block) => (
+                        <div key={block.key} data-cv-block-key={block.key} data-cv-kind={block.kind} className="cv-semantic-block">
+                            {block.content}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div
                 className="cv-multi-page-container"
                 style={{
@@ -1113,10 +1010,39 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 }}
                 ref={cvContentRef}
             >
-                {pages.map((pageContent, index) => (
+                {activePageKeys.map((pageContentKeys, index) => (
                     <div key={`page-${index}`} className="relative mb-6">
-                        {createPage(pageContent, index, pages.length)}
-                        {index < pages.length - 1 && <div className="html2pdf__page-break"></div>}
+                        {createPage(
+                            pageContentKeys.map((key) => {
+                                if (key.startsWith('cont::')) {
+                                    const parts = key.split('::');
+                                    const originalKey = parts[1];
+                                    const block = blockMap.get(originalKey);
+                                    if (block && block.continuedContent) {
+                                        return (
+                                            <div
+                                                key={key}
+                                                data-cv-block-key={key}
+                                                data-cv-kind="item-heading-continued"
+                                                className="cv-semantic-block"
+                                            >
+                                                {block.continuedContent}
+                                            </div>
+                                        );
+                                    }
+                                }
+                                const block = blockMap.get(key);
+                                if (!block) return null;
+                                return (
+                                    <div key={key} data-cv-block-key={key} data-cv-kind={block.kind} className="cv-semantic-block">
+                                        {block.content}
+                                    </div>
+                                );
+                            }),
+                            index,
+                            activePageKeys.length,
+                        )}
+                        {index < activePageKeys.length - 1 && <div className="html2pdf__page-break"></div>}
                     </div>
                 ))}
             </div>

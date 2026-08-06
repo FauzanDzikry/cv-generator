@@ -390,19 +390,19 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Hapus `PAGE_HEIGHT`, seluruh height heuristic, `marginThreshold`, `RESERVED_BOTTOM_HEIGHT`, dan manual counter.
-- [ ] Refactor output section menjadi ordered semantic blocks dengan `data-cv-block-key`, `data-cv-kind`, dan `keepWithNext`.
-- [ ] Render satu measurement surface offscreen tetapi tidak `display: none`, pada exact content width, tanpa zoom atau transition.
-- [ ] Set content container sebagai flex column sehingga vertical margins tidak collapse; `measureBlock()` menjumlahkan rect height dan computed block margins.
-- [ ] Tunggu fonts dan images sebelum measurement; trigger ulang ketika `data` atau photo decode berubah.
-- [ ] Implementasikan greedy packing: tambahkan blok selama total height <= measured content height.
-- [ ] Sebelum menempatkan block `keepWithNext`, ukur block tersebut bersama block berikutnya; pindahkan pasangan jika tidak muat.
-- [ ] Untuk item yang melampaui sisa halaman, pecah pada paragraph/bullet boundary dan ulangi item heading dengan `(continued)` pada halaman baru.
-- [ ] Implementasikan fallback binary search word boundary hanya ketika satu block sendiri lebih tinggi daripada full content box.
-- [ ] Render pages dari array block keys hasil packing; jangan menyimpan React nodes dalam state.
-- [ ] Ganti `overflowY: hidden` dengan assertion/test overflow; page final boleh `overflow: hidden` hanya sebagai safety net setelah measurement lulus.
-- [ ] Hilangkan empty `<ul>` yang diikuti `<li>` sibling; render languages dalam container/list valid.
-- [ ] Pastikan skills grid diukur sebagai satu block dan pindah utuh bila muat di halaman berikutnya; bila lebih tinggi dari satu halaman, split per row.
+- [x] Hapus `PAGE_HEIGHT`, seluruh height heuristic, `marginThreshold`, `RESERVED_BOTTOM_HEIGHT`, dan manual counter.
+- [x] Refactor output section menjadi ordered semantic blocks dengan `data-cv-block-key`, `data-cv-kind`, dan `keepWithNext`.
+- [x] Render satu measurement surface offscreen tetapi tidak `display: none`, pada exact content width, tanpa zoom atau transition.
+- [x] Set content container sebagai flex column sehingga vertical margins tidak collapse; `measureBlock()` menjumlahkan rect height dan computed block margins.
+- [x] Tunggu fonts dan images sebelum measurement; trigger ulang ketika `data` atau photo decode berubah.
+- [x] Implementasikan greedy packing: tambahkan blok selama total height <= measured content height.
+- [x] Sebelum menempatkan block `keepWithNext`, ukur block tersebut bersama block berikutnya; pindahkan pasangan jika tidak muat.
+- [x] Untuk item yang melampaui sisa halaman, pecah pada paragraph/bullet boundary dan ulangi item heading dengan `(continued)` pada halaman baru.
+- [x] Implementasikan fallback binary search word boundary hanya ketika satu block sendiri lebih tinggi daripada full content box.
+- [x] Render pages dari array block keys hasil packing; jangan menyimpan React nodes dalam state.
+- [x] Ganti `overflowY: hidden` dengan assertion/test overflow; page final boleh `overflow: hidden` hanya sebagai safety net setelah measurement lulus.
+- [x] Hilangkan empty `<ul>` yang diikuti `<li>` sibling; render languages dalam container/list valid.
+- [x] Pastikan skills grid diukur sebagai satu block dan pindah utuh bila muat di halaman berikutnya; bila lebih tinggi dari satu halaman, split per row.
 
 **Test:** Fixture panjang harus memenuhi:
 

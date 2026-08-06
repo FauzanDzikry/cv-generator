@@ -107,14 +107,68 @@ test.describe('CV Preview & Pagination Regression', () => {
         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
         await previewButton.click();
 
-        const cvPages = page.locator('.cv-page');
+        const cvPages = page.locator('.cv-multi-page-container .cv-page');
         await expect(cvPages.first()).toBeVisible();
+        await page.waitForTimeout(300);
 
-        // Mark test as regression expected to fail until Phase 5 (measured semantic blocks) is implemented
-        test.fail(true, 'Regression: expected to fail until Phase 5 (measured semantic blocks) is implemented');
-
-        // Phase 5 Contract: Semantic blocks with data-cv-block-key must be present
-        const blockCount = await page.locator('[data-cv-block-key]').count();
+        const blockCount = await page.locator('.cv-multi-page-container [data-cv-block-key]').count();
         expect(blockCount).toBeGreaterThan(0);
+
+        const pageContents = page.locator('.cv-multi-page-container .cv-page-content');
+        const count = await pageContents.count();
+        expect(count).toBeGreaterThan(1);
+
+        for (let i = 0; i < count; i++) {
+            const el = pageContents.nth(i);
+            const measurements = await el.evaluate((node) => ({
+                scrollHeight: node.scrollHeight,
+                clientHeight: node.clientHeight,
+            }));
+            expect(measurements.scrollHeight).toBeLessThanOrEqual(measurements.clientHeight + 1);
+        }
+
+        for (let i = 0; i < count; i++) {
+            const pageEl = pageContents.nth(i);
+            const lastBlockKind = await pageEl.evaluate((node) => {
+                const blocks = Array.from(node.querySelectorAll('[data-cv-kind]'));
+                if (blocks.length === 0) return null;
+                return blocks[blocks.length - 1].getAttribute('data-cv-kind');
+            });
+            expect(lastBlockKind).not.toBe('section-heading');
+        }
+
+        for (let i = 0; i < count; i++) {
+            const pageEl = pageContents.nth(i);
+            const validItemHeadings = await pageEl.evaluate((node) => {
+                const blocks = Array.from(node.querySelectorAll('[data-cv-kind]'));
+                for (let idx = 0; idx < blocks.length; idx++) {
+                    const kind = blocks[idx].getAttribute('data-cv-kind');
+                    if (kind === 'item-heading' || kind === 'item-heading-continued') {
+                        if (idx === blocks.length - 1) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            });
+            expect(validItemHeadings).toBe(true);
+        }
+
+        const initialKeys = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('.cv-multi-page-container .cv-page-content')).map((page) =>
+                Array.from(page.querySelectorAll('[data-cv-block-key]')).map((b) => b.getAttribute('data-cv-block-key'))
+            );
+        });
+
+        for (let attempt = 1; attempt <= 5; attempt++) {
+            await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+            await page.waitForTimeout(100);
+            const currentKeys = await page.evaluate(() => {
+                return Array.from(document.querySelectorAll('.cv-multi-page-container .cv-page-content')).map((page) =>
+                    Array.from(page.querySelectorAll('[data-cv-block-key]')).map((b) => b.getAttribute('data-cv-block-key'))
+                );
+            });
+            expect(currentKeys).toEqual(initialKeys);
+        }
     });
 });
