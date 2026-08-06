@@ -453,6 +453,40 @@ Received: "static"
 > 42 |         expect(position).toBe('sticky');
      |                          ^ Error: expect(received).toBe(expected) // Object.is equality
   43 |     });
-  44 | });
-  45 | 
+  44 | 
+  45 |     test('Phase 3: Page dimensions and content insets match canonical A4 measurements within 1.5px tolerance', async ({ page }) => {
+  46 |         await page.addInitScript((data) => {
+  47 |             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+  48 |             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+  49 |         }, fixtureData);
+  50 | 
+  51 |         await page.goto('/generate-cv');
+  52 | 
+  53 |         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+  54 |         await previewButton.click();
+  55 | 
+  56 |         const cvPages = page.locator('.cv-page');
+  57 |         await expect(cvPages.first()).toBeVisible();
+  58 | 
+  59 |         const measurements = await cvPages.first().evaluate((el) => {
+  60 |             const style = window.getComputedStyle(el);
+  61 |             return {
+  62 |                 width: parseFloat(style.width),
+  63 |                 height: parseFloat(style.height),
+  64 |                 paddingTop: parseFloat(style.paddingTop),
+  65 |                 paddingRight: parseFloat(style.paddingRight),
+  66 |                 paddingBottom: parseFloat(style.paddingBottom),
+  67 |                 paddingLeft: parseFloat(style.paddingLeft),
+  68 |             };
+  69 |         });
+  70 | 
+  71 |         expect(Math.abs(measurements.width - 793.7)).toBeLessThanOrEqual(1.5);
+  72 |         expect(Math.abs(measurements.height - 1122.5)).toBeLessThanOrEqual(1.5);
+  73 |         expect(Math.abs(measurements.paddingTop - 37.8)).toBeLessThanOrEqual(1.5);
+  74 |         expect(Math.abs(measurements.paddingRight - 37.8)).toBeLessThanOrEqual(1.5);
+  75 |         expect(Math.abs(measurements.paddingBottom - 37.8)).toBeLessThanOrEqual(1.5);
+  76 |         expect(Math.abs(measurements.paddingLeft - 37.8)).toBeLessThanOrEqual(1.5);
+  77 |     });
+  78 | });
+  79 | 
 ```

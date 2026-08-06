@@ -1,6 +1,14 @@
 import CV, { pageBreakStyle } from '@/components/cv-format';
 import FormProgress from '@/components/percentage';
 import AppLayout from '@/layouts/layouts';
+import {
+    MARGIN_BOTTOM,
+    MARGIN_LEFT,
+    MARGIN_RIGHT,
+    MARGIN_TOP,
+    PAGE_HEIGHT_MM,
+    PAGE_WIDTH_MM,
+} from '@/lib/cv-page-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 
@@ -633,8 +641,8 @@ export default function CvForm() {
 
                     const printStyles = `
                         @page {
-                            size: A4;
-                            margin: 1cm;
+                            size: A4 portrait;
+                            margin: 0;
                         }
                         
                         * {
@@ -674,10 +682,10 @@ export default function CvForm() {
                         }
                         
                         .cv-page {
-                            width: 21cm !important;
+                            width: ${PAGE_WIDTH_MM}mm !important;
                             height: auto !important;
-                            min-height: 29.7cm !important;
-                            padding: 1cm !important;
+                            min-height: ${PAGE_HEIGHT_MM}mm !important;
+                            padding: ${MARGIN_TOP}mm ${MARGIN_RIGHT}mm ${MARGIN_BOTTOM}mm ${MARGIN_LEFT}mm !important;
                             box-sizing: border-box !important;
                             background: white !important;
                             box-shadow: none !important;
@@ -705,9 +713,9 @@ export default function CvForm() {
                         .page-number-indicator {
                             display: block !important;
                             position: absolute;
-                            bottom: 1cm;
-                            left: 1cm;
-                            right: 1cm;
+                            bottom: ${MARGIN_BOTTOM}mm;
+                            left: ${MARGIN_LEFT}mm;
+                            right: ${MARGIN_RIGHT}mm;
                             text-align: center;
                             font-size: 10pt;
                             color: #000;
@@ -1035,8 +1043,8 @@ export default function CvForm() {
                         /* Print media queries */
                         @media print {
                             html, body {
-                                width: 210mm;
-                                height: 297mm;
+                                width: ${PAGE_WIDTH_MM}mm;
+                                height: ${PAGE_HEIGHT_MM}mm;
                                 margin: 0;
                                 padding: 0;
                             }
@@ -3009,9 +3017,9 @@ export default function CvForm() {
                     className="cv-for-pdf"
                     style={{
                         backgroundColor: 'white',
-                        width: '21cm',
-                        minHeight: '29.7cm',
-                        padding: '2cm',
+                        width: `${PAGE_WIDTH_MM}mm`,
+                        minHeight: `${PAGE_HEIGHT_MM}mm`,
+                        padding: `${MARGIN_TOP * 2}mm`,
                         boxSizing: 'border-box',
                         margin: '0 auto',
                         boxShadow: 'none',

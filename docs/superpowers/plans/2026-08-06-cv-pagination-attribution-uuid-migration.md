@@ -327,12 +327,12 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Tulis enam page constants dan `ATTRIBUTION_TEXT` sesuai Target Interfaces.
-- [ ] Ekspor style object untuk page outer/content dan CSS string untuk `@page`/`@media print`; interpolasi empat konstanta, jangan salin angka margin.
-- [ ] Ganti `width: 21cm`, `height: 29.7cm`, seluruh `padding: 1cm/2cm`, dan posisi footer `1cm` dengan derived values dari module.
-- [ ] Hapus `@page margin: 1cm` lama; gunakan `@page { size: A4 portrait; margin: 0; }`, sementara inset konten dikendalikan page component dari empat konstanta.
-- [ ] Tambahkan dev assertion di module bahwa setiap margin non-negatif dan jumlah horizontal/vertikal lebih kecil dari ukuran halaman.
-- [ ] Jalankan `rg -n "1cm|2cm|10mm|padding:.*cm|margin:.*cm" resources/js/components/cv-format.tsx resources/js/pages/form-generate.tsx` dan pastikan tidak ada margin halaman literal tersisa.
+- [x] Tulis enam page constants dan `ATTRIBUTION_TEXT` sesuai Target Interfaces.
+- [x] Ekspor style object untuk page outer/content dan CSS string untuk `@page`/`@media print`; interpolasi empat konstanta, jangan salin angka margin.
+- [x] Ganti `width: 21cm`, `height: 29.7cm`, seluruh `padding: 1cm/2cm`, dan posisi footer `1cm` dengan derived values dari module.
+- [x] Hapus `@page margin: 1cm` lama; gunakan `@page { size: A4 portrait; margin: 0; }`, sementara inset konten dikendalikan page component dari empat konstanta.
+- [x] Tambahkan dev assertion di module bahwa setiap margin non-negatif dan jumlah horizontal/vertikal lebih kecil dari ukuran halaman.
+- [x] Jalankan `rg -n "1cm|2cm|10mm|padding:.*cm|margin:.*cm" resources/js/components/cv-format.tsx resources/js/pages/form-generate.tsx` dan pastikan tidak ada margin halaman literal tersisa.
 
 **Test:** Playwright mengukur page sekitar `793.7 x 1122.5` CSS px dan content inset sekitar `37.8` CSS px per sisi dengan toleransi 1.5 px.
 

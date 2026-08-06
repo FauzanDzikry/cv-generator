@@ -1,4 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import {
+    MARGIN_BOTTOM,
+    MARGIN_LEFT,
+    MARGIN_RIGHT,
+    MARGIN_TOP,
+    PAGE_WIDTH_MM,
+    pageOuterStyle,
+} from '@/lib/cv-page-layout';
 
 export const pageBreakStyle = `
 .html2pdf__page-break {
@@ -23,8 +31,8 @@ export const pageBreakStyle = `
     -webkit-print-color-adjust: exact;
     background-color: white !important;
     height: auto !important;
-    width: 21cm !important;
-    padding: 1cm !important;
+    width: ${PAGE_WIDTH_MM}mm !important;
+    padding: ${MARGIN_TOP}mm ${MARGIN_RIGHT}mm ${MARGIN_BOTTOM}mm ${MARGIN_LEFT}mm !important;
     border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
@@ -324,22 +332,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
         <div
             className="cv-page mb-8 rounded-lg bg-white shadow-lg"
-            style={{
-                width: '21cm',
-                height: '29.7cm',
-                padding: '1cm',
-                boxSizing: 'border-box',
-                fontSize: '10pt',
-                lineHeight: '1.5',
-                backgroundColor: 'white',
-                color: '#000',
-                boxShadow: '0 0 10px rgba(83, 81, 81, 0.2)',
-                margin: '0 auto',
-                marginTop: '40px',
-                position: 'relative',
-                overflowY: 'hidden',
-                fontFamily: 'Arial, sans-serif',
-            }}
+            style={pageOuterStyle}
         >
             <div style={{ minHeight: 'calc(100% - 60px)', paddingBottom: '20px', position: 'relative', zIndex: 1 }}>{content}</div>
             {typeof pageIndex === 'number' && typeof totalPages === 'number' && (
@@ -347,9 +340,9 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     className="page-number-indicator"
                     style={{
                         position: 'absolute',
-                        bottom: '1cm',
-                        left: '1cm',
-                        right: '1cm',
+                        bottom: `${MARGIN_BOTTOM}mm`,
+                        left: `${MARGIN_LEFT}mm`,
+                        right: `${MARGIN_RIGHT}mm`,
                         textAlign: 'center',
                         fontSize: '10pt',
                         color: '#000',
