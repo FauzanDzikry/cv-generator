@@ -82,9 +82,12 @@ class Phase12IntegrityAndRegressionTest extends TestCase
         ];
 
         $cvTable = DB::connection()->getDriverName() === 'sqlite' ? 'cv_data' : 'cv.cv_data';
-        DB::table($cvTable)->where('id', $cv->id)->update([
-            'skills' => json_encode($expectedArray),
-        ]);
+
+        if (Schema::hasColumn($cvTable, 'skills')) {
+            DB::table($cvTable)->where('id', $cv->id)->update([
+                'skills' => json_encode($expectedArray),
+            ]);
+        }
 
         // Insert relational rows out of primary order but with correct sort_order
         CVSkill::create(['cv_data_id' => $cv->id, 'name' => 'Gamma', 'sort_order' => 2]);
@@ -92,9 +95,13 @@ class Phase12IntegrityAndRegressionTest extends TestCase
         CVSkill::create(['cv_data_id' => $cv->id, 'name' => 'Beta', 'sort_order' => 1]);
 
         $relationalSkills = $cv->skills()->orderBy('sort_order')->get()->map(fn ($item) => ['name' => $item->name])->toArray();
-        $legacySkills = json_decode(DB::table($cvTable)->where('id', $cv->id)->value('skills'), true);
 
-        $this->assertEquals($legacySkills, $relationalSkills, "Relational array ordered by sort_order must be value- and order-identical to legacy JSON.");
+        if (Schema::hasColumn($cvTable, 'skills')) {
+            $legacySkills = json_decode(DB::table($cvTable)->where('id', $cv->id)->value('skills'), true);
+            $this->assertEquals($legacySkills, $relationalSkills, "Relational array ordered by sort_order must be value- and order-identical to legacy JSON.");
+        } else {
+            $this->assertEquals($expectedArray, $relationalSkills, "Relational array ordered by sort_order must match exact expected ordering.");
+        }
     }
 
     public function test_sql_uuid_domain_keys_audit(): void
@@ -166,5 +173,23 @@ class Phase12IntegrityAndRegressionTest extends TestCase
         $user->delete();
         $this->assertNull(CVData::find($cv->id), 'CVData must cascade delete when user is deleted.');
         $this->assertEquals(0, DB::table($this->getTableName('skills'))->where('cv_data_id', $cv->id)->count());
+    }
+
+    public function test_phase13_sql_audit_legacy_columns_and_soft_deletes(): void
+    {
+        $cvTable = DB::connection()->getDriverName() === 'sqlite' ? 'cv_data' : 'cv.cv_data';
+
+        $this->assertFalse(Schema::hasColumn('users', 'legacy_id'), 'users table must not have legacy_id column.');
+        $this->assertFalse(Schema::hasColumn('sessions', 'legacy_user_id'), 'sessions table must not have legacy_user_id column.');
+
+        $removedCvColumns = [
+            'legacy_id', 'legacy_user_id', 'deleted_at',
+            'work_experience', 'education', 'skills', 'portfolios',
+            'certifications', 'languages', 'accomplishments', 'organizations'
+        ];
+
+        foreach ($removedCvColumns as $column) {
+            $this->assertFalse(Schema::hasColumn($cvTable, $column), "cv_data table must not have {$column} column after Phase 13 cleanup.");
+        }
     }
 }

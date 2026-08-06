@@ -34,33 +34,7 @@ class CVData extends Model
         'custom_fields' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
     ];
-
-    /**
-     * Prevent legacy JSON columns from polluting model attributes so relationship collections are accessed instead.
-     */
-    public function setRawAttributes(array $attributes, $sync = false)
-    {
-        $legacyColumns = [
-            'work_experience',
-            'education',
-            'skills',
-            'portfolios',
-            'certifications',
-            'languages',
-            'accomplishments',
-            'organizations',
-            'legacy_id',
-            'legacy_user_id',
-        ];
-
-        foreach ($legacyColumns as $column) {
-            unset($attributes[$column]);
-        }
-
-        return parent::setRawAttributes($attributes, $sync);
-    }
 
     // Relasi ke User
     public function user()

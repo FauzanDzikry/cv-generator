@@ -85,7 +85,7 @@ export function sanitizeOklchColors(clonedDoc: Document, clonedEl?: HTMLElement)
                     count++;
                 }
             }
-        } catch (e) {
+        } catch {
             // Ignore computed style access errors
         }
     });

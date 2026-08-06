@@ -102,8 +102,11 @@ class CVSectionMigrationTest extends TestCase
             'last_activity' => time(),
         ]);
 
-        // 3. Migrate forward through Phase 9 migrations
-        $this->artisan('migrate');
+        // 3. Migrate forward through Phase 9 and Phase 10 migrations (up to domain cutover)
+        $this->artisan('migrate', ['--path' => 'database/migrations/2026_08_06_000001_add_shadow_uuid_columns.php']);
+        $this->artisan('migrate', ['--path' => 'database/migrations/2026_08_06_000002_create_cv_section_tables.php']);
+        $this->artisan('migrate', ['--path' => 'database/migrations/2026_08_06_000003_backfill_uuid_and_cv_sections.php']);
+        $this->artisan('migrate', ['--path' => 'database/migrations/2026_08_06_000004_switch_domain_keys_to_uuid.php']);
 
         // 4. Verify domain keys switched to UUIDs and legacy IDs preserved
         $user = DB::table('users')->where('legacy_id', 1)->first();
@@ -144,5 +147,12 @@ class CVSectionMigrationTest extends TestCase
 
         $cert = DB::table($this->getTableName('certifications'))->where('cv_data_id', $cv->id)->first();
         $this->assertNull($cert->end_year, "Empty string end_year should be sanitized to null.");
+
+        // 8. Verify Phase 13 cleanup migration drops legacy columns and sequences
+        $this->artisan('migrate', ['--path' => 'database/migrations/2026_08_06_000005_drop_legacy_cv_columns_and_sequences.php']);
+        $this->assertFalse(Schema::hasColumn('users', 'legacy_id'));
+        $this->assertFalse(Schema::hasColumn($cvTable, 'legacy_id'));
+        $this->assertFalse(Schema::hasColumn($cvTable, 'work_experience'));
+        $this->assertFalse(Schema::hasColumn($cvTable, 'deleted_at'));
     }
 }
