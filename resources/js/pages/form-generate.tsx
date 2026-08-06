@@ -1333,15 +1333,14 @@ export default function CvForm() {
                     )}
 
                     <div
-                        className="flex flex-col gap-6 transition-all duration-700 md:flex-row"
+                        className="flex flex-col gap-6 transition-opacity duration-700 lg:flex-row lg:items-start"
                         style={{
                             opacity: pageLoaded ? 1 : 0,
-                            transform: `translateY(${pageLoaded ? 0 : 50}px)`,
                             transitionDelay: '0.2s',
                         }}
                     >
                         {/* Form Section */}
-                        <div className={`${showPreview ? 'md:w-1/2' : 'w-full'} transition-all duration-300`}>
+                        <div className={`${showPreview ? 'lg:w-1/2' : 'w-full'} transition-all duration-300`}>
                             <div className="rounded-lg bg-white p-6 shadow-md dark:bg-gray-700">
                                 <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
                                     {isEdit && (
@@ -2901,15 +2900,16 @@ export default function CvForm() {
 
                         {/* Preview Section */}
                         {showPreview && (
-                            <div className="transition-all duration-300 md:w-1/2">
-                                <div className="h-full rounded-lg bg-white p-5 shadow-md dark:bg-gray-700">
-                                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                            <div className="transition-all duration-300 lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)] lg:w-1/2">
+                                <div className="flex h-full min-h-0 flex-col rounded-lg bg-white p-5 shadow-md dark:bg-gray-700">
+                                    <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-2">
                                         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Preview CV</h2>
                                         <div className="flex items-center gap-3">
                                             <button
                                                 type="button"
                                                 onClick={togglePreview}
-                                                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+                                                aria-label="Close CV preview"
+                                                className="text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-red-500 focus:outline-none dark:text-gray-300 dark:hover:text-gray-100"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                     <path
@@ -2921,7 +2921,7 @@ export default function CvForm() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="overflow-auto rounded">
+                                    <div className="min-h-0 flex-1 overflow-auto rounded">
                                         <div>
                                             <CV data={formData} isPdfMode={false} />
                                         </div>

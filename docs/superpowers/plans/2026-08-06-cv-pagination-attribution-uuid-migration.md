@@ -358,13 +358,13 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Ubah row form/preview menjadi `lg:flex-row lg:items-start`; tetap `flex-col` di bawah `lg`.
-- [ ] Ubah lebar form/preview dari breakpoint `md` menjadi `lg`.
-- [ ] Pada wrapper preview gunakan `lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]`.
-- [ ] Jadikan card `flex h-full min-h-0 flex-col`; header `shrink-0`; body preview `min-h-0 flex-1 overflow-auto`.
-- [ ] Pada mobile/tablet, hapus height viewport dan sticky sehingga preview mengalir setelah form tanpa menutup input.
-- [ ] Pastikan scroll wheel di atas preview menggerakkan isi preview, sedangkan scroll di atas form menggerakkan halaman.
-- [ ] Pastikan close-preview button dapat difokuskan dan memiliki accessible label.
+- [x] Ubah row form/preview menjadi `lg:flex-row lg:items-start`; tetap `flex-col` di bawah `lg`.
+- [x] Ubah lebar form/preview dari breakpoint `md` menjadi `lg`.
+- [x] Pada wrapper preview gunakan `lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]`.
+- [x] Jadikan card `flex h-full min-h-0 flex-col`; header `shrink-0`; body preview `min-h-0 flex-1 overflow-auto`.
+- [x] Pada mobile/tablet, hapus height viewport dan sticky sehingga preview mengalir setelah form tanpa menutup input.
+- [x] Pastikan scroll wheel di atas preview menggerakkan isi preview, sedangkan scroll di atas form menggerakkan halaman.
+- [x] Pastikan close-preview button dapat difokuskan dan memiliki accessible label.
 
 **Test:** Playwright pada 1440x900 meng-scroll form ke tombol bawah, lalu memastikan bounding top preview tetap sekitar 80 px dan card bottom tidak melebihi viewport. Test 390x844 memastikan `position: static` dan layout bertumpuk.
 

@@ -6,16 +6,16 @@
 
 # Test info
 
-- Name: cv-preview-pagination.spec.ts >> CV Preview & Pagination Regression >> preview is visible beside form and paginates deterministically without early breaks
-- Location: tests\e2e\cv-preview-pagination.spec.ts:13:5
+- Name: cv-preview-pagination.spec.ts >> CV Preview & Pagination Regression >> Phase 5 Regression: paginates deterministically using semantic measurement blocks without early breaks
+- Location: tests\e2e\cv-preview-pagination.spec.ts:99:5
 
 # Error details
 
 ```
-Error: expect(received).toBe(expected) // Object.is equality
+Error: expect(received).toBeGreaterThan(expected)
 
-Expected: "sticky"
-Received: "static"
+Expected: > 0
+Received:   0
 ```
 
 # Page snapshot
@@ -305,7 +305,7 @@ Received: "static"
         - generic [ref=e307]:
           - generic [ref=e308]:
             - heading "Preview CV" [level=2] [ref=e309]
-            - button [ref=e311]
+            - button "Close CV preview" [ref=e311]
           - generic [ref=e316]:
             - generic [ref=e317]:
               - generic [ref=e318]: 25%
@@ -409,84 +409,109 @@ Received: "static"
 # Test source
 
 ```ts
-  1  | import { test, expect } from '@playwright/test';
-  2  | import fs from 'node:fs';
-  3  | import path from 'node:path';
-  4  | 
-  5  | const fixtureData = JSON.parse(
-  6  |     fs.readFileSync(
-  7  |         path.resolve(process.cwd(), 'tests/e2e/fixtures/cv-pagination-long.json'),
-  8  |         'utf-8',
-  9  |     ),
-  10 | );
-  11 | 
-  12 | test.describe('CV Preview & Pagination Regression', () => {
-  13 |     test('preview is visible beside form and paginates deterministically without early breaks', async ({ page }) => {
-  14 |         // Inject localStorage data before navigating
-  15 |         await page.addInitScript((data) => {
-  16 |             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
-  17 |             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
-  18 |         }, fixtureData);
-  19 | 
-  20 |         await page.goto('/generate-cv');
-  21 | 
-  22 |         // Click the Preview CV button to reveal the preview pane
-  23 |         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
-  24 |         await previewButton.click();
-  25 | 
-  26 |         // Verify page loads without selector, timeout, or server errors
-  27 |         const previewHeader = page.locator('h2', { hasText: 'Preview CV' });
-  28 |         await expect(previewHeader).toBeVisible();
-  29 | 
-  30 |         const cvPages = page.locator('.cv-page');
-  31 |         await expect(cvPages.first()).toBeVisible();
-  32 |         
-  33 |         const pageCount = await cvPages.count();
-  34 |         expect(pageCount).toBeGreaterThanOrEqual(1);
-  35 | 
-  36 |         // Mark test as regression expected to fail until Phase 4 (sticky layout) & Phase 5 (pagination engine)
-  37 |         test.fail(true, 'Regression: expected to fail until Phase 4 (sticky preview) and Phase 5 (measured semantic blocks) are implemented');
-  38 | 
-  39 |         // Phase 4 Contract: Preview wrapper must be sticky with position: sticky
-  40 |         const previewSection = previewHeader.locator('..').locator('..').locator('..');
-  41 |         const position = await previewSection.evaluate((el) => window.getComputedStyle(el).position);
-> 42 |         expect(position).toBe('sticky');
-     |                          ^ Error: expect(received).toBe(expected) // Object.is equality
-  43 |     });
-  44 | 
-  45 |     test('Phase 3: Page dimensions and content insets match canonical A4 measurements within 1.5px tolerance', async ({ page }) => {
-  46 |         await page.addInitScript((data) => {
-  47 |             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
-  48 |             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
-  49 |         }, fixtureData);
-  50 | 
-  51 |         await page.goto('/generate-cv');
-  52 | 
-  53 |         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
-  54 |         await previewButton.click();
-  55 | 
-  56 |         const cvPages = page.locator('.cv-page');
-  57 |         await expect(cvPages.first()).toBeVisible();
-  58 | 
-  59 |         const measurements = await cvPages.first().evaluate((el) => {
-  60 |             const style = window.getComputedStyle(el);
-  61 |             return {
-  62 |                 width: parseFloat(style.width),
-  63 |                 height: parseFloat(style.height),
-  64 |                 paddingTop: parseFloat(style.paddingTop),
-  65 |                 paddingRight: parseFloat(style.paddingRight),
-  66 |                 paddingBottom: parseFloat(style.paddingBottom),
-  67 |                 paddingLeft: parseFloat(style.paddingLeft),
-  68 |             };
-  69 |         });
-  70 | 
-  71 |         expect(Math.abs(measurements.width - 793.7)).toBeLessThanOrEqual(1.5);
-  72 |         expect(Math.abs(measurements.height - 1122.5)).toBeLessThanOrEqual(1.5);
-  73 |         expect(Math.abs(measurements.paddingTop - 37.8)).toBeLessThanOrEqual(1.5);
-  74 |         expect(Math.abs(measurements.paddingRight - 37.8)).toBeLessThanOrEqual(1.5);
-  75 |         expect(Math.abs(measurements.paddingBottom - 37.8)).toBeLessThanOrEqual(1.5);
-  76 |         expect(Math.abs(measurements.paddingLeft - 37.8)).toBeLessThanOrEqual(1.5);
-  77 |     });
-  78 | });
-  79 | 
+  18  |         }, fixtureData);
+  19  | 
+  20  |         await page.goto('/generate-cv');
+  21  | 
+  22  |         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+  23  |         await previewButton.click();
+  24  | 
+  25  |         const previewHeader = page.locator('h2', { hasText: 'Preview CV' });
+  26  |         await expect(previewHeader).toBeVisible();
+  27  | 
+  28  |         const previewSection = previewHeader.locator('..').locator('..').locator('..');
+  29  |         const position = await previewSection.evaluate((el) => window.getComputedStyle(el).position);
+  30  |         expect(position).toBe('sticky');
+  31  | 
+  32  |         // Scroll form down towards the bottom
+  33  |         await page.evaluate(() => window.scrollTo(0, 350));
+  34  |         await page.waitForTimeout(500);
+  35  | 
+  36  |         // Verify bounding top stays around 80px (top-20 is 80px) and bottom does not exceed viewport (900px)
+  37  |         const rect = await previewSection.evaluate((el) => {
+  38  |             const r = el.getBoundingClientRect();
+  39  |             return { top: r.top, bottom: r.bottom };
+  40  |         });
+  41  |         expect(Math.abs(rect.top - 80)).toBeLessThanOrEqual(5);
+  42  |         expect(rect.bottom).toBeLessThanOrEqual(905);
+  43  |     });
+  44  | 
+  45  |     test('Phase 4 (Mobile): preview collapses to static position at 390x844', async ({ page }) => {
+  46  |         await page.setViewportSize({ width: 390, height: 844 });
+  47  |         await page.addInitScript((data) => {
+  48  |             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+  49  |             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+  50  |         }, fixtureData);
+  51  | 
+  52  |         await page.goto('/generate-cv');
+  53  | 
+  54  |         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+  55  |         await previewButton.click();
+  56  | 
+  57  |         const previewHeader = page.locator('h2', { hasText: 'Preview CV' });
+  58  |         await expect(previewHeader).toBeVisible();
+  59  | 
+  60  |         const previewSection = previewHeader.locator('..').locator('..').locator('..');
+  61  |         const position = await previewSection.evaluate((el) => window.getComputedStyle(el).position);
+  62  |         expect(position).toBe('static');
+  63  |     });
+  64  | 
+  65  |     test('Phase 3: Page dimensions and content insets match canonical A4 measurements within 1.5px tolerance', async ({ page }) => {
+  66  |         await page.addInitScript((data) => {
+  67  |             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+  68  |             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+  69  |         }, fixtureData);
+  70  | 
+  71  |         await page.goto('/generate-cv');
+  72  | 
+  73  |         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+  74  |         await previewButton.click();
+  75  | 
+  76  |         const cvPages = page.locator('.cv-page');
+  77  |         await expect(cvPages.first()).toBeVisible();
+  78  | 
+  79  |         const measurements = await cvPages.first().evaluate((el) => {
+  80  |             const style = window.getComputedStyle(el);
+  81  |             return {
+  82  |                 width: parseFloat(style.width),
+  83  |                 height: parseFloat(style.height),
+  84  |                 paddingTop: parseFloat(style.paddingTop),
+  85  |                 paddingRight: parseFloat(style.paddingRight),
+  86  |                 paddingBottom: parseFloat(style.paddingBottom),
+  87  |                 paddingLeft: parseFloat(style.paddingLeft),
+  88  |             };
+  89  |         });
+  90  | 
+  91  |         expect(Math.abs(measurements.width - 793.7)).toBeLessThanOrEqual(1.5);
+  92  |         expect(Math.abs(measurements.height - 1122.5)).toBeLessThanOrEqual(1.5);
+  93  |         expect(Math.abs(measurements.paddingTop - 37.8)).toBeLessThanOrEqual(1.5);
+  94  |         expect(Math.abs(measurements.paddingRight - 37.8)).toBeLessThanOrEqual(1.5);
+  95  |         expect(Math.abs(measurements.paddingBottom - 37.8)).toBeLessThanOrEqual(1.5);
+  96  |         expect(Math.abs(measurements.paddingLeft - 37.8)).toBeLessThanOrEqual(1.5);
+  97  |     });
+  98  | 
+  99  |     test('Phase 5 Regression: paginates deterministically using semantic measurement blocks without early breaks', async ({ page }) => {
+  100 |         await page.addInitScript((data) => {
+  101 |             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+  102 |             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+  103 |         }, fixtureData);
+  104 | 
+  105 |         await page.goto('/generate-cv');
+  106 | 
+  107 |         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+  108 |         await previewButton.click();
+  109 | 
+  110 |         const cvPages = page.locator('.cv-page');
+  111 |         await expect(cvPages.first()).toBeVisible();
+  112 | 
+  113 |         // Mark test as regression expected to fail until Phase 5 (measured semantic blocks) is implemented
+  114 |         test.fail(true, 'Regression: expected to fail until Phase 5 (measured semantic blocks) is implemented');
+  115 | 
+  116 |         // Phase 5 Contract: Semantic blocks with data-cv-block-key must be present
+  117 |         const blockCount = await page.locator('[data-cv-block-key]').count();
+> 118 |         expect(blockCount).toBeGreaterThan(0);
+      |                            ^ Error: expect(received).toBeGreaterThan(expected)
+  119 |     });
+  120 | });
+  121 | 
 ```

@@ -10,8 +10,8 @@ const fixtureData = JSON.parse(
 );
 
 test.describe('CV Preview & Pagination Regression', () => {
-    test('preview is visible beside form and paginates deterministically without early breaks', async ({ page }) => {
-        // Inject localStorage data before navigating
+    test('Phase 4 (Desktop): preview is sticky beside form on scroll at 1440x900', async ({ page }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
         await page.addInitScript((data) => {
             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
@@ -19,27 +19,47 @@ test.describe('CV Preview & Pagination Regression', () => {
 
         await page.goto('/generate-cv');
 
-        // Click the Preview CV button to reveal the preview pane
         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
         await previewButton.click();
 
-        // Verify page loads without selector, timeout, or server errors
         const previewHeader = page.locator('h2', { hasText: 'Preview CV' });
         await expect(previewHeader).toBeVisible();
 
-        const cvPages = page.locator('.cv-page');
-        await expect(cvPages.first()).toBeVisible();
-        
-        const pageCount = await cvPages.count();
-        expect(pageCount).toBeGreaterThanOrEqual(1);
-
-        // Mark test as regression expected to fail until Phase 4 (sticky layout) & Phase 5 (pagination engine)
-        test.fail(true, 'Regression: expected to fail until Phase 4 (sticky preview) and Phase 5 (measured semantic blocks) are implemented');
-
-        // Phase 4 Contract: Preview wrapper must be sticky with position: sticky
         const previewSection = previewHeader.locator('..').locator('..').locator('..');
         const position = await previewSection.evaluate((el) => window.getComputedStyle(el).position);
         expect(position).toBe('sticky');
+
+        // Scroll form down towards the bottom
+        await page.evaluate(() => window.scrollTo(0, 350));
+        await page.waitForTimeout(500);
+
+        // Verify bounding top stays around 80px (top-20 is 80px) and bottom does not exceed viewport (900px)
+        const rect = await previewSection.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom };
+        });
+        expect(Math.abs(rect.top - 80)).toBeLessThanOrEqual(5);
+        expect(rect.bottom).toBeLessThanOrEqual(905);
+    });
+
+    test('Phase 4 (Mobile): preview collapses to static position at 390x844', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.addInitScript((data) => {
+            window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+            window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+        }, fixtureData);
+
+        await page.goto('/generate-cv');
+
+        const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+        await previewButton.click();
+
+        const previewHeader = page.locator('h2', { hasText: 'Preview CV' });
+        await expect(previewHeader).toBeVisible();
+
+        const previewSection = previewHeader.locator('..').locator('..').locator('..');
+        const position = await previewSection.evaluate((el) => window.getComputedStyle(el).position);
+        expect(position).toBe('static');
     });
 
     test('Phase 3: Page dimensions and content insets match canonical A4 measurements within 1.5px tolerance', async ({ page }) => {
@@ -74,5 +94,27 @@ test.describe('CV Preview & Pagination Regression', () => {
         expect(Math.abs(measurements.paddingRight - 37.8)).toBeLessThanOrEqual(1.5);
         expect(Math.abs(measurements.paddingBottom - 37.8)).toBeLessThanOrEqual(1.5);
         expect(Math.abs(measurements.paddingLeft - 37.8)).toBeLessThanOrEqual(1.5);
+    });
+
+    test('Phase 5 Regression: paginates deterministically using semantic measurement blocks without early breaks', async ({ page }) => {
+        await page.addInitScript((data) => {
+            window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+            window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+        }, fixtureData);
+
+        await page.goto('/generate-cv');
+
+        const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+        await previewButton.click();
+
+        const cvPages = page.locator('.cv-page');
+        await expect(cvPages.first()).toBeVisible();
+
+        // Mark test as regression expected to fail until Phase 5 (measured semantic blocks) is implemented
+        test.fail(true, 'Regression: expected to fail until Phase 5 (measured semantic blocks) is implemented');
+
+        // Phase 5 Contract: Semantic blocks with data-cv-block-key must be present
+        const blockCount = await page.locator('[data-cv-block-key]').count();
+        expect(blockCount).toBeGreaterThan(0);
     });
 });
