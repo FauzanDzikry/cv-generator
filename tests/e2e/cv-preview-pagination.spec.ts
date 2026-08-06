@@ -1,13 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const fixtureData = JSON.parse(
-    fs.readFileSync(
-        path.resolve(process.cwd(), 'tests/e2e/fixtures/cv-pagination-long.json'),
-        'utf-8',
-    ),
-);
+const fixtureData = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'tests/e2e/fixtures/cv-pagination-long.json'), 'utf-8'));
 
 test.describe('CV Preview & Pagination Regression', () => {
     test('Phase 4 (Desktop): preview is sticky beside form on scroll at 1440x900', async ({ page }) => {
@@ -156,7 +151,7 @@ test.describe('CV Preview & Pagination Regression', () => {
 
         const initialKeys = await page.evaluate(() => {
             return Array.from(document.querySelectorAll('.cv-multi-page-container .cv-page-content')).map((page) =>
-                Array.from(page.querySelectorAll('[data-cv-block-key]')).map((b) => b.getAttribute('data-cv-block-key'))
+                Array.from(page.querySelectorAll('[data-cv-block-key]')).map((b) => b.getAttribute('data-cv-block-key')),
             );
         });
 
@@ -165,7 +160,7 @@ test.describe('CV Preview & Pagination Regression', () => {
             await page.waitForTimeout(100);
             const currentKeys = await page.evaluate(() => {
                 return Array.from(document.querySelectorAll('.cv-multi-page-container .cv-page-content')).map((page) =>
-                    Array.from(page.querySelectorAll('[data-cv-block-key]')).map((b) => b.getAttribute('data-cv-block-key'))
+                    Array.from(page.querySelectorAll('[data-cv-block-key]')).map((b) => b.getAttribute('data-cv-block-key')),
                 );
             });
             expect(currentKeys).toEqual(initialKeys);
@@ -196,7 +191,10 @@ test.describe('CV Preview & Pagination Regression', () => {
 
         const [download] = await Promise.all([
             page.waitForEvent('download', { timeout: 30000 }),
-            page.getByRole('button', { name: /Generate PDF/i }).first().click(),
+            page
+                .getByRole('button', { name: /Generate PDF/i })
+                .first()
+                .click(),
         ]);
 
         expect(download.suggestedFilename()).toMatch(/\.pdf$/i);

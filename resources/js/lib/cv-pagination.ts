@@ -114,7 +114,7 @@ export function paginateBlocks(measured: MeasuredBlock[], maxPageHeightPx = MAX_
                 if (headingBlock) {
                     const contKey = `cont::${headingBlock.key}::p${pages.length}`;
                     currentPage.push(contKey);
-                    currentHeight += (headingBlock.continuedHeight || headingBlock.height);
+                    currentHeight += headingBlock.continuedHeight || headingBlock.height;
                 }
             }
         }

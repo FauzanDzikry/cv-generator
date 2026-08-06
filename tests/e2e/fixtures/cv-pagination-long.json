@@ -53,9 +53,7 @@
                 "credential_id": "CERT-8899-ARCH-2023"
             }
         ],
-        "languages": [
-            { "language": "English", "level": "Native / Bilingual" }
-        ],
+        "languages": [{ "language": "English", "level": "Native / Bilingual" }],
         "accomplishments": [
             {
                 "description": "Awarded Outstanding Engineering Contribution Award in 2024 for resolving critical production latency bottlenecks and standardizing core automated E2E testing pipelines across eighteen disparate microservice repositories."

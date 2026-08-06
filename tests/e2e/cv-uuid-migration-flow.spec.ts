@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Phase 11: UUID Migration and Hard Delete Flow', () => {
     test('authenticated user can create, view, edit, and delete CV with string UUID in URL', async ({ page }) => {

@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/layouts';
 import type { CvItem } from '@/types/cv';
 import { Head, Link, router } from '@inertiajs/react';
 import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 interface Props {
     cvs: CvItem[];
@@ -72,9 +72,7 @@ export default function CvIndex({ cvs }: Props) {
                                             <Link href={route('cvs.show', cv.id)} className="block">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="truncate font-medium text-gray-900 dark:text-white">
-                                                            {cvTitle}
-                                                        </p>
+                                                        <p className="truncate font-medium text-gray-900 dark:text-white">{cvTitle}</p>
                                                         <p className="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">{cv.email}</p>
                                                     </div>
                                                     <FileText className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />

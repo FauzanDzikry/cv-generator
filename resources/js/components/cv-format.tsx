@@ -1,4 +1,3 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ATTRIBUTION_TEXT,
     CONTENT_WIDTH_MM,
@@ -11,17 +10,8 @@ import {
     pageOuterStyle,
 } from '@/lib/cv-page-layout';
 import { MAX_CONTENT_HEIGHT_PX, SemanticBlock, measureBlocks, paginateBlocks } from '@/lib/cv-pagination';
-import type {
-    Accomplishment,
-    CVData,
-    Certification,
-    Education,
-    Language,
-    Organization,
-    Portfolio,
-    Skill,
-    WorkExperience,
-} from '@/types/cv';
+import type { CVData, Skill } from '@/types/cv';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export const pageBreakStyle = `
 @media print {
@@ -435,7 +425,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                     <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-                                {work.position} <span className="font-normal italic text-gray-500">(continued)</span>
+                                {work.position} <span className="font-normal text-gray-500 italic">(continued)</span>
                             </h3>
                             <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {formatDate(work.start_date)} - {work.is_current ? 'Present' : formatDate(work.end_date)}{' '}
@@ -485,7 +475,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                     <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-                                {edu.degree} {edu.degree ? ',' : ''} {edu.field} <span className="font-normal italic text-gray-500">(continued)</span>
+                                {edu.degree} {edu.degree ? ',' : ''} {edu.field} <span className="font-normal text-gray-500 italic">(continued)</span>
                             </h3>
                             <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {formatDate(edu.start_date)} - {formatDate(edu.end_date)}
@@ -617,7 +607,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                     <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-                                {cert.name} <span className="font-normal italic text-gray-500">(continued)</span>
+                                {cert.name} <span className="font-normal text-gray-500 italic">(continued)</span>
                             </h3>
                             <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {cert.start_year} - {cert.end_year || (cert.is_time_limited ? '' : 'No Expiration')}
@@ -670,7 +660,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                     <div className="mt-2 mb-1">
                         <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-gray-800" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-                                {org.position}, {org.name} <span className="font-normal italic text-gray-500">(continued)</span>
+                                {org.position}, {org.name} <span className="font-normal text-gray-500 italic">(continued)</span>
                             </h3>
                             <span className="font-semibold text-gray-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                                 {formatDate(org.start_date)} - {formatDate(org.end_date)}
@@ -826,7 +816,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
     const createPage = (content: React.ReactNode, pageIndex?: number, totalPages?: number) => (
         <div
-            className={`cv-page ${!isPdfMode ? 'mb-8 rounded-lg shadow-lg' : 'm-0 rounded-none shadow-none border-none'}`}
+            className={`cv-page ${!isPdfMode ? 'mb-8 rounded-lg shadow-lg' : 'm-0 rounded-none border-none shadow-none'}`}
             style={{
                 ...pageOuterStyle,
                 marginBottom: !isPdfMode ? undefined : '0',
@@ -895,10 +885,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     />
                 </>
             )}
-            <div
-                className="cv-page-content flex flex-col"
-                style={pageContentStyle}
-            >
+            <div className="cv-page-content flex flex-col" style={pageContentStyle}>
                 {content}
             </div>
             {typeof pageIndex === 'number' && typeof totalPages === 'number' && (
@@ -919,7 +906,9 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                     }}
                 >
                     <span className="cv-attribution">{ATTRIBUTION_TEXT}</span>
-                    <span className="cv-page-number">{pageIndex + 1} of {totalPages}</span>
+                    <span className="cv-page-number">
+                        {pageIndex + 1} of {totalPages}
+                    </span>
                 </div>
             )}
         </div>

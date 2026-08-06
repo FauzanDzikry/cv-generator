@@ -1,14 +1,7 @@
-import CV, { pageBreakStyle } from '@/components/cv-format';
+import CV from '@/components/cv-format';
 import FormProgress from '@/components/percentage';
 import AppLayout from '@/layouts/layouts';
-import {
-    MARGIN_BOTTOM,
-    MARGIN_LEFT,
-    MARGIN_RIGHT,
-    MARGIN_TOP,
-    PAGE_HEIGHT_MM,
-    PAGE_WIDTH_MM,
-} from '@/lib/cv-page-layout';
+import { PAGE_WIDTH_MM } from '@/lib/cv-page-layout';
 import { sanitizeOklchColors } from '@/lib/utils';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
@@ -632,7 +625,7 @@ export default function CvForm() {
             const rawName = formData.cv_name || formData.name || 'cv';
             const safeName =
                 rawName
-                    .replace(/[^a-z0-9_\-\.]/gi, '_')
+                    .replace(/[^a-z0-9_\-.]/gi, '_')
                     .replace(/_+/g, '_')
                     .replace(/^_|_$/g, '') || 'cv';
             const filename = `${safeName}.pdf`;
