@@ -152,7 +152,7 @@ type FormGenerateProps = {
     cv?: Record<string, unknown>;
     addOnSections?: Record<string, boolean>;
     isEdit?: boolean;
-    cvId?: number;
+    cvId?: string;
 };
 
 function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
@@ -213,11 +213,11 @@ export default function CvForm() {
         cv?: Record<string, unknown>;
         addOnSections?: Record<string, boolean>;
         isEdit?: boolean;
-        cvId?: number;
+        cvId?: string;
     }>();
     const isGuest = !props.auth?.user;
     const isEdit = props.isEdit === true && props.cvId;
-    const cvId = props.cvId as number | undefined;
+    const cvId = props.cvId as string | undefined;
     const initialFormData = props.cv ? formDataFromCv(props.cv) : getInitialFormData();
     const initialAddOn = props.addOnSections ?? getInitialAddOnSections();
     const initialPhoto =

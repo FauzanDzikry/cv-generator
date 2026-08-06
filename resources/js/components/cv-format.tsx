@@ -11,6 +11,17 @@ import {
     pageOuterStyle,
 } from '@/lib/cv-page-layout';
 import { MAX_CONTENT_HEIGHT_PX, SemanticBlock, measureBlocks, paginateBlocks } from '@/lib/cv-pagination';
+import type {
+    Accomplishment,
+    CVData,
+    Certification,
+    Education,
+    Language,
+    Organization,
+    Portfolio,
+    Skill,
+    WorkExperience,
+} from '@/types/cv';
 
 export const pageBreakStyle = `
 @media print {
@@ -181,84 +192,6 @@ const calculateDuration = (startDate: string, endDate: string, isCurrent: boolea
 
     return durationStr;
 };
-
-interface WorkExperience {
-    company: string;
-    company_location: string;
-    position: string;
-    location_type: string;
-    start_date: string;
-    end_date: string;
-    description: string;
-    is_current: boolean;
-}
-
-interface Education {
-    institution: string;
-    degree: string;
-    field: string;
-    start_date: string;
-    end_date: string;
-    description: string;
-}
-
-interface Skill {
-    name: string;
-}
-
-interface Portfolio {
-    title: string;
-    link: string;
-    description: string;
-}
-
-interface Certification {
-    name: string;
-    organization: string;
-    start_year: string;
-    end_year: string;
-    is_time_limited?: boolean;
-    description: string;
-    credential_id?: string;
-}
-
-interface Accomplishment {
-    description: string;
-}
-
-interface Organization {
-    name: string;
-    position: string;
-    start_date: string;
-    end_date: string;
-    description: string;
-}
-
-interface Language {
-    language: string;
-    level: string;
-}
-
-interface CVData {
-    name: string;
-    address: string;
-    phone: string;
-    email: string;
-    linkedin: string;
-    summary: string;
-    is_use_photo: boolean;
-    photo?: File | null;
-    photoPreview?: string | null;
-    work_experience: WorkExperience[];
-    education: Education[];
-    skills: Skill[];
-    certifications?: Certification[];
-    languages?: Language[];
-    portfolios?: Portfolio[];
-    accomplishments?: Accomplishment[];
-    organizations?: Organization[];
-    additional_info?: string;
-}
 
 interface CVProps {
     data: CVData;
