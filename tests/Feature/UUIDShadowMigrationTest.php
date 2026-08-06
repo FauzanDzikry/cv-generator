@@ -17,12 +17,28 @@ class UUIDShadowMigrationTest extends TestCase
         return DB::connection()->getDriverName() === 'sqlite' ? 'cv_data' : 'cv.cv_data';
     }
 
+    protected function rollbackToBeforeShadowUuidMigration(): void
+    {
+        $targetMigration = DB::table('migrations')->where('migration', 'like', '%_add_shadow_uuid_columns%')->first();
+        if ($targetMigration) {
+            $count = DB::table('migrations')->where('id', '>=', $targetMigration->id)->count();
+            $this->artisan('migrate:rollback', ['--step' => $count]);
+        }
+    }
+
+    protected function runShadowUuidMigrationOnly(): void
+    {
+        $migrationFile = glob(database_path('migrations/*_add_shadow_uuid_columns.php'))[0];
+        $migration = require $migrationFile;
+        $migration->up();
+    }
+
     public function test_shadow_uuid_columns_backfill_and_map_legacy_ids(): void
     {
         $cvTable = $this->getCVTableName();
 
         // 1. Roll back the shadow UUID migration to simulate pre-migration database state
-        $this->artisan('migrate:rollback', ['--step' => 1]);
+        $this->rollbackToBeforeShadowUuidMigration();
 
         $this->assertFalse(Schema::hasColumn('users', 'uuid'), 'users table should not have uuid column after rollback.');
         $this->assertFalse(Schema::hasColumn($cvTable, 'uuid'), 'cv_data table should not have uuid column after rollback.');
@@ -72,7 +88,7 @@ class UUIDShadowMigrationTest extends TestCase
         ]);
 
         // 3. Re-run migration to perform shadow UUID creation, backfill, and mapping
-        $this->artisan('migrate');
+        $this->runShadowUuidMigrationOnly();
 
         // 4. Verify users table UUIDs
         $users = DB::table('users')->get();
@@ -114,7 +130,7 @@ class UUIDShadowMigrationTest extends TestCase
     {
         $cvTable = $this->getCVTableName();
 
-        $this->artisan('migrate:rollback', ['--step' => 1]);
+        $this->rollbackToBeforeShadowUuidMigration();
 
         DB::table($cvTable)->insert([
             'id' => 99,
@@ -134,6 +150,6 @@ class UUIDShadowMigrationTest extends TestCase
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Orphan user_id');
 
-        $this->artisan('migrate');
+        $this->runShadowUuidMigrationOnly();
     }
 }

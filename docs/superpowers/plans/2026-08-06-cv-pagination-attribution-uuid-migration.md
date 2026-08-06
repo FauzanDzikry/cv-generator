@@ -530,17 +530,17 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Migration `000002` membuat schema/table child dengan UUID, nullable content fields, `sort_order`, timestamps, unique `(cv_data_id, sort_order)`, dan FK menuju unique shadow `cv_data.uuid` cascade.
-- [ ] Migration `000003` membaca raw JSON per CV dengan `DB::table`, bukan Eloquent model yang dapat berubah kemudian.
-- [ ] Backfill setiap array termasuk row kosong/parsial untuk menjamin round-trip tanpa kehilangan data; assign `sort_order` dari zero-based array index.
-- [ ] Konversi empty date/year menjadi null; boolean memakai cast eksplisit; value lain dipertahankan.
-- [ ] Setelah setiap section, bandingkan total JSON element count dengan total child row count.
-- [ ] Verifikasi khusus legacy CV ID `1`: count 1/1/3/1/1/1/1/1.
-- [ ] Migration `000004` drop numeric PK constraints, rename `id -> legacy_id`, `uuid -> id`, `user_id -> legacy_user_id`, dan `user_uuid -> user_id` pada users/cv_data/sessions sesuai dependency.
-- [ ] Set UUID `id` sebagai primary key; set `cv_data.user_id` non-null setelah audit null; tambahkan FK cascade ke users.
-- [ ] Set `sessions.user_id` nullable UUID dan FK cascade; invalidate existing sessions setelah cutover karena serialized auth identifier lama dapat tersisa.
-- [ ] Rename child `cv_data_uuid` bila nama shadow digunakan; hasil akhir harus `cv_data_id`.
-- [ ] Pertahankan `legacy_id`, `legacy_user_id`, dan JSON columns sampai Phase 12 selesai.
+- [x] Migration `000002` membuat schema/table child dengan UUID, nullable content fields, `sort_order`, timestamps, unique `(cv_data_id, sort_order)`, dan FK menuju unique shadow `cv_data.uuid` cascade.
+- [x] Migration `000003` membaca raw JSON per CV dengan `DB::table`, bukan Eloquent model yang dapat berubah kemudian.
+- [x] Backfill setiap array termasuk row kosong/parsial untuk menjamin round-trip tanpa kehilangan data; assign `sort_order` dari zero-based array index.
+- [x] Konversi empty date/year menjadi null; boolean memakai cast eksplisit; value lain dipertahankan.
+- [x] Setelah setiap section, bandingkan total JSON element count dengan total child row count.
+- [x] Verifikasi khusus legacy CV ID `1`: count 1/1/3/1/1/1/1/1.
+- [x] Migration `000004` drop numeric PK constraints, rename `id -> legacy_id`, `uuid -> id`, `user_id -> legacy_user_id`, dan `user_uuid -> user_id` pada users/cv_data/sessions sesuai dependency.
+- [x] Set UUID `id` sebagai primary key; set `cv_data.user_id` non-null setelah audit null; tambahkan FK cascade ke users.
+- [x] Set `sessions.user_id` nullable UUID dan FK cascade; invalidate existing sessions setelah cutover karena serialized auth identifier lama dapat tersisa.
+- [x] Rename child `cv_data_uuid` bila nama shadow digunakan; hasil akhir harus `cv_data_id`.
+- [x] Pertahankan `legacy_id`, `legacy_user_id`, dan JSON columns sampai Phase 12 selesai.
 
 **Test:** Jalankan migration pada salinan PostgreSQL dan SQLite test, lalu audit counts dan orphan queries.
 
