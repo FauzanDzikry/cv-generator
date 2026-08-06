@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ATTRIBUTION_TEXT,
     CONTENT_WIDTH_MM,
     MARGIN_BOTTOM,
     MARGIN_LEFT,
@@ -26,7 +27,8 @@ export const pageBreakStyle = `
         break-after: auto !important;
     }
     
-    .zoom-controls {
+    .zoom-controls,
+    .cv-margin-guide {
         display: none !important;
     }
 }
@@ -45,7 +47,9 @@ export const pageBreakStyle = `
     break-after: auto !important;
 }
 
-.pdf-export-mode .zoom-controls {
+.pdf-export-mode .zoom-controls,
+.pdf-export-mode .cv-margin-guide,
+.cv-for-pdf-mode .cv-margin-guide {
     display: none !important;
 }
 
@@ -898,29 +902,91 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 border: !isPdfMode ? undefined : 'none',
             }}
         >
+            {!isPdfMode && (
+                <>
+                    <div
+                        className="cv-margin-guide"
+                        aria-hidden="true"
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: `${MARGIN_TOP}mm`,
+                            backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                            pointerEvents: 'none',
+                            zIndex: 10,
+                        }}
+                    />
+                    <div
+                        className="cv-margin-guide"
+                        aria-hidden="true"
+                        style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: `${MARGIN_BOTTOM}mm`,
+                            backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                            pointerEvents: 'none',
+                            zIndex: 10,
+                        }}
+                    />
+                    <div
+                        className="cv-margin-guide"
+                        aria-hidden="true"
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            bottom: 0,
+                            left: 0,
+                            width: `${MARGIN_LEFT}mm`,
+                            backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                            pointerEvents: 'none',
+                            zIndex: 10,
+                        }}
+                    />
+                    <div
+                        className="cv-margin-guide"
+                        aria-hidden="true"
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            bottom: 0,
+                            right: 0,
+                            width: `${MARGIN_RIGHT}mm`,
+                            backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                            pointerEvents: 'none',
+                            zIndex: 10,
+                        }}
+                    />
+                </>
+            )}
             <div
                 className="cv-page-content flex flex-col"
-                style={{ ...pageContentStyle, minHeight: 'calc(100% - 60px)', paddingBottom: '20px' }}
+                style={pageContentStyle}
             >
                 {content}
             </div>
             {typeof pageIndex === 'number' && typeof totalPages === 'number' && (
                 <div
-                    className="page-number-indicator"
+                    className="cv-footer page-number-indicator flex items-center justify-between"
                     style={{
                         position: 'absolute',
-                        bottom: `${MARGIN_BOTTOM}mm`,
+                        bottom: 0,
                         left: `${MARGIN_LEFT}mm`,
                         right: `${MARGIN_RIGHT}mm`,
-                        textAlign: 'center',
-                        fontSize: '10pt',
-                        color: '#000',
+                        height: `${MARGIN_BOTTOM}mm`,
+                        fontSize: '8pt',
+                        color: '#64748b',
                         fontFamily: 'Arial, sans-serif',
-                        height: '20px',
-                        lineHeight: '20px',
+                        textAlign: 'left',
+                        pointerEvents: 'none',
+                        zIndex: 15,
                     }}
                 >
-                    Page {pageIndex + 1} of {totalPages}
+                    <span className="cv-attribution">{ATTRIBUTION_TEXT}</span>
+                    <span className="cv-page-number">{pageIndex + 1} of {totalPages}</span>
                 </div>
             )}
         </div>

@@ -468,12 +468,12 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Render empat margin bands absolute dari empat margin constants, `aria-hidden="true"`, `pointer-events: none`, warna red/theme dengan opacity sekitar 0.06.
-- [ ] Render guide hanya ketika `isPdfMode === false`; tambahkan print rule `.cv-margin-guide { display: none !important; }` sebagai defense.
-- [ ] Tempatkan footer di dalam bottom margin band sehingga tidak mengurangi content height dan tidak menutup konten.
-- [ ] Render attribution plain text di kiri dan `${index + 1} of ${totalPages}` di kanan pada setiap page.
-- [ ] Pastikan footer memiliki kontras cukup namun lebih redup dari body, dan tidak diwarisi aturan body `text-align: justify`.
-- [ ] Hapus string lama `Page ${...}`.
+- [x] Render empat margin bands absolute dari empat margin constants, `aria-hidden="true"`, `pointer-events: none`, warna red/theme dengan opacity sekitar 0.06.
+- [x] Render guide hanya ketika `isPdfMode === false`; tambahkan print rule `.cv-margin-guide { display: none !important; }` sebagai defense.
+- [x] Tempatkan footer di dalam bottom margin band sehingga tidak mengurangi content height dan tidak menutup konten.
+- [x] Render attribution plain text di kiri dan `${index + 1} of ${totalPages}` di kanan pada setiap page.
+- [x] Pastikan footer memiliki kontras cukup namun lebih redup dari body, dan tidak diwarisi aturan body `text-align: justify`.
+- [x] Hapus string lama `Page ${...}`.
 
 **Test:** Assert setiap preview page memiliki satu attribution, satu `X of Y`, empat guide; export page memiliki attribution/number tetapi nol guide.
 

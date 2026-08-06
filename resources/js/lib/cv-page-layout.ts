@@ -22,6 +22,13 @@ if (
     throw new Error('Invalid CV page margins configured in cv-page-layout.ts');
 }
 
+const MIN_FOOTER_MARGIN_MM = 6;
+if (MARGIN_BOTTOM < MIN_FOOTER_MARGIN_MM) {
+    throw new Error(
+        `MARGIN_BOTTOM (${MARGIN_BOTTOM}mm) must be at least ${MIN_FOOTER_MARGIN_MM}mm to safely accommodate the CV footer attribution and page numbering without colliding with body content.`,
+    );
+}
+
 export const pageOuterStyle: React.CSSProperties = {
     width: `${PAGE_WIDTH_MM}mm`,
     height: `${PAGE_HEIGHT_MM}mm`,
@@ -62,6 +69,9 @@ export const printCssString = `
         height: ${PAGE_HEIGHT_MM}mm;
         margin: 0;
         padding: 0;
+    }
+    .cv-margin-guide {
+        display: none !important;
     }
 }
 `;
