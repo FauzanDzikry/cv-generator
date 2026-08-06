@@ -2,16 +2,58 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CVDataRequest;
 use App\Models\CVData;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CVDataController extends Controller
 {
+    private array $sectionRelations = [
+        'work_experience',
+        'education',
+        'skills',
+        'portfolios',
+        'certifications',
+        'languages',
+        'accomplishments',
+        'organizations',
+    ];
+
+    private function authorizeOwnership(Request $request, CVData $cv): CVData
+    {
+        return $request->user()->cvs()->whereKey($cv->getKey())->firstOrFail();
+    }
+
+    private function replaceAllSections(CVData $cv, array $data): void
+    {
+        foreach ($this->sectionRelations as $relationName) {
+            // Hard-delete existing child rows
+            $cv->{$relationName}()->delete();
+
+            if (isset($data[$relationName]) && is_array($data[$relationName]) && !empty($data[$relationName])) {
+                $childRows = [];
+                $sortOrder = 0;
+                foreach ($data[$relationName] as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+                    $item['sort_order'] = $sortOrder++;
+                    unset($item['id'], $item['cv_data_id'], $item['created_at'], $item['updated_at']);
+                    $childRows[] = $item;
+                }
+                if (!empty($childRows)) {
+                    $cv->{$relationName}()->createMany($childRows);
+                }
+            }
+        }
+    }
+
     public function index(): Response
     {
-        $cvs = CVData::where('user_id', auth()->id())
+        $cvs = auth()->user()->cvs()
             ->orderByDesc('updated_at')
             ->get(['id', 'cv_name', 'name', 'email', 'created_at', 'updated_at']);
 
@@ -20,31 +62,15 @@ class CVDataController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(CVDataRequest $request)
     {
-        $validated = $request->validate([
-            'cv_name' => ['nullable', 'string', 'max:255'],
-            'name' => ['required', 'string', 'max:255'],
-            'address' => ['required', 'string'],
-            'phone' => ['required', 'string', 'max:50'],
-            'email' => ['required', 'email'],
-            'linkedin' => ['nullable', 'string', 'max:500'],
-            'summary' => ['required', 'string'],
-            'work_experience' => ['required', 'array'],
-            'education' => ['required', 'array'],
-            'skills' => ['required', 'array'],
-            'portfolios' => ['nullable', 'array'],
-            'certifications' => ['nullable', 'array'],
-            'languages' => ['nullable', 'array'],
-            'accomplishments' => ['nullable', 'array'],
-            'organizations' => ['nullable', 'array'],
-            'additional_info' => ['nullable', 'string'],
-            'custom_fields' => ['nullable', 'array'],
-        ]);
+        $validated = $request->validated();
 
-        $validated['user_id'] = auth()->id();
-
-        $cv = CVData::create($validated);
+        $cv = DB::transaction(function () use ($validated, $request) {
+            $cv = $request->user()->cvs()->create($validated);
+            $this->replaceAllSections($cv, $validated);
+            return $cv;
+        });
 
         if ($request->expectsJson()) {
             return response()->json(['id' => $cv->id, 'message' => 'CV saved successfully'], 201);
@@ -53,33 +79,27 @@ class CVDataController extends Controller
         return redirect()->route('cvs.show', $cv->id);
     }
 
-    public function show(int $id): Response
+    public function show(Request $request, CVData $cv): Response
     {
-        $cv = CVData::where('id', $id)->firstOrFail();
-
-        if ((int) $cv->user_id !== (int) auth()->id()) {
-            abort(404);
-        }
+        $cv = $this->authorizeOwnership($request, $cv);
+        $cv->load($this->sectionRelations);
 
         return Inertia::render('cvs/show', [
             'cv' => $cv,
         ]);
     }
 
-    public function edit(int $id): Response
+    public function edit(Request $request, CVData $cv): Response
     {
-        $cv = CVData::where('id', $id)->firstOrFail();
-
-        if ((int) $cv->user_id !== (int) auth()->id()) {
-            abort(404);
-        }
+        $cv = $this->authorizeOwnership($request, $cv);
+        $cv->load($this->sectionRelations);
 
         $addOnSections = [
-            'portfolios' => ! empty($cv->portfolios),
-            'certifications' => ! empty($cv->certifications),
-            'accomplishments' => ! empty($cv->accomplishments),
-            'organizations' => ! empty($cv->organizations),
-            'languages' => ! empty($cv->languages),
+            'portfolios' => $cv->portfolios->isNotEmpty(),
+            'certifications' => $cv->certifications->isNotEmpty(),
+            'accomplishments' => $cv->accomplishments->isNotEmpty(),
+            'organizations' => $cv->organizations->isNotEmpty(),
+            'languages' => $cv->languages->isNotEmpty(),
             'additional_info' => ! empty($cv->additional_info),
         ];
 
@@ -87,44 +107,39 @@ class CVDataController extends Controller
             'cv' => $cv,
             'addOnSections' => $addOnSections,
             'isEdit' => true,
-            'cvId' => $id,
+            'cvId' => $cv->id,
         ]);
     }
 
-    public function update(Request $request, int $id)
+    public function update(CVDataRequest $request, CVData $cv)
     {
-        $cv = CVData::where('id', $id)->firstOrFail();
+        $cv = $this->authorizeOwnership($request, $cv);
+        $validated = $request->validated();
 
-        if ((int) $cv->user_id !== (int) auth()->id()) {
-            abort(404);
-        }
-
-        $validated = $request->validate([
-            'cv_name' => ['nullable', 'string', 'max:255'],
-            'name' => ['required', 'string', 'max:255'],
-            'address' => ['required', 'string'],
-            'phone' => ['required', 'string', 'max:50'],
-            'email' => ['required', 'email'],
-            'linkedin' => ['nullable', 'string', 'max:500'],
-            'summary' => ['required', 'string'],
-            'work_experience' => ['required', 'array'],
-            'education' => ['required', 'array'],
-            'skills' => ['required', 'array'],
-            'portfolios' => ['nullable', 'array'],
-            'certifications' => ['nullable', 'array'],
-            'languages' => ['nullable', 'array'],
-            'accomplishments' => ['nullable', 'array'],
-            'organizations' => ['nullable', 'array'],
-            'additional_info' => ['nullable', 'string'],
-            'custom_fields' => ['nullable', 'array'],
-        ]);
-
-        $cv->update($validated);
+        DB::transaction(function () use ($cv, $validated) {
+            $cv->update($validated);
+            $this->replaceAllSections($cv, $validated);
+        });
 
         if ($request->expectsJson()) {
             return response()->json(['id' => $cv->id, 'message' => 'CV updated successfully']);
         }
 
         return redirect()->route('cvs.show', $cv->id);
+    }
+
+    public function destroy(Request $request, CVData $cv)
+    {
+        $cv = $this->authorizeOwnership($request, $cv);
+
+        DB::transaction(function () use ($cv) {
+            $cv->delete();
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'CV deleted successfully']);
+        }
+
+        return redirect()->route('cvs.index')->with('success', 'CV berhasil dihapus');
     }
 }

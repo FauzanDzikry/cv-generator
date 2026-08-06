@@ -19,7 +19,16 @@ return new class extends Migration
     protected function sanitizeField(string $key, $value)
     {
         if (in_array($key, ['start_date', 'end_date'])) {
-            return ($value === '' || $value === null) ? null : (string) $value;
+            if ($value === '' || $value === null) {
+                return null;
+            }
+            $strVal = trim((string) $value);
+            if (preg_match('/^\d{4}-\d{2}$/', $strVal)) {
+                $strVal .= '-01';
+            } elseif (preg_match('/^\d{4}$/', $strVal)) {
+                $strVal .= '-01-01';
+            }
+            return $strVal;
         }
         if (in_array($key, ['start_year', 'end_year'])) {
             return ($value === '' || $value === null || !is_numeric($value)) ? null : (int) $value;

@@ -13,6 +13,7 @@ abstract class CVSection extends Model
     public $incrementing = false;
 
     protected $hidden = [
+        'id',
         'cv_data_id',
         'sort_order',
         'created_at',

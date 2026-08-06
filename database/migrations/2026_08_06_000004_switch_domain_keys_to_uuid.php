@@ -112,7 +112,7 @@ return new class extends Migration
             // Rebuild users table with UUID primary key and legacy_id
             Schema::create('users_tmp', function (Blueprint $table) {
                 $table->uuid('id')->primary();
-                $table->integer('legacy_id');
+                $table->integer('legacy_id')->nullable();
                 $table->string('name');
                 $table->string('email');
                 $table->timestamp('email_verified_at')->nullable();
@@ -143,7 +143,7 @@ return new class extends Migration
             // Rebuild cv_data table with UUID primary key, legacy_id, and UUID user_id
             Schema::create('cv_data_tmp', function (Blueprint $table) {
                 $table->uuid('id')->primary();
-                $table->integer('legacy_id');
+                $table->integer('legacy_id')->nullable();
                 $table->uuid('user_id');
                 $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
                 $table->integer('legacy_user_id')->nullable();
@@ -154,9 +154,9 @@ return new class extends Migration
                 $table->string('email');
                 $table->string('linkedin')->nullable();
                 $table->text('summary');
-                $table->json('work_experience');
-                $table->json('education');
-                $table->json('skills');
+                $table->json('work_experience')->nullable();
+                $table->json('education')->nullable();
+                $table->json('skills')->nullable();
                 $table->json('portfolios')->nullable();
                 $table->json('certifications')->nullable();
                 $table->json('languages')->nullable();
@@ -219,14 +219,20 @@ return new class extends Migration
             // PostgreSQL atomic domain key cutover
             DB::statement('ALTER TABLE users DROP CONSTRAINT users_pkey CASCADE;');
             DB::statement('ALTER TABLE users RENAME COLUMN id TO legacy_id;');
+            DB::statement('ALTER TABLE users ALTER COLUMN legacy_id DROP NOT NULL;');
             DB::statement('ALTER TABLE users RENAME COLUMN uuid TO id;');
             DB::statement('ALTER TABLE users ADD PRIMARY KEY (id);');
             DB::statement('ALTER TABLE users ADD UNIQUE (legacy_id);');
 
             DB::statement('ALTER TABLE cv.cv_data DROP CONSTRAINT cv_data_pkey CASCADE;');
             DB::statement('ALTER TABLE cv.cv_data RENAME COLUMN id TO legacy_id;');
+            DB::statement('ALTER TABLE cv.cv_data ALTER COLUMN legacy_id DROP NOT NULL;');
             DB::statement('ALTER TABLE cv.cv_data RENAME COLUMN uuid TO id;');
             DB::statement('ALTER TABLE cv.cv_data RENAME COLUMN user_id TO legacy_user_id;');
+            DB::statement('ALTER TABLE cv.cv_data ALTER COLUMN legacy_user_id DROP NOT NULL;');
+            DB::statement('ALTER TABLE cv.cv_data ALTER COLUMN work_experience DROP NOT NULL;');
+            DB::statement('ALTER TABLE cv.cv_data ALTER COLUMN education DROP NOT NULL;');
+            DB::statement('ALTER TABLE cv.cv_data ALTER COLUMN skills DROP NOT NULL;');
             DB::statement('ALTER TABLE cv.cv_data RENAME COLUMN user_uuid TO user_id;');
             DB::statement('ALTER TABLE cv.cv_data ADD PRIMARY KEY (id);');
             DB::statement('ALTER TABLE cv.cv_data ADD UNIQUE (legacy_id);');

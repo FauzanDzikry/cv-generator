@@ -130,16 +130,16 @@ Replace-all dipilih karena child tidak memiliki endpoint/identity publik, ukuran
 
 Semua child memiliki `id uuid primary key`, `cv_data_id uuid`, `sort_order smallint`, timestamps, unique index `(cv_data_id, sort_order)`, dan FK cascade. Field konten nullable agar form dinamis dapat menyimpan baris parsial seperti perilaku JSON sekarang.
 
-| Table | Content columns |
-|---|---|
+| Table                 | Content columns                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `cv.work_experiences` | `company`, `company_location`, `position`, `location_type`, `start_date`, `end_date`, `description`, `is_current` |
-| `cv.educations` | `institution`, `degree`, `field`, `start_date`, `end_date`, `description` |
-| `cv.skills` | `name` |
-| `cv.portfolios` | `title`, `link`, `description` |
-| `cv.certifications` | `name`, `organization`, `start_year`, `end_year`, `is_time_limited`, `description`, `credential_id` |
-| `cv.languages` | `language`, `level` |
-| `cv.accomplishments` | `description` |
-| `cv.organizations` | `name`, `position`, `start_date`, `end_date`, `is_current`, `description` |
+| `cv.educations`       | `institution`, `degree`, `field`, `start_date`, `end_date`, `description`                                         |
+| `cv.skills`           | `name`                                                                                                            |
+| `cv.portfolios`       | `title`, `link`, `description`                                                                                    |
+| `cv.certifications`   | `name`, `organization`, `start_year`, `end_year`, `is_time_limited`, `description`, `credential_id`               |
+| `cv.languages`        | `language`, `level`                                                                                               |
+| `cv.accomplishments`  | `description`                                                                                                     |
+| `cv.organizations`    | `name`, `position`, `start_date`, `end_date`, `is_current`, `description`                                         |
 
 Gunakan `date nullable` untuk date, `smallInteger nullable` untuk year, `boolean` untuk flag, `text nullable` untuk description, dan `string nullable` untuk value pendek.
 
@@ -566,21 +566,21 @@ Setiap HasMany wajib memakai `->orderBy('sort_order')` sehingga serialization me
 
 ### Langkah
 
-- [ ] Tambahkan `HasUuids` pada `User` dan `CVData`; child base model juga memakai `HasUuids`.
-- [ ] Implementasikan `CVSection::getTable()` agar table menjadi unqualified pada SQLite dan `cv.<table>` pada PostgreSQL.
-- [ ] Sembunyikan `id`, `cv_data_id`, `sort_order`, dan timestamps child dari serialization agar payload lama tetap stabil.
-- [ ] Definisikan delapan relations di `CVData`, semuanya order by `sort_order`; definisikan `User::cvs()`.
-- [ ] Hapus delapan JSON fields dari `$fillable`/`$casts`; perbaiki `additional_info` sebagai string/text dan pertahankan `custom_fields` array.
-- [ ] Buat `CVDataRequest` dengan nested validation nullable dan type validation untuk date/year/boolean/string.
-- [ ] Tambahkan private section mapping pada controller dan satu helper transactional replace-all; backend menulis `sort_order`, bukan menerima dari client.
-- [ ] Gunakan `DB::transaction()` pada store/update. Bila satu child gagal, parent dan seluruh child harus rollback.
-- [ ] Pada show/edit gunakan eager load delapan relasi; index hanya select metadata parent agar tidak menambah query.
-- [ ] Ubah route menjadi `{cv}` dengan `whereUuid('cv')` dan implicit model binding.
-- [ ] Pusatkan ownership melalui `$request->user()->cvs()->whereKey($cv->getKey())->firstOrFail()`; gunakan pada show/edit/update/destroy agar akses CV user lain selalu 404.
-- [ ] Tambahkan `destroy(Request $request, CVData $cv)` yang hard-delete CV; FK menghapus seluruh child.
-- [ ] Tambahkan `Route::delete('cvs/{cv}', ...)` bernama `cvs.destroy`.
-- [ ] Pastikan delete user memicu database cascade ke CV dan detail; tidak ada `SoftDeletes` atau `deleted_at` logic.
-- [ ] Test email verification signed URL dengan UUID user.
+- [x] Tambahkan `HasUuids` pada `User` dan `CVData`; child base model juga memakai `HasUuids`.
+- [x] Implementasikan `CVSection::getTable()` agar table menjadi unqualified pada SQLite dan `cv.<table>` pada PostgreSQL.
+- [x] Sembunyikan `id`, `cv_data_id`, `sort_order`, dan timestamps child dari serialization agar payload lama tetap stabil.
+- [x] Definisikan delapan relations di `CVData`, semuanya order by `sort_order`; definisikan `User::cvs()`.
+- [x] Hapus delapan JSON fields dari `$fillable`/`$casts`; perbaiki `additional_info` sebagai string/text dan pertahankan `custom_fields` array.
+- [x] Buat `CVDataRequest` dengan nested validation nullable dan type validation untuk date/year/boolean/string.
+- [x] Tambahkan private section mapping pada controller dan satu helper transactional replace-all; backend menulis `sort_order`, bukan menerima dari client.
+- [x] Gunakan `DB::transaction()` pada store/update. Bila satu child gagal, parent dan seluruh child harus rollback.
+- [x] Pada show/edit gunakan eager load delapan relasi; index hanya select metadata parent agar tidak menambah query.
+- [x] Ubah route menjadi `{cv}` dengan `whereUuid('cv')` dan implicit model binding.
+- [x] Pusatkan ownership melalui `$request->user()->cvs()->whereKey($cv->getKey())->firstOrFail()`; gunakan pada show/edit/update/destroy agar akses CV user lain selalu 404.
+- [x] Tambahkan `destroy(Request $request, CVData $cv)` yang hard-delete CV; FK menghapus seluruh child.
+- [x] Tambahkan `Route::delete('cvs/{cv}', ...)` bernama `cvs.destroy`.
+- [x] Pastikan delete user memicu database cascade ke CV dan detail; tidak ada `SoftDeletes` atau `deleted_at` logic.
+- [x] Test email verification signed URL dengan UUID user.
 
 **Test:** `php artisan test --filter=CVData --no-ansi`, auth email verification tests, ownership tests, transaction rollback test, dan query-count assertion index tidak memuat child.
 
@@ -805,16 +805,16 @@ WHERE table_schema = 'cv'
 
 ## 8. Risiko Teknis Utama
 
-| Risiko | Dampak | Mitigasi |
-|---|---|---|
-| DOM measurement berubah setelah font/photo load | Page count flakey | Await fonts/images; separate measurement surface; signature guard |
-| html2pdf raster berbeda dari browser DOM | Perbedaan kecil atau file besar | Canonical exact-A4 export tree, scale 2, Chromium target utama |
-| Keep-with-next menyisakan ruang | Gap yang disengaja | Test membedakan gap valid dari next movable block yang sebenarnya muat |
-| Paragraph tunggal lebih tinggi dari page | Overflow/clipping | Word-boundary fallback dengan DOM binary search |
-| Delapan eager-loaded relations menambah query | Show/edit lebih lambat | Index tidak eager load; show/edit memakai bounded 9-query pattern |
-| Replace-all child mengubah UUID | Referensi child tidak stabil | Child ID tidak diekspos; upgrade ke upsert hanya jika ada consumer baru |
-| UUID swap merusak session/signed URL | Logout/verification failure | Invalidate session saat cutover dan regression test signed URL |
-| Drop legacy menghilangkan rollback cepat | Kehilangan mapping | Pertahankan legacy sampai Phase 12; validated `pg_dump` sebelum Phase 13 |
+| Risiko                                          | Dampak                          | Mitigasi                                                                |
+| ----------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------- |
+| DOM measurement berubah setelah font/photo load | Page count flakey               | Await fonts/images; separate measurement surface; signature guard       |
+| html2pdf raster berbeda dari browser DOM        | Perbedaan kecil atau file besar | Canonical exact-A4 export tree, scale 2, Chromium target utama          |
+| Keep-with-next menyisakan ruang                 | Gap yang disengaja              | Test membedakan gap valid dari next movable block yang sebenarnya muat  |
+| Paragraph tunggal lebih tinggi dari page        | Overflow/clipping               | Word-boundary fallback dengan DOM binary search                         |
+| Delapan eager-loaded relations menambah query   | Show/edit lebih lambat          | Index tidak eager load; show/edit memakai bounded 9-query pattern       |
+| Replace-all child mengubah UUID                 | Referensi child tidak stabil    | Child ID tidak diekspos; upgrade ke upsert hanya jika ada consumer baru |
+| UUID swap merusak session/signed URL            | Logout/verification failure     | Invalidate session saat cutover dan regression test signed URL          |
+| Drop legacy menghilangkan rollback cepat        | Kehilangan mapping              | Pertahankan legacy sampai Phase 12; validated`pg_dump` sebelum Phase 13 |
 
 ## 9. Final Definition of Done
 
