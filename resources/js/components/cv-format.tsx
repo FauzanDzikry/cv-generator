@@ -9,8 +9,10 @@ import {
     pageContentStyle,
     pageOuterStyle,
 } from '@/lib/cv-page-layout';
-import { MAX_CONTENT_HEIGHT_PX, SemanticBlock, measureBlocks, paginateBlocks } from '@/lib/cv-pagination';
-import type { CVData, Skill } from '@/types/cv';
+import { MAX_CONTENT_HEIGHT_PX, measureBlocks, paginateBlocks, SemanticBlock } from '@/lib/cv-pagination';
+import { getEnabledSections, SECTION_ORDER_BY_CV_TYPE } from '@/lib/cv-sections';
+import type { CVData, CVSectionKey, EnabledSections, Skill } from '@/types/cv';
+import { Link, Mail, MapPin, Phone } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export const pageBreakStyle = `
@@ -186,6 +188,7 @@ const calculateDuration = (startDate: string, endDate: string, isCurrent: boolea
 interface CVProps {
     data: CVData;
     isPdfMode?: boolean;
+    enabledSections?: EnabledSections;
 }
 
 const extractBulletPoints = (description: string): { intro?: string; bullets: string[] } => {
@@ -230,9 +233,11 @@ const extractBulletPoints = (description: string): { intro?: string; bullets: st
     return result;
 };
 
-function buildSemanticBlocks(data: CVData): SemanticBlock[] {
+function buildSemanticBlocks(data: CVData, enabledSections?: EnabledSections): SemanticBlock[] {
     const blocks: SemanticBlock[] = [];
     if (!data || Object.keys(data).length === 0) return blocks;
+    const cvType = data.cv_type ?? 'professional';
+    const enabled = getEnabledSections(enabledSections ?? data.custom_fields?.enabled_sections);
 
     blocks.push({
         key: 'cv-header',
@@ -268,13 +273,13 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                             >
                                 {data.address && (
                                     <p className="flex items-center gap-2">
-                                        <span>📍</span>
+                                        <MapPin className="h-4 w-4 text-gray-500" />
                                         {data.address}
                                     </p>
                                 )}
                                 {data.phone && (
                                     <p className="flex items-center gap-2">
-                                        <span>📱</span>
+                                        <Phone className="h-4 w-4 text-gray-500" />
                                         <a
                                             href={`https://wa.me/${formatPhoneForWhatsApp(data.phone)}`}
                                             target="_blank"
@@ -288,13 +293,13 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                                 )}
                                 {data.email && (
                                     <p className="flex items-center gap-2">
-                                        <span>✉️</span>
+                                        <Mail className="h-4 w-4 text-gray-500" />
                                         {data.email}
                                     </p>
                                 )}
                                 {data.linkedin && (
                                     <p className="flex items-center gap-2">
-                                        <span>🔗</span>
+                                        <Link className="h-4 w-4 text-gray-500" />
                                         {data.linkedin}
                                     </p>
                                 )}
@@ -399,7 +404,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
         pushDescriptionBlocks(data.summary, undefined, 'summary');
     }
 
-    if (data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company) {
+    if (cvType === 'professional' && data.work_experience?.some((work) => work.company)) {
         addSectionHeading('Professional Experience', 'sec-work');
         data.work_experience
             .filter((work) => work.company)
@@ -450,7 +455,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
             });
     }
 
-    if (data.education && data.education.length > 0 && data.education[0].institution) {
+    if (data.education?.some((education) => education.institution)) {
         addSectionHeading('Education', 'sec-edu');
         data.education
             .filter((edu) => edu.institution)
@@ -498,7 +503,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
             });
     }
 
-    if (data.skills && data.skills.length > 0 && data.skills[0].name) {
+    if (data.skills?.some((skill) => skill.name)) {
         addSectionHeading('Skills', 'sec-skills');
         const skillsPerColumn = 3;
         const totalColumns = Math.ceil(data.skills.length / skillsPerColumn);
@@ -547,8 +552,8 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
         });
     }
 
-    if (data.portfolios && data.portfolios.length > 0 && data.portfolios[0].title) {
-        addSectionHeading('Portfolios', 'sec-portfolios');
+    if (enabled.portfolios && data.portfolios?.some((portfolio) => portfolio.title)) {
+        addSectionHeading('Portfolio', 'sec-portfolios');
         data.portfolios
             .filter((p) => p.title)
             .forEach((portfolio, index) => {
@@ -582,8 +587,8 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
             });
     }
 
-    if (data.certifications && data.certifications.length > 0 && data.certifications[0].name) {
-        addSectionHeading('Certifications', 'sec-certifications');
+    if (enabled.certifications && data.certifications?.some((certification) => certification.name)) {
+        addSectionHeading('Licenses & Certifications', 'sec-certifications');
         data.certifications
             .filter((c) => c.name)
             .forEach((cert, index) => {
@@ -629,7 +634,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
             });
     }
 
-    if (data.accomplishments && data.accomplishments.length > 0 && data.accomplishments[0].description) {
+    if (cvType === 'fresh_graduate' && enabled.accomplishments && data.accomplishments?.some((item) => item.description)) {
         addSectionHeading('Accomplishments', 'sec-accomp');
         data.accomplishments
             .filter((a) => a.description)
@@ -638,8 +643,8 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
             });
     }
 
-    if (data.organizations && data.organizations.length > 0 && data.organizations[0].name) {
-        addSectionHeading('Organization', 'sec-org');
+    if (enabled.organizations && data.organizations?.some((organization) => organization.name)) {
+        addSectionHeading('Organizations', 'sec-org');
         data.organizations
             .filter((o) => o.name)
             .forEach((org, index) => {
@@ -679,7 +684,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
             });
     }
 
-    if (data.languages && data.languages.length > 0 && data.languages[0].language) {
+    if (enabled.languages && data.languages?.some((language) => language.language)) {
         addSectionHeading('Languages', 'sec-languages');
         const langItems = data.languages
             .filter((l) => l.language)
@@ -705,9 +710,29 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                         levelText = lang.level || '';
                 }
                 return (
-                    <li key={`lang_${index}`} className="mb-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
-                        <span className="font-medium text-gray-700">{lang.language}</span>
-                        <span className="ml-2 text-gray-600">({levelText})</span>
+                    <li key={`lang_${index}`} className="mb-2" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
+                        <div className="font-medium text-gray-700">
+                            {lang.language}
+                            {lang.has_certification && lang.test_name
+                                ? ` — ${lang.test_name}`
+                                : !lang.has_certification && levelText
+                                  ? ` — ${levelText}`
+                                  : ''}
+                        </div>
+                        {lang.has_certification && (
+                            <>
+                                <div className="text-gray-600">
+                                    {[lang.issuing_organization, lang.score ? `Score: ${lang.score}` : ''].filter(Boolean).join(' · ')}
+                                </div>
+                                <div className="text-gray-600">
+                                    {lang.issue_date ? `Issued ${formatDate(lang.issue_date)}` : ''}
+                                    {lang.issue_date ? ' · ' : ''}
+                                    {lang.is_time_limited && lang.expiration_date
+                                        ? `Expires ${formatDate(lang.expiration_date)}`
+                                        : 'No Expiration Date'}
+                                </div>
+                            </>
+                        )}
                     </li>
                 );
             });
@@ -719,15 +744,34 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
         });
     }
 
-    if (data.additional_info) {
-        addSectionHeading('Additional Info', 'sec-additional');
+    if (enabled.additional_info && data.additional_info) {
+        addSectionHeading('Additional Information', 'sec-additional');
         pushDescriptionBlocks(data.additional_info, undefined, 'additional-info');
     }
 
-    return blocks;
+    const headingSections: Record<string, CVSectionKey> = {
+        'sec-summary': 'summary',
+        'sec-work': 'work_experience',
+        'sec-edu': 'education',
+        'sec-skills': 'skills',
+        'sec-portfolios': 'portfolios',
+        'sec-certifications': 'certifications',
+        'sec-accomp': 'accomplishments',
+        'sec-org': 'organizations',
+        'sec-languages': 'languages',
+        'sec-additional': 'additional_info',
+    };
+    const grouped = new Map<CVSectionKey, SemanticBlock[]>();
+    let currentSection: CVSectionKey = 'personal';
+    blocks.forEach((block) => {
+        currentSection = headingSections[block.key] ?? currentSection;
+        grouped.set(currentSection, [...(grouped.get(currentSection) ?? []), block]);
+    });
+
+    return SECTION_ORDER_BY_CV_TYPE[cvType].flatMap((section) => grouped.get(section) ?? []);
 }
 
-const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
+const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections }) => {
     const [zoomLevel, setZoomLevel] = useState(100);
     const [showZoomControls, setShowZoomControls] = useState(false);
     const [showDebugMargin, setShowDebugMargin] = useState(false);
@@ -763,7 +807,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
         }
     };
 
-    const blocks: SemanticBlock[] = useMemo(() => buildSemanticBlocks(data), [data]);
+    const blocks: SemanticBlock[] = useMemo(() => buildSemanticBlocks(data, enabledSections), [data, enabledSections]);
     const blockMap = useMemo(() => {
         const map = new Map<string, SemanticBlock>();
         blocks.forEach((b) => map.set(b.key, b));

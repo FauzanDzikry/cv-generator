@@ -33,22 +33,37 @@ class CVDataController extends Controller
             // Hard-delete existing child rows
             $cv->{$relationName}()->delete();
 
-            if (isset($data[$relationName]) && is_array($data[$relationName]) && !empty($data[$relationName])) {
+            if (isset($data[$relationName]) && is_array($data[$relationName]) && ! empty($data[$relationName])) {
                 $childRows = [];
                 $sortOrder = 0;
                 foreach ($data[$relationName] as $item) {
-                    if (!is_array($item)) {
+                    if (! is_array($item)) {
                         continue;
                     }
                     $item['sort_order'] = $sortOrder++;
                     unset($item['id'], $item['cv_data_id'], $item['created_at'], $item['updated_at']);
                     $childRows[] = $item;
                 }
-                if (!empty($childRows)) {
+                if (! empty($childRows)) {
                     $cv->{$relationName}()->createMany($childRows);
                 }
             }
         }
+    }
+
+    private function resolveAddOnSections(CVData $cv): array
+    {
+        $defaults = [
+            'portfolios' => $cv->portfolios->contains(fn ($item) => filled($item->title) || filled($item->link) || filled($item->description)),
+            'certifications' => $cv->certifications->contains(fn ($item) => filled($item->name) || filled($item->organization)),
+            'accomplishments' => $cv->accomplishments->contains(fn ($item) => filled($item->description)),
+            'organizations' => $cv->organizations->contains(fn ($item) => filled($item->name) || filled($item->position) || filled($item->description)),
+            'languages' => $cv->languages->contains(fn ($item) => filled($item->language)),
+            'additional_info' => filled($cv->additional_info),
+        ];
+        $stored = $cv->custom_fields['enabled_sections'] ?? null;
+
+        return is_array($stored) ? array_replace($defaults, $stored) : $defaults;
     }
 
     public function index(): Response
@@ -69,6 +84,7 @@ class CVDataController extends Controller
         $cv = DB::transaction(function () use ($validated, $request) {
             $cv = $request->user()->cvs()->create($validated);
             $this->replaceAllSections($cv, $validated);
+
             return $cv;
         });
 
@@ -86,6 +102,7 @@ class CVDataController extends Controller
 
         return Inertia::render('cvs/show', [
             'cv' => $cv,
+            'addOnSections' => $this->resolveAddOnSections($cv),
         ]);
     }
 
@@ -94,14 +111,7 @@ class CVDataController extends Controller
         $cv = $this->authorizeOwnership($request, $cv);
         $cv->load($this->sectionRelations);
 
-        $addOnSections = [
-            'portfolios' => $cv->portfolios->isNotEmpty(),
-            'certifications' => $cv->certifications->isNotEmpty(),
-            'accomplishments' => $cv->accomplishments->isNotEmpty(),
-            'organizations' => $cv->organizations->isNotEmpty(),
-            'languages' => $cv->languages->isNotEmpty(),
-            'additional_info' => ! empty($cv->additional_info),
-        ];
+        $addOnSections = $this->resolveAddOnSections($cv);
 
         return Inertia::render('form-generate', [
             'cv' => $cv,

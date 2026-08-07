@@ -25,6 +25,7 @@ interface FormProgressProps {
     addOnSections?: {
         [key: string]: boolean;
     };
+    sectionOrder?: string[];
 }
 
 interface ProgressDetail {
@@ -35,7 +36,7 @@ interface ProgressDetail {
     percentage: number;
 }
 
-const FormProgress: React.FC<FormProgressProps> = ({ formData, fieldGroups, addOnSections = {} }) => {
+const FormProgress: React.FC<FormProgressProps> = ({ formData, fieldGroups, addOnSections = {}, sectionOrder }) => {
     const [expanded, setExpanded] = useState(false);
 
     // Hitung total field yang harus diisi
@@ -44,10 +45,14 @@ const FormProgress: React.FC<FormProgressProps> = ({ formData, fieldGroups, addO
         let filledFields = 0;
         const sectionDetails: ProgressDetail[] = [];
 
-        Object.entries(fieldGroups).forEach(([key, group]) => {
+        const orderedGroups = (sectionOrder ?? Object.keys(fieldGroups))
+            .filter((key) => fieldGroups[key])
+            .map((key) => [key, fieldGroups[key]] as const);
+
+        orderedGroups.forEach(([key, group]) => {
             // Lewati section jika itu adalah add-on yang tidak dicentang
             if (
-                (key === 'portfolio' && addOnSections.portfolios === false) ||
+                (key === 'portfolios' && addOnSections.portfolios === false) ||
                 (key === 'certifications' && addOnSections.certifications === false) ||
                 (key === 'accomplishments' && addOnSections.accomplishments === false) ||
                 (key === 'organizations' && addOnSections.organizations === false) ||
@@ -64,7 +69,21 @@ const FormProgress: React.FC<FormProgressProps> = ({ formData, fieldGroups, addO
                 // Jika field adalah array (seperti work_experience, education, dll)
                 if (Array.isArray(formData[key]) && formData[key].length > 0) {
                     formData[key].forEach((item: any) => {
-                        const fieldsToCheck = group.requiredFields || group.fields;
+                        const fieldsToCheck =
+                            key === 'languages'
+                                ? [
+                                      'language',
+                                      ...(item.has_certification
+                                          ? [
+                                                'test_name',
+                                                'issuing_organization',
+                                                'score',
+                                                'issue_date',
+                                                ...(item.is_time_limited ? ['expiration_date'] : []),
+                                            ]
+                                          : []),
+                                  ]
+                                : group.requiredFields || group.fields;
                         fieldsToCheck.forEach((field) => {
                             // Jika field adalah end_date dan is_current bernilai true, anggap sudah terisi
                             if (field === 'end_date' && item.is_current === true) {

@@ -10,6 +10,7 @@ class CVData extends Model
     use HasUuids;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     public function getTable()
@@ -19,6 +20,7 @@ class CVData extends Model
 
     protected $fillable = [
         'user_id',
+        'cv_type',
         'cv_name',
         'name',
         'address',

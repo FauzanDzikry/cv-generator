@@ -67,13 +67,13 @@ export default function HowToUse() {
                                             <h3 className="text-2xl font-bold text-gray-900 transition-colors duration-300 group-hover:text-red-500 dark:text-white dark:group-hover:text-red-400">Fill the Form</h3>
                                         </div>
                                         <p className="mb-8 leading-relaxed text-gray-500 dark:text-gray-400">
-                                            Complete all required information such as personal data, work experience, education, and skills with
+                                            Complete all required information such as personal data, professional experience, education, and skills with
                                             accurate details.
                                         </p>
 
                                         {/* Feature List */}
                                         <ul className="space-y-4">
-                                            {['Complete personal data', 'Detailed work experience', 'Education and skills', 'Real-time preview'].map((text, i) => (
+                                            {['Complete personal data', 'Detailed professional experience', 'Education and skills', 'Real-time preview'].map((text, i) => (
                                                 <li key={i} className="flex items-center text-gray-600 transition-all duration-200 hover:translate-x-1 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400">
                                                     <div className="mr-4 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-red-50 transition-colors duration-300 group-hover:bg-red-100 dark:bg-red-900/30 dark:group-hover:bg-red-900/50">
                                                         <svg className="h-3.5 w-3.5 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

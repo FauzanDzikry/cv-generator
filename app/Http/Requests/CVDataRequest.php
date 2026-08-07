@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class CVDataRequest extends FormRequest
 {
@@ -17,25 +18,26 @@ class CVDataRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $input = $this->all();
+        $input['cv_type'] = $input['cv_type'] ?? 'professional';
 
         $cleanArray = function (?array $items, array $dateOrIntFields, array $boolFields = []): ?array {
-            if (!$items || !is_array($items)) {
+            if (! $items || ! is_array($items)) {
                 return $items;
             }
             foreach ($items as &$item) {
-                if (!is_array($item)) {
+                if (! is_array($item)) {
                     continue;
                 }
                 foreach ($dateOrIntFields as $f) {
                     if (array_key_exists($f, $item)) {
                         if ($item[$f] === '' || $item[$f] === null) {
                             $item[$f] = null;
-                        } elseif (in_array($f, ['start_date', 'end_date']) && is_string($item[$f])) {
+                        } elseif (in_array($f, ['start_date', 'end_date', 'issue_date', 'expiration_date']) && is_string($item[$f])) {
                             $strVal = trim($item[$f]);
                             if (preg_match('/^\d{4}-\d{2}$/', $strVal)) {
-                                $item[$f] = $strVal . '-01';
+                                $item[$f] = $strVal.'-01';
                             } elseif (preg_match('/^\d{4}$/', $strVal)) {
-                                $item[$f] = $strVal . '-01-01';
+                                $item[$f] = $strVal.'-01-01';
                             }
                         }
                     }
@@ -46,6 +48,7 @@ class CVDataRequest extends FormRequest
                     }
                 }
             }
+
             return $items;
         };
 
@@ -61,6 +64,13 @@ class CVDataRequest extends FormRequest
         if ($this->has('organizations')) {
             $input['organizations'] = $cleanArray($this->input('organizations'), ['start_date', 'end_date'], ['is_current']);
         }
+        if ($this->has('languages')) {
+            $input['languages'] = $cleanArray(
+                $this->input('languages'),
+                ['issue_date', 'expiration_date'],
+                ['has_certification', 'is_time_limited']
+            );
+        }
 
         $this->replace($input);
     }
@@ -73,6 +83,7 @@ class CVDataRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'cv_type' => ['required', 'in:professional,fresh_graduate'],
             'cv_name' => ['nullable', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string'],
@@ -81,7 +92,7 @@ class CVDataRequest extends FormRequest
             'linkedin' => ['nullable', 'string', 'max:500'],
             'summary' => ['required', 'string'],
 
-            'work_experience' => ['required', 'array'],
+            'work_experience' => ['required_if:cv_type,professional', 'array'],
             'work_experience.*.company' => ['nullable', 'string', 'max:255'],
             'work_experience.*.company_location' => ['nullable', 'string', 'max:255'],
             'work_experience.*.position' => ['nullable', 'string', 'max:255'],
@@ -119,6 +130,13 @@ class CVDataRequest extends FormRequest
             'languages' => ['nullable', 'array'],
             'languages.*.language' => ['nullable', 'string', 'max:255'],
             'languages.*.level' => ['nullable', 'string', 'max:255'],
+            'languages.*.has_certification' => ['nullable', 'boolean'],
+            'languages.*.test_name' => ['nullable', 'string', 'max:255'],
+            'languages.*.issuing_organization' => ['nullable', 'string', 'max:255'],
+            'languages.*.score' => ['nullable', 'string', 'max:100'],
+            'languages.*.issue_date' => ['nullable', 'date'],
+            'languages.*.expiration_date' => ['nullable', 'date'],
+            'languages.*.is_time_limited' => ['nullable', 'boolean'],
 
             'accomplishments' => ['nullable', 'array'],
             'accomplishments.*.description' => ['nullable', 'string'],
@@ -133,6 +151,43 @@ class CVDataRequest extends FormRequest
 
             'additional_info' => ['nullable', 'string'],
             'custom_fields' => ['nullable', 'array'],
+            'custom_fields.enabled_sections' => ['nullable', 'array'],
+            'custom_fields.enabled_sections.*' => ['boolean'],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function (Validator $validator) {
+                foreach ($this->input('languages', []) as $index => $language) {
+                    if (! is_array($language) || empty($language['has_certification'])) {
+                        continue;
+                    }
+
+                    foreach (['test_name', 'issuing_organization', 'score', 'issue_date'] as $field) {
+                        if (! filled($language[$field] ?? null)) {
+                            $validator->errors()->add("languages.{$index}.{$field}", "The {$field} field is required for a certified language.");
+                        }
+                    }
+
+                    if (empty($language['is_time_limited'])) {
+                        continue;
+                    }
+
+                    $expiration = $language['expiration_date'] ?? null;
+                    if (! filled($expiration)) {
+                        $validator->errors()->add("languages.{$index}.expiration_date", 'The expiration date field is required.');
+
+                        continue;
+                    }
+
+                    $issue = $language['issue_date'] ?? null;
+                    if (filled($issue) && strtotime($expiration) < strtotime($issue)) {
+                        $validator->errors()->add("languages.{$index}.expiration_date", 'The expiration date must be after or equal to the issue date.');
+                    }
+                }
+            },
         ];
     }
 }

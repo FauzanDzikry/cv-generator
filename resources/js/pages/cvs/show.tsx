@@ -1,10 +1,13 @@
 import CV from '@/components/cv-format';
 import AppLayout from '@/layouts/layouts';
+import { getEnabledSections } from '@/lib/cv-sections';
+import type { CVCustomFields, CVType } from '@/types/cv';
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Pencil, Printer, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 
 interface CvShowProps {
+    addOnSections?: Record<string, boolean>;
     cv: {
         id: string;
         cv_name?: string | null;
@@ -14,6 +17,7 @@ interface CvShowProps {
         email: string;
         linkedin?: string | null;
         summary: string;
+        cv_type?: CVType;
         work_experience: unknown;
         education: unknown;
         skills: unknown;
@@ -23,11 +27,11 @@ interface CvShowProps {
         accomplishments?: unknown;
         organizations?: unknown;
         additional_info?: string | unknown;
-        custom_fields?: { is_use_photo?: boolean; photo_base64?: string } | null;
+        custom_fields?: CVCustomFields | null;
     };
 }
 
-export default function CvShow({ cv }: CvShowProps) {
+export default function CvShow({ cv, addOnSections }: CvShowProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const customFields = cv.custom_fields ?? {};
@@ -98,7 +102,11 @@ export default function CvShow({ cv }: CvShowProps) {
                         </button>
                     </div>
                     <div className="overflow-auto rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-                        <CV data={viewData as unknown as React.ComponentProps<typeof CV>['data']} isPdfMode={false} />
+                        <CV
+                            data={viewData as unknown as React.ComponentProps<typeof CV>['data']}
+                            enabledSections={getEnabledSections(addOnSections ?? customFields.enabled_sections)}
+                            isPdfMode={false}
+                        />
                     </div>
                 </div>
             </div>

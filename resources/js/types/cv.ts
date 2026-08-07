@@ -54,16 +54,39 @@ export interface Organization {
 export interface Language {
     language: string;
     level?: string;
-    has_certification?: boolean;
+    has_certification: boolean;
     test_name?: string;
     issuing_organization?: string;
     score?: string;
     issue_date?: string;
     expiration_date?: string;
-    is_time_limited?: boolean;
+    is_time_limited: boolean;
 }
 
 export type CVType = 'professional' | 'fresh_graduate';
+
+export type CVSectionKey =
+    | 'personal'
+    | 'summary'
+    | 'work_experience'
+    | 'education'
+    | 'organizations'
+    | 'portfolios'
+    | 'accomplishments'
+    | 'skills'
+    | 'certifications'
+    | 'languages'
+    | 'additional_info';
+
+export type AddOnSectionKey = 'portfolios' | 'certifications' | 'accomplishments' | 'organizations' | 'languages' | 'additional_info';
+
+export type EnabledSections = Record<AddOnSectionKey, boolean>;
+
+export interface CVCustomFields {
+    is_use_photo?: boolean;
+    photo_base64?: string | null;
+    enabled_sections?: Partial<EnabledSections>;
+}
 
 export interface CVData {
     cv_type?: CVType;
@@ -88,7 +111,7 @@ export interface CVData {
     accomplishments?: Accomplishment[];
     organizations?: Organization[];
     additional_info?: string;
-    custom_fields?: { is_use_photo?: boolean; photo_base64?: string } | null;
+    custom_fields?: CVCustomFields | null;
     created_at?: string;
     updated_at?: string;
 }
