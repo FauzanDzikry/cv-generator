@@ -1,5 +1,6 @@
 services:
   app:
+    container_name: cv-generator
     image: ${APP_IMAGE:-ghcr.io/fauzandzikry/cv-generator:latest}
     restart: always
     ports:
