@@ -4,9 +4,11 @@ import AppLayout from '@/layouts/layouts';
 import { PAGE_WIDTH_MM } from '@/lib/cv-page-layout';
 import { sanitizeOklchColors } from '@/lib/utils';
 import { Head, router, usePage } from '@inertiajs/react';
+import { CVType } from '@/types/cv';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 
 const defaultFormData = {
+    cv_type: 'professional' as CVType,
     cv_name: '',
     name: '',
     address: '',
@@ -51,7 +53,7 @@ const defaultFormData = {
             credential_id: '',
         },
     ],
-    languages: [{ language: '', level: '' }],
+    languages: [{ language: '', level: '', has_certification: false, test_name: '', issuing_organization: '', score: '', issue_date: '', expiration_date: '', is_time_limited: false }],
     accomplishments: [{ description: '' }],
     organizations: [
         {
@@ -86,6 +88,7 @@ function getInitialFormData() {
         return {
             ...defaultFormData,
             ...parsed,
+            cv_type: parsed.cv_type ?? 'professional',
             work_experience: (parsed.work_experience?.length ? parsed.work_experience : defaultFormData.work_experience).map(
                 (item: typeof workDefault) => ({ ...workDefault, ...item }),
             ),
@@ -104,9 +107,16 @@ function getInitialFormData() {
             certifications: (parsed.certifications?.length ? parsed.certifications : defaultFormData.certifications).map(
                 (c: (typeof defaultFormData.certifications)[0]) => ({ ...defaultFormData.certifications[0], ...c }),
             ),
-            languages: (parsed.languages?.length ? parsed.languages : defaultFormData.languages).map((l: { language: string; level: string }) => ({
+            languages: (parsed.languages?.length ? parsed.languages : defaultFormData.languages).map((l: any) => ({
                 language: l?.language ?? '',
                 level: l?.level ?? '',
+                has_certification: l?.has_certification ?? false,
+                test_name: l?.test_name ?? '',
+                issuing_organization: l?.issuing_organization ?? '',
+                score: l?.score ?? '',
+                issue_date: l?.issue_date ?? '',
+                expiration_date: l?.expiration_date ?? '',
+                is_time_limited: l?.is_time_limited ?? false,
             })),
             accomplishments: (parsed.accomplishments?.length ? parsed.accomplishments : defaultFormData.accomplishments).map(
                 (a: { description: string }) => ({ description: a?.description ?? '' }),
@@ -158,6 +168,7 @@ function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
               : '';
     return {
         ...defaultFormData,
+        cv_type: (cv.cv_type as CVType) ?? 'professional',
         cv_name: (cv.cv_name as string) ?? '',
         name: (cv.name as string) ?? '',
         address: (cv.address as string) ?? '',
@@ -219,7 +230,13 @@ export default function CvForm() {
             : getInitialPhotoPreview();
 
     const [formData, setFormData] = useState(initialFormData);
-    const [showPreview, setShowPreview] = useState(false);
+    const [showPreview, setShowPreview] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('preview') === 'true';
+        }
+        return false;
+    });
     const [pageLoaded, setPageLoaded] = useState(false);
     const [addOnSections, setAddOnSections] = useState(initialAddOn);
     const [photoPreview, setPhotoPreview] = useState<string | null>(initialPhoto);
@@ -234,7 +251,7 @@ export default function CvForm() {
             requiredFields: ['name', 'address', 'phone', 'email', 'summary'],
         },
         work_experience: {
-            label: 'Work Experience',
+            label: 'Professional Experience',
             fields: ['company', 'company_location', 'location_type', 'position', 'start_date', 'end_date', 'description'],
             isArray: true,
             requiredFields: ['company', 'company_location', 'location_type', 'position', 'start_date', 'end_date', 'description'],
@@ -376,6 +393,8 @@ export default function CvForm() {
     }, []);
 
     useEffect(() => {
+        if (isEdit) return;
+
         try {
             const formDataToSave = { ...formData };
 
@@ -432,13 +451,18 @@ export default function CvForm() {
             body: JSON.stringify(payload),
             credentials: 'same-origin',
         })
-            .then((res) => {
+            .then(async (res) => {
                 if (res.ok) {
+                    const data = await res.json();
                     localStorage.removeItem(PENDING_CV_SAVE_KEY);
                     localStorage.removeItem('cvFormData');
                     localStorage.removeItem('cvAddOnSections');
                     localStorage.removeItem('cvPhotoPreview');
                     setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
+
+                    if (data && data.id) {
+                        router.visit(route('cvs.edit', data.id));
+                    }
                 } else {
                     localStorage.removeItem(PENDING_CV_SAVE_KEY);
                     setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
@@ -698,12 +722,17 @@ export default function CvForm() {
             body: JSON.stringify(payload),
             credentials: 'same-origin',
         })
-            .then((res) => {
+            .then(async (res) => {
                 if (res.ok) {
+                    const data = await res.json();
                     localStorage.removeItem('cvFormData');
                     localStorage.removeItem('cvAddOnSections');
                     localStorage.removeItem('cvPhotoPreview');
                     setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
+
+                    if (data && data.id) {
+                        router.visit(route('cvs.edit', data.id));
+                    }
                 } else {
                     setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
                 }
@@ -714,7 +743,17 @@ export default function CvForm() {
     };
 
     const togglePreview = () => {
-        setShowPreview(!showPreview);
+        const newValue = !showPreview;
+        setShowPreview(newValue);
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (newValue) {
+                url.searchParams.set('preview', 'true');
+            } else {
+                url.searchParams.delete('preview');
+            }
+            window.history.replaceState({}, '', url.toString());
+        }
     };
 
     const handleAddOnChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -788,6 +827,13 @@ export default function CvForm() {
                             {
                                 language: '',
                                 level: '',
+                                has_certification: false,
+                                test_name: '',
+                                issuing_organization: '',
+                                score: '',
+                                issue_date: '',
+                                expiration_date: '',
+                                is_time_limited: false,
                             },
                         ],
                     });
@@ -801,6 +847,15 @@ export default function CvForm() {
             }
         }
     };
+
+    useEffect(() => {
+        const newInitialFormData = props.cv ? formDataFromCv(props.cv) : getInitialFormData();
+        setFormData(newInitialFormData);
+        setAddOnSections(props.addOnSections ?? getInitialAddOnSections());
+        setPhotoPreview(props.cv && (props.cv.custom_fields as Record<string, unknown>)?.photo_base64
+            ? String((props.cv.custom_fields as Record<string, unknown>).photo_base64)
+            : getInitialPhotoPreview());
+    }, [props.cvId]);
 
     return (
         <AppLayout>
@@ -833,20 +888,20 @@ export default function CvForm() {
                         {/* Form Section */}
                         <div className={`${showPreview ? 'lg:w-1/2' : 'w-full'} transition-all duration-300`}>
                             <div className="rounded-lg bg-white p-6 shadow-md dark:bg-gray-700">
-                                <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-                                    {isEdit && (
+                                <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+                                    {!isGuest && (
                                         <button
                                             type="button"
-                                            onClick={handleSaveUpdate}
-                                            className="inline-flex items-center rounded-md border border-transparent bg-gray-700 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-gray-300 transition hover:bg-gray-600 focus:ring focus:outline-none disabled:opacity-25 dark:bg-gray-600 dark:hover:bg-gray-500"
+                                            onClick={!isEdit ? handleSaveNewCV : handleSaveUpdate}
+                                            className="inline-flex items-center justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase shadow-sm transition hover:bg-red-500 focus:border-red-700 focus:ring focus:ring-red-300 focus:outline-none active:bg-red-700 disabled:opacity-50"
                                         >
-                                            Save changes
+                                            Save CV
                                         </button>
                                     )}
                                     <button
                                         type="button"
                                         onClick={togglePreview}
-                                        className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-red-300 transition hover:bg-red-500 focus:border-red-700 focus:ring focus:outline-none active:bg-red-700 disabled:opacity-25"
+                                        className="inline-flex items-center justify-center rounded-md border border-transparent bg-gray-200 px-4 py-2 text-xs font-semibold tracking-widest text-gray-900 uppercase shadow-sm transition hover:bg-gray-300 focus:ring focus:ring-gray-300 focus:outline-none active:bg-gray-400 disabled:opacity-50 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-500"
                                     >
                                         {showPreview ? 'Close Preview' : 'Preview CV'}
                                     </button>
@@ -1055,10 +1110,10 @@ export default function CvForm() {
                                         </div>
                                     </div>
 
-                                    {/* Work Experience */}
+                                    {/* Professional Experience */}
                                     <div className="mb-8">
                                         <h2 className="mb-4 border-b border-gray-200 pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
-                                            Work Experience
+                                            Professional Experience
                                             <span className="ml-1 inline-flex items-center">
                                                 <div className="group relative ml-1">
                                                     <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-300 text-xs text-gray-700 dark:bg-gray-600 dark:text-gray-300">
@@ -1276,7 +1331,7 @@ export default function CvForm() {
                                                     clipRule="evenodd"
                                                 />
                                             </svg>
-                                            Add Work Experience
+                                            Add Professional Experience
                                         </button>
                                     </div>
 
@@ -2310,7 +2365,7 @@ export default function CvForm() {
 
                                             <button
                                                 type="button"
-                                                onClick={() => addArrayItem('languages', { language: '', level: '' })}
+                                                onClick={() => addArrayItem('languages', { language: '', level: '', has_certification: false, test_name: '', issuing_organization: '', score: '', issue_date: '', expiration_date: '', is_time_limited: false })}
                                                 className="mt-2 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             >
                                                 <svg
@@ -2360,20 +2415,20 @@ export default function CvForm() {
                                         </div>
                                     )}
 
-                                    <div className="mt-6 flex flex-col justify-between space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+                                    <div className="mt-6 flex flex-col justify-between space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
                                         <button
                                             type="button"
                                             onClick={handleGeneratePDF}
                                             disabled={isGeneratingPDF}
-                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-red-300 transition hover:bg-red-500 focus:border-red-700 focus:ring focus:outline-none active:bg-red-700 disabled:opacity-50"
+                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-gray-800 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase shadow-sm transition hover:bg-gray-700 focus:border-gray-900 focus:ring focus:ring-gray-300 focus:outline-none active:bg-gray-900 disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-600 sm:w-auto sm:flex-1"
                                         >
                                             {isGeneratingPDF ? 'Generating...' : 'Generate PDF'}
                                         </button>
                                         {!isGuest && (
-                                            <button
+                                            <button 
                                                 type="button"
                                                 onClick={!isEdit ? handleSaveNewCV : handleSaveUpdate}
-                                                className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase ring-blue-300 transition hover:bg-blue-500 focus:border-blue-700 focus:ring focus:outline-none active:bg-blue-700 disabled:opacity-25"
+                                                className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase shadow-sm transition hover:bg-red-500 focus:border-red-700 focus:ring focus:ring-red-300 focus:outline-none active:bg-red-700 disabled:opacity-50 sm:w-auto sm:flex-1"
                                             >
                                                 Save CV
                                             </button>
@@ -2381,7 +2436,7 @@ export default function CvForm() {
                                         <button
                                             type="button"
                                             onClick={togglePreview}
-                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-gray-200 px-4 py-2 text-xs font-semibold tracking-widest text-gray-900 uppercase ring-gray-300 transition hover:bg-gray-300 focus:ring focus:outline-none active:bg-gray-400 disabled:opacity-25 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-500 dark:active:bg-gray-700"
+                                            className="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-gray-200 px-4 py-2 text-xs font-semibold tracking-widest text-gray-900 uppercase shadow-sm transition hover:bg-gray-300 focus:ring focus:ring-gray-300 focus:outline-none active:bg-gray-400 disabled:opacity-50 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-500 sm:w-auto sm:flex-1"
                                         >
                                             {showPreview ? 'Close Preview' : 'Preview CV'}
                                         </button>

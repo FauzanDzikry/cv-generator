@@ -53,10 +53,20 @@ export interface Organization {
 
 export interface Language {
     language: string;
-    level: string;
+    level?: string;
+    has_certification?: boolean;
+    test_name?: string;
+    issuing_organization?: string;
+    score?: string;
+    issue_date?: string;
+    expiration_date?: string;
+    is_time_limited?: boolean;
 }
 
+export type CVType = 'professional' | 'fresh_graduate';
+
 export interface CVData {
+    cv_type?: CVType;
     id?: string;
     user_id?: string;
     cv_name?: string | null;

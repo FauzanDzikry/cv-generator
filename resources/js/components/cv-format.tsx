@@ -400,7 +400,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
     }
 
     if (data.work_experience && data.work_experience.length > 0 && data.work_experience[0].company) {
-        addSectionHeading('Work Experience', 'sec-work');
+        addSectionHeading('Professional Experience', 'sec-work');
         data.work_experience
             .filter((work) => work.company)
             .forEach((work, index) => {
@@ -702,7 +702,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
                         levelText = 'Elementary proficiency';
                         break;
                     default:
-                        levelText = lang.level;
+                        levelText = lang.level || '';
                 }
                 return (
                     <li key={`lang_${index}`} className="mb-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
@@ -730,6 +730,7 @@ function buildSemanticBlocks(data: CVData): SemanticBlock[] {
 const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
     const [zoomLevel, setZoomLevel] = useState(100);
     const [showZoomControls, setShowZoomControls] = useState(false);
+    const [showDebugMargin, setShowDebugMargin] = useState(false);
     const [pageKeys, setPageKeys] = useState<string[][]>([]);
     const cvContentRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
@@ -747,6 +748,9 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
 
     useEffect(() => {
         setShowZoomControls(!isPdfMode);
+        if (typeof window !== 'undefined') {
+            setShowDebugMargin(new URLSearchParams(window.location.search).get('margin') === '1');
+        }
     }, [isPdfMode]);
 
     const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -825,7 +829,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false }) => {
                 border: !isPdfMode ? undefined : 'none',
             }}
         >
-            {!isPdfMode && (
+            {!isPdfMode && showDebugMargin && (
                 <>
                     <div
                         className="cv-margin-guide"
