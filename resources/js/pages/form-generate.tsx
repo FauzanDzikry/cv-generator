@@ -11,6 +11,7 @@ import {
 } from '@/lib/cv-sections';
 import { sanitizeOklchColors } from '@/lib/utils';
 import type { CVData, CVSectionKey, CVType } from '@/types/cv';
+import { objectToFormData, type FormDataConvertible } from '@inertiajs/core';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChangeEvent, Children, FormEvent, isValidElement, ReactNode, useEffect, useRef, useState } from 'react';
 
@@ -186,6 +187,20 @@ function getInitialPhotoPreview(): string | null {
 
 const PENDING_CV_SAVE_KEY = 'pendingCvSave';
 
+function multipart(payload: Record<string, unknown>): FormData {
+    return objectToFormData(payload as Record<string, FormDataConvertible>);
+}
+
+async function dataUrlToFile(dataUrl: string): Promise<File> {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    if (!['image/jpeg', 'image/png'].includes(blob.type)) {
+        throw new Error('Invalid pending profile photo.');
+    }
+
+    return new File([blob], blob.type === 'image/png' ? 'profile.png' : 'profile.jpg', { type: blob.type });
+}
+
 type FormGenerateProps = {
     cv?: Record<string, unknown>;
     addOnSections?: Record<string, boolean>;
@@ -265,10 +280,7 @@ export default function CvForm() {
     const initialFormData = props.cv ? formDataFromCv(props.cv) : getInitialFormData();
     const customFields = (props.cv?.custom_fields as Record<string, unknown> | undefined) ?? {};
     const initialAddOn = getEnabledSections(props.addOnSections ?? customFields.enabled_sections ?? getInitialAddOnSections());
-    const initialPhoto =
-        props.cv && (props.cv.custom_fields as Record<string, unknown>)?.photo_base64
-            ? String((props.cv.custom_fields as Record<string, unknown>).photo_base64)
-            : getInitialPhotoPreview();
+    const initialPhoto = typeof props.cv?.photo_url === 'string' ? props.cv.photo_url : getInitialPhotoPreview();
 
     const [formData, setFormData] = useState(initialFormData);
     const [showPreview, setShowPreview] = useState(() => {
@@ -281,6 +293,7 @@ export default function CvForm() {
     const [pageLoaded, setPageLoaded] = useState(false);
     const [addOnSections, setAddOnSections] = useState(initialAddOn);
     const [photoPreview, setPhotoPreview] = useState<string | null>(initialPhoto);
+    const [hasPersistedPhoto, setHasPersistedPhoto] = useState(Boolean(props.cv?.has_photo));
     const [showPhotoModal, setShowPhotoModal] = useState(false);
     const [showLoginSaveModal, setShowLoginSaveModal] = useState(false);
     const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -470,56 +483,59 @@ export default function CvForm() {
             return;
         }
 
-        let payload: Record<string, unknown>;
-        try {
-            const parsed = JSON.parse(rawForm) as Record<string, unknown>;
-            const { photo: _p, ...rest } = parsed;
-            payload = {
-                ...rest,
-                custom_fields: {
-                    is_use_photo: parsed.is_use_photo ?? false,
-                    photo_base64: rawPhoto && typeof rawPhoto === 'string' ? rawPhoto : null,
-                    enabled_sections: getEnabledSections(JSON.parse(localStorage.getItem('cvAddOnSections') ?? '{}')),
+        const persistPendingCV = async () => {
+            let payload: Record<string, unknown>;
+            try {
+                const parsed = JSON.parse(rawForm) as Record<string, unknown>;
+                const { photo: _p, ...rest } = parsed;
+                payload = {
+                    ...rest,
+                    custom_fields: {
+                        is_use_photo: parsed.is_use_photo ?? false,
+                        enabled_sections: getEnabledSections(JSON.parse(localStorage.getItem('cvAddOnSections') ?? '{}')),
+                    },
+                };
+                if (rawPhoto) payload.photo = await dataUrlToFile(rawPhoto);
+            } catch {
+                localStorage.removeItem(PENDING_CV_SAVE_KEY);
+                return;
+            }
+
+            const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.getAttribute('content');
+            fetch(route('cvs.store'), {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-            };
-        } catch {
-            localStorage.removeItem(PENDING_CV_SAVE_KEY);
-            return;
-        }
+                body: multipart(payload),
+                credentials: 'same-origin',
+            })
+                .then(async (res) => {
+                    if (res.ok) {
+                        const data = await res.json();
+                        localStorage.removeItem(PENDING_CV_SAVE_KEY);
+                        localStorage.removeItem('cvFormData');
+                        localStorage.removeItem('cvAddOnSections');
+                        localStorage.removeItem('cvPhotoPreview');
+                        setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
 
-        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.getAttribute('content');
-        fetch(route('cvs.store'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                ...(token ? { 'X-CSRF-TOKEN': token } : {}),
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify(payload),
-            credentials: 'same-origin',
-        })
-            .then(async (res) => {
-                if (res.ok) {
-                    const data = await res.json();
-                    localStorage.removeItem(PENDING_CV_SAVE_KEY);
-                    localStorage.removeItem('cvFormData');
-                    localStorage.removeItem('cvAddOnSections');
-                    localStorage.removeItem('cvPhotoPreview');
-                    setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
-
-                    if (data && data.id) {
-                        router.visit(route('cvs.edit', data.id));
+                        if (data && data.id) {
+                            router.visit(route('cvs.edit', data.id));
+                        }
+                    } else {
+                        localStorage.removeItem(PENDING_CV_SAVE_KEY);
+                        setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
                     }
-                } else {
+                })
+                .catch(() => {
                     localStorage.removeItem(PENDING_CV_SAVE_KEY);
                     setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
-                }
-            })
-            .catch(() => {
-                localStorage.removeItem(PENDING_CV_SAVE_KEY);
-                setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
-            });
+                });
+        };
+
+        void persistPendingCV();
     }, [props.auth?.user]);
 
     useEffect(() => {
@@ -572,6 +588,10 @@ export default function CvForm() {
             const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
             if (!validTypes.includes(file.type)) {
                 alert('Please select a valid image file (JPEG, PNG, JPG)');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Profile photo must not exceed 5MB');
                 return;
             }
 
@@ -729,6 +749,9 @@ export default function CvForm() {
             const html2pdfModule = await import('html2pdf.js');
             const html2pdf = html2pdfModule.default || html2pdfModule;
             await html2pdf().set(opt).from(cvRef.current).save();
+            if (typeof window.gtag === 'function') {
+                window.gtag('event', 'generate_pdf');
+            }
         } catch (error) {
             console.error('Error generating PDF:', error);
             alert('An error occurred while generating the PDF. Please try again.');
@@ -742,41 +765,43 @@ export default function CvForm() {
         handleGeneratePDF();
     };
 
-    const handleSaveUpdate = () => {
-        if (!cvId) return;
+    const buildSavePayload = () => {
         const { photo: _p, ...rest } = formData;
-        const payload = {
+
+        return {
             ...rest,
+            ...(formData.photo ? { photo: formData.photo } : {}),
             custom_fields: {
                 is_use_photo: formData.is_use_photo,
-                photo_base64: photoPreview ?? null,
                 enabled_sections: addOnSections,
             },
         };
-        router.put(route('cvs.update', cvId), payload);
+    };
+
+    const handleSaveUpdate = () => {
+        if (!cvId) return;
+        router.post(route('cvs.update', cvId), { ...buildSavePayload(), _method: 'put' }, { 
+            forceFormData: true,
+            onSuccess: () => {
+                if (typeof window.gtag === 'function') {
+                    window.gtag('event', 'save_cv');
+                }
+            }
+        });
     };
 
     const handleSaveNewCV = () => {
-        const { photo: _p, ...rest } = formData;
-        const payload = {
-            ...rest,
-            custom_fields: {
-                is_use_photo: formData.is_use_photo,
-                photo_base64: photoPreview ?? null,
-                enabled_sections: addOnSections,
-            },
-        };
+        const payload = buildSavePayload();
 
         const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.getAttribute('content');
         fetch(route('cvs.store'), {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 Accept: 'application/json',
                 ...(token ? { 'X-CSRF-TOKEN': token } : {}),
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            body: JSON.stringify(payload),
+            body: multipart(payload),
             credentials: 'same-origin',
         })
             .then(async (res) => {
@@ -786,6 +811,10 @@ export default function CvForm() {
                     localStorage.removeItem('cvAddOnSections');
                     localStorage.removeItem('cvPhotoPreview');
                     setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
+
+                    if (typeof window.gtag === 'function') {
+                        window.gtag('event', 'save_cv');
+                    }
 
                     if (data && data.id) {
                         router.visit(route('cvs.edit', data.id));
@@ -797,6 +826,45 @@ export default function CvForm() {
             .catch(() => {
                 setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
             });
+    };
+
+    const clearSelectedPhoto = (preview: string | null = null) => {
+        setFormData((current) => ({ ...current, photo: null, is_use_photo: preview ? current.is_use_photo : false }));
+        setPhotoPreview(preview);
+        if (!preview) localStorage.removeItem('cvPhotoPreview');
+    };
+
+    const handleDeletePhoto = async () => {
+        if (formData.photo) {
+            clearSelectedPhoto(hasPersistedPhoto && typeof props.cv?.photo_url === 'string' ? props.cv.photo_url : null);
+            return;
+        }
+
+        if (!hasPersistedPhoto || !cvId) {
+            clearSelectedPhoto();
+            return;
+        }
+
+        if (!window.confirm('Delete this profile photo permanently?')) return;
+
+        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.getAttribute('content');
+        try {
+            const response = await fetch(route('cvs.photo.destroy', cvId), {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) throw new Error('Photo deletion failed.');
+
+            setHasPersistedPhoto(false);
+            clearSelectedPhoto();
+        } catch {
+            setSaveMessage({ type: 'error', text: 'Failed to delete photo. Please try again.' });
+        }
     };
 
     const togglePreview = () => {
@@ -838,11 +906,8 @@ export default function CvForm() {
         setFormData(newInitialFormData);
         const customFields = (props.cv?.custom_fields as Record<string, unknown> | undefined) ?? {};
         setAddOnSections(getEnabledSections(props.addOnSections ?? customFields.enabled_sections ?? getInitialAddOnSections()));
-        setPhotoPreview(
-            props.cv && (props.cv.custom_fields as Record<string, unknown>)?.photo_base64
-                ? String((props.cv.custom_fields as Record<string, unknown>).photo_base64)
-                : getInitialPhotoPreview(),
-        );
+        setPhotoPreview(typeof props.cv?.photo_url === 'string' ? props.cv.photo_url : getInitialPhotoPreview());
+        setHasPersistedPhoto(Boolean(props.cv?.has_photo));
     }, [props.cvId]);
 
     return (
@@ -935,9 +1000,7 @@ export default function CvForm() {
                                                 />
                                                 <span>
                                                     <span className="block font-medium text-gray-900 dark:text-white">Professional</span>
-                                                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                                                        I have professional experience
-                                                    </span>
+                                                    <span className="text-sm text-gray-600 dark:text-gray-300">I have professional experience</span>
                                                 </span>
                                             </label>
                                             <label className="flex cursor-pointer gap-3 rounded-md border border-gray-300 p-4 dark:border-gray-600">
@@ -1087,7 +1150,7 @@ export default function CvForm() {
                                                     </label>
                                                 </div>
 
-                                                {formData.is_use_photo && (
+                                                {(formData.is_use_photo || photoPreview) && (
                                                     <div>
                                                         <label
                                                             htmlFor="photo"
@@ -1106,17 +1169,24 @@ export default function CvForm() {
                                                                     className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                                                 />
                                                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                                    Accepted formats: JPG, JPEG, PNG. Max size: 2MB
+                                                                    Accepted formats: JPG, JPEG, PNG. Max size: 5MB
                                                                 </p>
                                                             </div>
                                                             {photoPreview && (
-                                                                <div className="flex-shrink-0">
+                                                                <div className="flex flex-shrink-0 gap-2">
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setShowPhotoModal(true)}
                                                                         className="w-full rounded-md bg-green-600 px-3 py-2 text-sm text-white transition-colors hover:bg-green-300 dark:bg-green-600 dark:text-gray-200 dark:hover:bg-green-500"
                                                                     >
                                                                         See Photo
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleDeletePhoto}
+                                                                        className="w-full rounded-md bg-red-600 px-3 py-2 text-sm text-white transition-colors hover:bg-red-500"
+                                                                    >
+                                                                        Delete Photo
                                                                     </button>
                                                                 </div>
                                                             )}

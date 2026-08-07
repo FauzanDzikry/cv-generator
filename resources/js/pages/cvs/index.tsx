@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/layouts';
 import type { CvItem } from '@/types/cv';
 import { Head, Link, router } from '@inertiajs/react';
-import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, Pencil, Plus, Trash2, Copy } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 
 export default function CvIndex({ cvs }: Props) {
     const [deletingId, setDeletingId] = useState<string | null>(null);
-
+    const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
     const formatDate = (dateStr: string) => {
         try {
             return new Date(dateStr).toLocaleDateString('en-US', {
@@ -31,6 +31,20 @@ export default function CvIndex({ cvs }: Props) {
         router.delete(route('cvs.destroy', id), {
             onFinish: () => setDeletingId(null),
             onError: () => alert('Gagal menghapus CV. Silakan coba lagi.'),
+        });
+    };
+
+    const handleDuplicate = (id: string) => {
+        if (duplicatingId) return;
+        setDuplicatingId(id);
+        router.post(route('cvs.duplicate', id), {}, {
+            onFinish: () => setDuplicatingId(null),
+            onSuccess: () => {
+                if (typeof window.gtag === 'function') {
+                    window.gtag('event', 'duplicate_cv');
+                }
+            },
+            onError: () => alert('Gagal menduplikat CV. Silakan coba lagi.'),
         });
     };
 
@@ -79,7 +93,7 @@ export default function CvIndex({ cvs }: Props) {
                                                 </div>
                                                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Updated {formatDate(cv.updated_at)}</p>
                                             </Link>
-                                            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-700/50">
+                                            <div className="mt-3 flex items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-700/50">
                                                 <Link
                                                     href={route('cvs.edit', cv.id)}
                                                     className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300"
@@ -87,6 +101,16 @@ export default function CvIndex({ cvs }: Props) {
                                                     <Pencil className="h-4 w-4" />
                                                     Edit
                                                 </Link>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDuplicate(cv.id)}
+                                                    disabled={duplicatingId === cv.id}
+                                                    className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-500 disabled:pointer-events-none disabled:opacity-50 dark:text-blue-400 dark:hover:text-blue-300"
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                    {duplicatingId === cv.id ? 'Duplicating...' : 'Duplicate'}
+                                                </button>
+                                                <div className="flex-1" />
                                                 <button
                                                     type="button"
                                                     onClick={() => handleDelete(cv.id, cvTitle)}

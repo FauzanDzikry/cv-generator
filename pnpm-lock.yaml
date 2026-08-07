@@ -11,6 +11,9 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.0
         version: 2.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@inertiajs/core':
+        specifier: ~2.3.27
+        version: 2.3.27
       '@inertiajs/react':
         specifier: ^2.0.0
         version: 2.3.27(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

@@ -150,7 +150,9 @@ class CVDataRequest extends FormRequest
             'organizations.*.description' => ['nullable', 'string'],
 
             'additional_info' => ['nullable', 'string'],
+            'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'mimetypes:image/jpeg,image/png', 'max:5120'],
             'custom_fields' => ['nullable', 'array'],
+            'custom_fields.is_use_photo' => ['sometimes', 'boolean'],
             'custom_fields.enabled_sections' => ['nullable', 'array'],
             'custom_fields.enabled_sections.*' => ['boolean'],
         ];

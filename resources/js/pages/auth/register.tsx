@@ -25,6 +25,11 @@ export default function Register() {
         e.preventDefault();
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
+            onSuccess: () => {
+                if (typeof window.gtag === 'function') {
+                    window.gtag('event', 'sign_up', { method: 'Email' });
+                }
+            },
         });
     };
 

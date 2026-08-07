@@ -5,6 +5,8 @@ import path from 'node:path';
 const fixtureData = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'tests/e2e/fixtures/cv-pagination-long.json'), 'utf-8'));
 
 test.describe('Phase 12 Regression Matrix & Determinism Verification', () => {
+    test.describe.configure({ timeout: 120000 });
+
     test('Desktop viewports (1024x768, 1280x800, 1440x900) render preview layout stably', async ({ page }) => {
         const viewports = [
             { width: 1024, height: 768 },
@@ -87,7 +89,6 @@ test.describe('Phase 12 Regression Matrix & Determinism Verification', () => {
             cvFormData: {
                 ...fixtureData.cvFormData,
                 is_use_photo: true,
-                photo_base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
                 additional_info: 'Extremely long item text '.repeat(35),
             },
         };
@@ -95,13 +96,50 @@ test.describe('Phase 12 Regression Matrix & Determinism Verification', () => {
         await page.evaluate((data) => {
             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+            window.localStorage.setItem(
+                'cvPhotoPreview',
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+            );
         }, modifiedData);
 
-        await page.reload();
+        await page.goto('/generate-cv');
         await page.getByRole('button', { name: 'Preview CV' }).first().click();
 
         await expect(previewPages.first()).toBeVisible({ timeout: 15000 });
         const pageCount = await previewPages.count();
         expect(pageCount).toBeGreaterThanOrEqual(2);
+        await expect(page.locator('.cv-multi-page-container .cv-header img').first()).toBeVisible();
+    });
+
+    test('Authenticated upload persists and renders through the private photo route', async ({ page }) => {
+        const uniqueEmail = `cv-photo-${Date.now()}@example.test`;
+        await page.goto('/register');
+        await page.getByLabel('Name').fill('Photo Owner');
+        await page.getByLabel('Email address').fill(uniqueEmail);
+        await page.getByLabel('Password', { exact: true }).fill('password123');
+        await page.getByLabel('Confirm password').fill('password123');
+        await page.getByRole('button', { name: 'Create account' }).click();
+        await page.waitForURL(/\/(?:cvs|verify-email)/);
+
+        await page.goto('/generate-cv');
+        await page.locator('#name').fill('Photo Owner');
+        await page.locator('#address').fill('Jakarta');
+        await page.locator('#phone').fill('08123456789');
+        await page.locator('#email').fill(uniqueEmail);
+        await page.locator('#summary').fill('Private profile photo browser test.');
+        await page.locator('#is_use_photo').check();
+        await page.locator('#photo').setInputFiles({
+            name: 'profile.png',
+            mimeType: 'image/png',
+            buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
+        });
+        await page.getByRole('button', { name: 'Save CV' }).first().click();
+        await page.waitForURL(/\/cvs\/[0-9a-f-]+\/edit$/);
+
+        await page.goto(page.url().replace(/\/edit$/, ''));
+        const photo = page.locator('.cv-multi-page-container .cv-header img').first();
+        await expect(photo).toBeVisible();
+        await expect(photo).toHaveAttribute('src', /\/cvs\/[0-9a-f-]+\/photo$/);
+        await expect.poll(() => photo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
     });
 });

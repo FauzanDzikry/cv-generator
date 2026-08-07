@@ -28,6 +28,8 @@ interface CvShowProps {
         organizations?: unknown;
         additional_info?: string | unknown;
         custom_fields?: CVCustomFields | null;
+        has_photo?: boolean;
+        photo_url?: string | null;
     };
 }
 
@@ -36,7 +38,7 @@ export default function CvShow({ cv, addOnSections }: CvShowProps) {
 
     const customFields = cv.custom_fields ?? {};
     const isUsePhoto = Boolean(customFields.is_use_photo);
-    const photoPreview = customFields.photo_base64 ?? null;
+    const photoPreview = cv.has_photo ? (cv.photo_url ?? null) : null;
 
     const additionalInfo =
         typeof cv.additional_info === 'string'

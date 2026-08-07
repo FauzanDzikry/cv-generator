@@ -84,7 +84,6 @@ export type EnabledSections = Record<AddOnSectionKey, boolean>;
 
 export interface CVCustomFields {
     is_use_photo?: boolean;
-    photo_base64?: string | null;
     enabled_sections?: Partial<EnabledSections>;
 }
 
@@ -102,6 +101,8 @@ export interface CVData {
     is_use_photo?: boolean;
     photo?: File | null;
     photoPreview?: string | null;
+    has_photo?: boolean;
+    photo_url?: string | null;
     work_experience: WorkExperience[];
     education: Education[];
     skills: Skill[];

@@ -41,6 +41,20 @@
     @viteReactRefresh
     @vite(['resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
     @inertiaHead
+
+    @if(env('VITE_GA_MEASUREMENT_ID'))
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ env('VITE_GA_MEASUREMENT_ID') }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            window.gtag = gtag; // expose for our custom events in TS
+            gtag('js', new Date());
+
+            gtag('config', '{{ env('VITE_GA_MEASUREMENT_ID') }}');
+        </script>
+    @endif
+
 </head>
 
 <body class="font-sans antialiased">
