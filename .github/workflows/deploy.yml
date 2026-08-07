@@ -85,5 +85,8 @@ jobs:
             # Restart container dengan image baru tanpa downtime panjang
             docker compose up -d
             
+            # Jalankan migrasi database secara otomatis
+            docker compose exec -T app php artisan migrate --force
+            
             # [Sangat Penting] Hapus sisa-sisa image dan layer yang tidak lagi digunakan untuk mencegah storage 20GB penuh
             docker image prune -a -f
