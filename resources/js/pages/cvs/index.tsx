@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/layouts';
 import type { CvItem } from '@/types/cv';
 import { Head, Link, router } from '@inertiajs/react';
-import { FileText, Pencil, Plus, Trash2, Copy } from 'lucide-react';
+import { Copy, FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -37,15 +37,19 @@ export default function CvIndex({ cvs }: Props) {
     const handleDuplicate = (id: string) => {
         if (duplicatingId) return;
         setDuplicatingId(id);
-        router.post(route('cvs.duplicate', id), {}, {
-            onFinish: () => setDuplicatingId(null),
-            onSuccess: () => {
-                if (typeof window.gtag === 'function') {
-                    window.gtag('event', 'duplicate_cv');
-                }
+        router.post(
+            route('cvs.duplicate', id),
+            {},
+            {
+                onFinish: () => setDuplicatingId(null),
+                onSuccess: () => {
+                    if (typeof window.gtag === 'function') {
+                        window.gtag('event', 'duplicate_cv');
+                    }
+                },
+                onError: () => alert('Gagal menduplikat CV. Silakan coba lagi.'),
             },
-            onError: () => alert('Gagal menduplikat CV. Silakan coba lagi.'),
-        });
+        );
     };
 
     return (

@@ -1,5 +1,5 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import TextLogo from '@/components/text-logo';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ThemeToggle from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 import { type SharedData, type User } from '@/types';
@@ -94,9 +94,7 @@ export default function Navbar({ items = [] }: { items: NavItem[] }) {
                   { title: 'How to use', href: '#how-to-use', isSection: true },
               ];
 
-    const navItems: NavItem[] = auth.user
-        ? [...baseNavItems, { title: 'My CVs', href: '/cvs' }]
-        : baseNavItems;
+    const navItems: NavItem[] = auth.user ? [...baseNavItems, { title: 'My CVs', href: '/cvs' }] : baseNavItems;
 
     const getItemClass = (item: NavItem) => {
         if (item.isSection) {

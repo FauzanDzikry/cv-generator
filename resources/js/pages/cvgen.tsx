@@ -163,13 +163,13 @@ export default function CvGen() {
                         {isTypingFeaturesComplete ? (
                             <a
                                 href="/generate-cv"
-                                className="group relative inline-flex w-48 overflow-hidden rounded-lg bg-red-600 px-6 py-2.5 text-center text-sm font-bold text-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-red-500 hover:shadow-xl hover:shadow-red-600/40 md:w-56 md:px-8 md:text-base justify-center"
+                                className="group relative inline-flex w-48 justify-center overflow-hidden rounded-lg bg-red-600 px-6 py-2.5 text-center text-sm font-bold text-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-red-500 hover:shadow-xl hover:shadow-red-600/40 md:w-56 md:px-8 md:text-base"
                                 style={{
                                     opacity: buttonVisible ? 1 : 0,
                                     transform: `translateY(${buttonVisible ? 0 : 20}px)`,
                                 }}
                             >
-                                <span className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-12deg)_translateX(-150%)] group-hover:duration-1000 group-hover:[transform:skew(-12deg)_translateX(150%)]">
+                                <span className="absolute inset-0 flex h-full w-full [transform:skew(-12deg)_translateX(-150%)] justify-center group-hover:[transform:skew(-12deg)_translateX(150%)] group-hover:duration-1000">
                                     <div className="relative h-full w-8 bg-white/20" />
                                 </span>
                                 <span className="relative">try now for free!</span>
@@ -179,7 +179,7 @@ export default function CvGen() {
                     <img
                         src="/assets/images/cv.svg"
                         alt="form illustration"
-                        className="w-full max-w-md transition-all duration-500 hover:-translate-y-4 hover:scale-[1.02] hover:drop-shadow-2xl md:w-3/5 lg:h-3/5 drop-shadow-xl"
+                        className="w-full max-w-md drop-shadow-xl transition-all duration-500 hover:-translate-y-4 hover:scale-[1.02] hover:drop-shadow-2xl md:w-3/5 lg:h-3/5"
                         style={{
                             opacity: imageVisible ? 1 : 0,
                             transform: `translateX(${imageVisible ? 0 : 100}px)`,

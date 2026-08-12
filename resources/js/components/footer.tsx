@@ -2,7 +2,7 @@ export default function Footer() {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="bg-slate-900 border-t border-slate-800">
+        <footer className="border-t border-slate-800 bg-slate-900">
             <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                 <div className="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
                     <div className="text-sm text-slate-400">© {currentYear} Fauzan Dzikry. All rights reserved.</div>
@@ -11,7 +11,7 @@ export default function Footer() {
                             href="https://www.linkedin.com/in/fauzan-dzikry/"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-slate-400 hover:text-white transition-colors"
+                            className="text-slate-400 transition-colors hover:text-white"
                         >
                             <span className="sr-only">LinkedIn</span>
                             <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -22,7 +22,7 @@ export default function Footer() {
                             href="https://github.com/FauzanDzikry"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-slate-400 hover:text-white transition-colors"
+                            className="text-slate-400 transition-colors hover:text-white"
                         >
                             <span className="sr-only">GitHub</span>
                             <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -37,7 +37,7 @@ export default function Footer() {
                             href="https://www.instagram.com/fauzandzzz/"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-slate-400 hover:text-white transition-colors"
+                            className="text-slate-400 transition-colors hover:text-white"
                         >
                             <span className="sr-only">Instagram</span>
                             <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
