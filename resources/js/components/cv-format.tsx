@@ -710,37 +710,42 @@ function buildSemanticBlocks(data: CVData, enabledSections?: EnabledSections): S
                         levelText = lang.level || '';
                 }
                 return (
-                    <li key={`lang_${index}`} className="mb-2" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
-                        <div className="font-medium text-gray-700">
-                            {lang.language}
-                            {lang.has_certification && lang.test_name
-                                ? ` — ${lang.test_name}`
-                                : !lang.has_certification && levelText
-                                  ? ` — ${levelText}`
-                                  : ''}
+                    <div key={`lang_${index}`} className="mb-2 flex items-start" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
+                        <div className="font-medium text-gray-700" style={{ width: '1.25rem', flexShrink: 0, textAlign: 'center' }}>
+                            •
                         </div>
-                        {lang.has_certification && (
-                            <>
-                                <div className="text-gray-600">
-                                    {[lang.issuing_organization, lang.score ? `Score: ${lang.score}` : ''].filter(Boolean).join(' · ')}
-                                </div>
-                                <div className="text-gray-600">
-                                    {lang.issue_date ? `Issued ${formatDate(lang.issue_date)}` : ''}
-                                    {lang.issue_date ? ' · ' : ''}
-                                    {lang.is_time_limited && lang.expiration_date
-                                        ? `Expires ${formatDate(lang.expiration_date)}`
-                                        : 'No Expiration Date'}
-                                </div>
-                            </>
-                        )}
-                    </li>
+                        <div className="flex-1">
+                            <div className="font-medium text-gray-700">
+                                {lang.language}
+                                {lang.has_certification && lang.test_name
+                                    ? ` — ${lang.test_name}`
+                                    : !lang.has_certification && levelText
+                                      ? ` — ${levelText}`
+                                      : ''}
+                            </div>
+                            {lang.has_certification && (
+                                <>
+                                    <div className="text-gray-600">
+                                        {[lang.issuing_organization, lang.score ? `Score: ${lang.score}` : ''].filter(Boolean).join(' · ')}
+                                    </div>
+                                    <div className="text-gray-600">
+                                        {lang.issue_date ? `Issued ${formatDate(lang.issue_date)}` : ''}
+                                        {lang.issue_date ? ' · ' : ''}
+                                        {lang.is_time_limited && lang.expiration_date
+                                            ? `Expires ${formatDate(lang.expiration_date)}`
+                                            : 'No Expiration Date'}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
                 );
             });
         blocks.push({
             key: 'languages-list',
             kind: 'languages-list',
             keepWithNext: false,
-            content: <ul className="mt-2 list-disc pl-5">{langItems}</ul>,
+            content: <div className="mt-2">{langItems}</div>,
         });
     }
 
