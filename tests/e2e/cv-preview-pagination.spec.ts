@@ -257,11 +257,37 @@ test.describe('CV Preview & Pagination Regression', () => {
         expect(progressValue).toBeGreaterThanOrEqual(5);
         expect(progressValue).toBeLessThanOrEqual(100);
 
+        await progressBar.evaluate((element) => {
+            const testWindow = window as Window & {
+                __pdfProgressValues?: number[];
+                __pdfProgressObserver?: MutationObserver;
+            };
+            testWindow.__pdfProgressValues = [Number(element.getAttribute('aria-valuenow') ?? 0)];
+            testWindow.__pdfProgressObserver = new MutationObserver(() => {
+                testWindow.__pdfProgressValues?.push(Number(element.getAttribute('aria-valuenow') ?? 0));
+            });
+            testWindow.__pdfProgressObserver.observe(element, { attributes: true, attributeFilter: ['aria-valuenow'] });
+        });
+
         const download = await downloadPromise;
 
         await expect(progressBar).toHaveAttribute('aria-valuenow', '100', {
             timeout: 5000,
         });
+
+        const observedProgress = await page.evaluate(() => {
+            const testWindow = window as Window & {
+                __pdfProgressValues?: number[];
+                __pdfProgressObserver?: MutationObserver;
+            };
+            testWindow.__pdfProgressObserver?.disconnect();
+            return testWindow.__pdfProgressValues ?? [];
+        });
+
+        expect(observedProgress.at(-1)).toBe(100);
+        expect(observedProgress.some((value) => value > 70 && value < 95 && value !== 90)).toBe(true);
+        expect(observedProgress.every((value, index) => index === 0 || value >= observedProgress[index - 1])).toBe(true);
+
         await expect(progressDialog).toBeHidden({ timeout: 5000 });
         await expect(generateButton).toBeEnabled();
 
@@ -329,6 +355,8 @@ test.describe('CV Preview & Pagination Regression', () => {
         await errorDialog.accept();
 
         await expect(progressDialog).toBeHidden({ timeout: 5000 });
+        await page.waitForTimeout(500);
+        await expect(progressDialog).toBeHidden();
         await expect(generateButton).toBeEnabled();
         expect(downloadStarted).toBe(false);
 

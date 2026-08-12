@@ -16,6 +16,13 @@ import { objectToFormData, type FormDataConvertible } from '@inertiajs/core';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChangeEvent, Children, FormEvent, isValidElement, ReactNode, useEffect, useRef, useState } from 'react';
 
+const PDF_PROGRESS_START = 70;
+const PDF_PROGRESS_CAP = 95;
+const PDF_PROGRESS_TICK_MS = 100;
+const PDF_ESTIMATE_BASE_MS = 1000;
+const PDF_ESTIMATE_PER_PAGE_MS = 800;
+const PDF_ESTIMATE_PER_IMAGE_MS = 400;
+
 const SKILL_TWO_COLUMN_MAX_LENGTH = 32;
 
 type OrderedSectionKey = CVSectionKey | 'add_ons';
@@ -664,6 +671,8 @@ export default function CvForm() {
             return;
         }
 
+        let progressTimer: number | null = null;
+
         setPdfGenerationProgress({
             percentage: 5,
             message: 'Starting PDF generation...',
@@ -759,15 +768,36 @@ export default function CvForm() {
 
             const html2pdf = html2pdfModule.default || html2pdfModule;
 
-            setPdfGenerationProgress({
-                percentage: 90,
-                message: 'Generating PDF file...',
-            });
-
             const expectedPageCount = cvRef.current.querySelectorAll('.cv-page').length;
             if (expectedPageCount === 0) {
                 throw new Error('CV export contains no pages.');
             }
+
+            setPdfGenerationProgress({
+                percentage: PDF_PROGRESS_START,
+                message: 'Generating PDF file...',
+            });
+
+            const estimatedDurationMs =
+                PDF_ESTIMATE_BASE_MS + expectedPageCount * PDF_ESTIMATE_PER_PAGE_MS + images.length * PDF_ESTIMATE_PER_IMAGE_MS;
+            const progressStartedAt = performance.now();
+
+            progressTimer = window.setInterval(() => {
+                const elapsed = performance.now() - progressStartedAt;
+                const ratio = Math.min(1, elapsed / estimatedDurationMs);
+                const estimatedPercentage = Math.min(
+                    PDF_PROGRESS_CAP,
+                    PDF_PROGRESS_START + Math.floor((PDF_PROGRESS_CAP - PDF_PROGRESS_START) * ratio),
+                );
+
+                setPdfGenerationProgress((current) => {
+                    if (!current || current.percentage >= 100) return current;
+                    return {
+                        percentage: Math.max(current.percentage, estimatedPercentage),
+                        message: 'Generating PDF file...',
+                    };
+                });
+            }, PDF_PROGRESS_TICK_MS);
 
             const pdfWorker = html2pdf().set(opt).from(cvRef.current).toPdf();
             const pdf = await pdfWorker.get('pdf');
@@ -782,6 +812,11 @@ export default function CvForm() {
             }
 
             await pdfWorker.save();
+
+            if (progressTimer !== null) {
+                window.clearInterval(progressTimer);
+                progressTimer = null;
+            }
 
             setPdfGenerationProgress({
                 percentage: 100,
@@ -799,6 +834,10 @@ export default function CvForm() {
             setPdfGenerationProgress(null);
             await new Promise((resolve) => window.setTimeout(resolve, 0));
             alert('An error occurred while generating the PDF. Please try again.');
+        } finally {
+            if (progressTimer !== null) {
+                window.clearInterval(progressTimer);
+            }
         }
     };
 
