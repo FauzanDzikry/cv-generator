@@ -21,10 +21,10 @@ return new class extends Migration
             DB::statement('DROP INDEX IF EXISTS users_legacy_id_unique;');
             DB::statement('DROP INDEX IF EXISTS sessions_legacy_user_id_index;');
         } else {
-            DB::statement('DROP INDEX IF EXISTS cv.cv_data_legacy_id_unique CASCADE;');
-            DB::statement('DROP INDEX IF EXISTS cv.cv_data_legacy_id_key CASCADE;');
-            DB::statement('DROP INDEX IF EXISTS public.users_legacy_id_unique CASCADE;');
-            DB::statement('DROP INDEX IF EXISTS public.users_legacy_id_key CASCADE;');
+            DB::statement('ALTER TABLE cv.cv_data DROP CONSTRAINT IF EXISTS cv_data_legacy_id_unique CASCADE;');
+            DB::statement('ALTER TABLE cv.cv_data DROP CONSTRAINT IF EXISTS cv_data_legacy_id_key CASCADE;');
+            DB::statement('ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_legacy_id_unique CASCADE;');
+            DB::statement('ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_legacy_id_key CASCADE;');
             DB::statement('DROP INDEX IF EXISTS public.sessions_legacy_user_id_index CASCADE;');
         }
 
