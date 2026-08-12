@@ -764,7 +764,24 @@ export default function CvForm() {
                 message: 'Generating PDF file...',
             });
 
-            await html2pdf().set(opt).from(cvRef.current).save();
+            const expectedPageCount = cvRef.current.querySelectorAll('.cv-page').length;
+            if (expectedPageCount === 0) {
+                throw new Error('CV export contains no pages.');
+            }
+
+            const pdfWorker = html2pdf().set(opt).from(cvRef.current).toPdf();
+            const pdf = await pdfWorker.get('pdf');
+            const generatedPageCount = pdf.internal.getNumberOfPages();
+
+            if (generatedPageCount < expectedPageCount) {
+                throw new Error(`PDF generated ${generatedPageCount} of ${expectedPageCount} expected pages.`);
+            }
+
+            for (let pageNumber = generatedPageCount; pageNumber > expectedPageCount; pageNumber -= 1) {
+                pdf.deletePage(pageNumber);
+            }
+
+            await pdfWorker.save();
 
             setPdfGenerationProgress({
                 percentage: 100,

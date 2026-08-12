@@ -4,6 +4,8 @@ import path from 'node:path';
 
 const fixtureData = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'tests/e2e/fixtures/cv-pagination-long.json'), 'utf-8'));
 
+const countPdfPages = (buffer: Buffer): number => buffer.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+
 test.describe('CV Preview & Pagination Regression', () => {
     test('Phase 4 (Desktop): preview is sticky beside form on scroll at 1440x900', async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
@@ -222,9 +224,19 @@ test.describe('CV Preview & Pagination Regression', () => {
         expect(alignment?.horizontalGap).toBeGreaterThanOrEqual(32);
 
         const zoomSlider = zoomControls.getByRole('slider', { name: 'CV preview zoom' });
-        const transformBeforeZoom = await page.locator('.cv-multi-page-container').first().evaluate((element) => getComputedStyle(element).transform);
+        const transformBeforeZoom = await page
+            .locator('.cv-multi-page-container')
+            .first()
+            .evaluate((element) => getComputedStyle(element).transform);
         await zoomSlider.fill('125');
-        await expect.poll(() => page.locator('.cv-multi-page-container').first().evaluate((element) => getComputedStyle(element).transform)).not.toBe(transformBeforeZoom);
+        await expect
+            .poll(() =>
+                page
+                    .locator('.cv-multi-page-container')
+                    .first()
+                    .evaluate((element) => getComputedStyle(element).transform),
+            )
+            .not.toBe(transformBeforeZoom);
         await expect(page.locator('#cv-to-export [data-testid="cv-zoom-controls"]')).toHaveCount(0);
 
         const generateButton = page.locator('button', { hasText: /Generat/i }).first();
@@ -263,6 +275,8 @@ test.describe('CV Preview & Pagination Regression', () => {
             expect(buffer.length).toBeGreaterThan(0);
             const header = buffer.toString('utf8', 0, 4);
             expect(header).toBe('%PDF');
+            const downloadedPageCount = countPdfPages(buffer);
+            expect(downloadedPageCount).toBe(previewPageCount);
         }
     });
 

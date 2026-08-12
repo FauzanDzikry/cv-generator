@@ -32,12 +32,19 @@ declare module 'html2pdf.js' {
         };
     }
 
+    interface JsPdfInstance {
+        internal: {
+            getNumberOfPages(): number;
+        };
+        deletePage(pageNumber: number): void;
+    }
+
     interface Html2PdfInstance {
         from(element: HTMLElement | string): Html2PdfInstance;
         set(options: Html2PdfOptions): Html2PdfInstance;
-        save(): Promise<any>;
-        toPdf(): any;
-        get(key: string): any;
+        save(): Promise<unknown>;
+        toPdf(): Html2PdfInstance;
+        get(key: 'pdf'): Promise<JsPdfInstance>;
     }
 
     export default function (): Html2PdfInstance;
