@@ -181,11 +181,8 @@ test.describe('CV Preview & Pagination Regression', () => {
         await previewButton.click();
 
         const previewPages = page.locator('.cv-multi-page-container').first().locator('.cv-page');
-        await expect(previewPages.first()).toBeVisible();
-        await page.waitForTimeout(300);
-
+        await expect(previewPages).toHaveCount(2, { timeout: 10000 });
         const previewPageCount = await previewPages.count();
-        expect(previewPageCount).toBeGreaterThan(1);
 
         const exportPages = page.locator('#cv-to-export .cv-page');
         const exportPageCount = await exportPages.count();
@@ -381,11 +378,8 @@ test.describe('CV Preview & Pagination Regression', () => {
         await previewButton.click();
 
         const previewPages = page.locator('.cv-multi-page-container').first().locator('.cv-page');
-        await expect(previewPages.first()).toBeVisible();
-        await page.waitForTimeout(300);
-
+        await expect(previewPages).toHaveCount(2, { timeout: 10000 });
         const previewPageCount = await previewPages.count();
-        expect(previewPageCount).toBeGreaterThan(0);
 
         for (let i = 0; i < previewPageCount; i++) {
             const previewPage = previewPages.nth(i);
