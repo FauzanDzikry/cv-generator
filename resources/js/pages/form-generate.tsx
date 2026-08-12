@@ -1,4 +1,4 @@
-import CV from '@/components/cv-format';
+import CV, { CVZoomControls } from '@/components/cv-format';
 import { PdfGenerationDialog } from '@/components/pdf-generation-dialog';
 import FormProgress from '@/components/percentage';
 import AppLayout from '@/layouts/layouts';
@@ -289,6 +289,8 @@ export default function CvForm() {
     const initialPhoto = typeof props.cv?.photo_url === 'string' ? props.cv.photo_url : getInitialPhotoPreview();
 
     const [formData, setFormData] = useState(initialFormData);
+    const [previewZoomLevel, setPreviewZoomLevel] = useState(100);
+    const [showPreviewZoomControls, setShowPreviewZoomControls] = useState(true);
     const [showPreview, setShowPreview] = useState(() => {
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
@@ -2654,14 +2656,27 @@ export default function CvForm() {
                                 <div className="flex h-full min-h-0 flex-col rounded-lg bg-white p-5 shadow-md dark:bg-gray-700">
                                     <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-2">
                                         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Preview CV</h2>
-                                        <div className="flex items-center gap-3">
+                                        <div data-testid="preview-controls" className="ml-auto flex items-center gap-8">
+                                            <CVZoomControls
+                                                zoomLevel={previewZoomLevel}
+                                                visible={showPreviewZoomControls}
+                                                onZoomLevelChange={setPreviewZoomLevel}
+                                                onToggle={() => setShowPreviewZoomControls((current) => !current)}
+                                                className="static"
+                                            />
                                             <button
                                                 type="button"
                                                 onClick={togglePreview}
                                                 aria-label="Close CV preview"
-                                                className="text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-red-500 focus:outline-none dark:text-gray-300 dark:hover:text-gray-100"
+                                                className="shrink-0 text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-red-500 focus:outline-none dark:text-gray-300 dark:hover:text-gray-100"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                    aria-hidden="true"
+                                                >
                                                     <path
                                                         fillRule="evenodd"
                                                         d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -2673,7 +2688,14 @@ export default function CvForm() {
                                     </div>
                                     <div className="min-h-0 flex-1 overflow-auto rounded">
                                         <div>
-                                            <CV data={formData} enabledSections={addOnSections} isPdfMode={false} />
+                                            <CV
+                                                data={formData}
+                                                enabledSections={addOnSections}
+                                                isPdfMode={false}
+                                                zoomLevel={previewZoomLevel}
+                                                onZoomLevelChange={setPreviewZoomLevel}
+                                                displayInternalZoomControls={false}
+                                            />
                                         </div>
                                     </div>
                                 </div>

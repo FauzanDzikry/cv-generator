@@ -12,8 +12,59 @@ import {
 import { MAX_CONTENT_HEIGHT_PX, measureBlocks, paginateBlocks, SemanticBlock } from '@/lib/cv-pagination';
 import { getEnabledSections, SECTION_ORDER_BY_CV_TYPE } from '@/lib/cv-sections';
 import type { CVData, CVSectionKey, EnabledSections, Skill } from '@/types/cv';
-import { Link, Mail, MapPin, Phone } from 'lucide-react';
+import { Eye, EyeOff, Link, Mail, MapPin, Phone } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+type CVZoomControlsProps = {
+    zoomLevel: number;
+    visible: boolean;
+    onZoomLevelChange: (zoomLevel: number) => void;
+    onToggle: () => void;
+    className?: string;
+};
+
+export function CVZoomControls({ zoomLevel, visible, onZoomLevelChange, onToggle, className = '' }: CVZoomControlsProps) {
+    if (!visible) {
+        return (
+            <button
+                type="button"
+                onClick={onToggle}
+                className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-100 ${className}`}
+                title="Show Zoom Control"
+                aria-label="Show Zoom Control"
+            >
+                <Eye className="h-5 w-5" aria-hidden="true" />
+            </button>
+        );
+    }
+
+    return (
+        <div data-testid="cv-zoom-controls" className={`zoom-controls flex items-center gap-2 rounded-lg bg-white p-2 shadow-md ${className}`}>
+            <span className="text-sm font-medium">25%</span>
+            <input
+                type="range"
+                min="25"
+                max="200"
+                step="5"
+                value={zoomLevel}
+                onChange={(event) => onZoomLevelChange(Number(event.target.value))}
+                className="w-32 accent-blue-600"
+                aria-label="CV preview zoom"
+            />
+            <span className="text-sm font-medium">200%</span>
+            <span className="ml-2 rounded-md bg-gray-100 px-2 py-1 text-sm font-bold">{zoomLevel}%</span>
+            <button
+                type="button"
+                onClick={onToggle}
+                className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
+                title="Hide Zoom Control"
+                aria-label="Hide Zoom Control"
+            >
+                <EyeOff className="h-5 w-5" aria-hidden="true" />
+            </button>
+        </div>
+    );
+}
 
 export const pageBreakStyle = `
 @media print {
@@ -189,6 +240,9 @@ interface CVProps {
     data: CVData;
     isPdfMode?: boolean;
     enabledSections?: EnabledSections;
+    zoomLevel?: number;
+    onZoomLevelChange?: (zoomLevel: number) => void;
+    displayInternalZoomControls?: boolean;
 }
 
 const extractBulletPoints = (description: string): { intro?: string; bullets: string[] } => {
@@ -321,9 +375,9 @@ function buildSemanticBlocks(data: CVData, enabledSections?: EnabledSections): S
                                         </p>
                                     )}
                                     {data.phone && data.email && <span className="whitespace-nowrap">|</span>}
-                                    {data.email && <p className="overflow-hidden text-ellipsis whitespace-nowrap">{data.email}</p>}
+                                    {data.email && <p className="max-w-full break-all">{data.email}</p>}
                                     {(data.phone || data.email) && data.linkedin && <span className="whitespace-nowrap">|</span>}
-                                    {data.linkedin && <p className="overflow-hidden text-ellipsis whitespace-nowrap">{data.linkedin}</p>}
+                                    {data.linkedin && <p className="max-w-full break-all">{data.linkedin}</p>}
                                     {(data.phone || data.email || data.linkedin) && data.address && <span className="whitespace-nowrap">|</span>}
                                     {data.address && <p className="max-w-full break-words">{data.address}</p>}
                                 </div>
@@ -603,7 +657,7 @@ function buildSemanticBlocks(data: CVData, enabledSections?: EnabledSections): S
                                 {cert.start_year} - {cert.end_year || (cert.is_time_limited ? '' : 'No Expiration')}
                             </span>
                         </div>
-                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                        <h4 className="font-normal text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                             {cert.organization} {cert.credential_id ? `(ID: ${cert.credential_id})` : ''}
                         </h4>
                     </div>
@@ -618,7 +672,7 @@ function buildSemanticBlocks(data: CVData, enabledSections?: EnabledSections): S
                                 {cert.start_year} - {cert.end_year || (cert.is_time_limited ? '' : 'No Expiration')}
                             </span>
                         </div>
-                        <h4 className="font-semibold text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
+                        <h4 className="font-normal text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
                             {cert.organization} {cert.credential_id ? `(ID: ${cert.credential_id})` : ''}
                         </h4>
                     </div>
@@ -715,7 +769,7 @@ function buildSemanticBlocks(data: CVData, enabledSections?: EnabledSections): S
                             •
                         </div>
                         <div className="flex-1">
-                            <div className="font-medium text-gray-700">
+                            <div className="font-bold text-gray-700">
                                 {lang.language}
                                 {lang.has_certification && lang.test_name
                                     ? ` — ${lang.test_name}`
@@ -776,9 +830,11 @@ function buildSemanticBlocks(data: CVData, enabledSections?: EnabledSections): S
     return SECTION_ORDER_BY_CV_TYPE[cvType].flatMap((section) => grouped.get(section) ?? []);
 }
 
-const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections }) => {
-    const [zoomLevel, setZoomLevel] = useState(100);
-    const [showZoomControls, setShowZoomControls] = useState(false);
+const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections, zoomLevel, onZoomLevelChange, displayInternalZoomControls = true }) => {
+    const [internalZoomLevel, setInternalZoomLevel] = useState(100);
+    const [showInternalZoomControls, setShowInternalZoomControls] = useState(false);
+    const activeZoomLevel = zoomLevel ?? internalZoomLevel;
+    const updateZoomLevel = onZoomLevelChange ?? setInternalZoomLevel;
     const [showDebugMargin, setShowDebugMargin] = useState(false);
     const [pageKeys, setPageKeys] = useState<string[][]>([]);
     const cvContentRef = useRef<HTMLDivElement>(null);
@@ -796,21 +852,11 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections }) => 
     }, []);
 
     useEffect(() => {
-        setShowZoomControls(!isPdfMode);
+        setShowInternalZoomControls(!isPdfMode && displayInternalZoomControls);
         if (typeof window !== 'undefined') {
             setShowDebugMargin(new URLSearchParams(window.location.search).get('margin') === '1');
         }
-    }, [isPdfMode]);
-
-    const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setZoomLevel(parseInt(e.target.value));
-    };
-
-    const toggleZoomControls = () => {
-        if (!isPdfMode) {
-            setShowZoomControls((prev) => !prev);
-        }
-    };
+    }, [isPdfMode, displayInternalZoomControls]);
 
     const blocks: SemanticBlock[] = useMemo(() => buildSemanticBlocks(data, enabledSections), [data, enabledSections]);
     const blockMap = useMemo(() => {
@@ -982,54 +1028,14 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections }) => 
         >
             <style dangerouslySetInnerHTML={{ __html: pageBreakStyle }} />
 
-            {!isPdfMode && showZoomControls && (
-                <div className="zoom-controls absolute top-3 right-3 z-10 flex items-center gap-2 rounded-lg bg-white p-2 shadow-md">
-                    <span className="text-sm font-medium">25%</span>
-                    <input
-                        type="range"
-                        min="25"
-                        max="200"
-                        step="5"
-                        value={zoomLevel}
-                        onChange={handleZoomChange}
-                        className="w-32 accent-blue-600"
-                        title="Zoom"
-                    />
-                    <span className="text-sm font-medium">200%</span>
-                    <span className="ml-2 rounded-md bg-gray-100 px-2 py-1 text-sm font-bold">{zoomLevel}%</span>
-                    <button
-                        onClick={toggleZoomControls}
-                        className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
-                        title="Hide Zoom Control"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                            />
-                        </svg>
-                    </button>
-                </div>
-            )}
-
-            {!isPdfMode && !showZoomControls && (
-                <button
-                    onClick={toggleZoomControls}
-                    className="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-100"
-                    title="Show Zoom Control"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                    </svg>
-                </button>
+            {!isPdfMode && displayInternalZoomControls && (
+                <CVZoomControls
+                    zoomLevel={activeZoomLevel}
+                    visible={showInternalZoomControls}
+                    onZoomLevelChange={updateZoomLevel}
+                    onToggle={() => setShowInternalZoomControls((current) => !current)}
+                    className="absolute top-3 right-3 z-10"
+                />
             )}
 
             {/* Offscreen exact-width measurement surface without zoom or transitions */}
@@ -1061,7 +1067,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections }) => 
             <div
                 className="cv-multi-page-container"
                 style={{
-                    transform: !isPdfMode ? `scale(${(zoomLevel / 100) * 0.65})` : 'none',
+                    transform: !isPdfMode ? `scale(${(activeZoomLevel / 100) * 0.65})` : 'none',
                     transformOrigin: 'top center',
                     transition: 'transform 0.2s ease',
                 }}

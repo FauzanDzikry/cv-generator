@@ -85,10 +85,10 @@ test.describe('CV Preview & Pagination Regression', () => {
 
         expect(Math.abs(measurements.width - 793.7)).toBeLessThanOrEqual(1.5);
         expect(Math.abs(measurements.height - 1122.5)).toBeLessThanOrEqual(1.5);
-        expect(Math.abs(measurements.paddingTop - 37.8)).toBeLessThanOrEqual(1.5);
-        expect(Math.abs(measurements.paddingRight - 37.8)).toBeLessThanOrEqual(1.5);
-        expect(Math.abs(measurements.paddingBottom - 37.8)).toBeLessThanOrEqual(1.5);
-        expect(Math.abs(measurements.paddingLeft - 37.8)).toBeLessThanOrEqual(1.5);
+        expect(Math.abs(measurements.paddingTop - 56.7)).toBeLessThanOrEqual(1.5);
+        expect(Math.abs(measurements.paddingRight - 56.7)).toBeLessThanOrEqual(1.5);
+        expect(Math.abs(measurements.paddingBottom - 56.7)).toBeLessThanOrEqual(1.5);
+        expect(Math.abs(measurements.paddingLeft - 56.7)).toBeLessThanOrEqual(1.5);
     });
 
     test('Phase 5 Regression: paginates deterministically using semantic measurement blocks without early breaks', async ({ page }) => {
@@ -189,6 +189,44 @@ test.describe('CV Preview & Pagination Regression', () => {
         const exportPageCount = await exportPages.count();
         expect(exportPageCount).toBe(previewPageCount);
 
+        const exportHeader = page.locator('#cv-to-export .cv-header').first();
+        for (const contact of [fixtureData.cvFormData.email, fixtureData.cvFormData.linkedin]) {
+            const contactNode = exportHeader.getByText(contact, { exact: true });
+            await expect(contactNode).toHaveCSS('overflow', 'visible');
+            await expect(contactNode).toHaveCSS('text-overflow', 'clip');
+
+            const staysInsideHeader = await contactNode.evaluate((element) => {
+                const item = element.getBoundingClientRect();
+                const header = element.closest('.cv-header')?.getBoundingClientRect();
+                return Boolean(header && item.left >= header.left - 1 && item.right <= header.right + 1);
+            });
+            expect(staysInsideHeader).toBe(true);
+        }
+
+        const previewControls = page.getByTestId('preview-controls');
+        const zoomControls = previewControls.getByTestId('cv-zoom-controls');
+
+        const alignment = await previewControls.evaluate((container) => {
+            const zoom = container.querySelector('[data-testid="cv-zoom-controls"]')?.getBoundingClientRect();
+            const close = container.querySelector('[aria-label="Close CV preview"]')?.getBoundingClientRect();
+            if (!zoom || !close) return null;
+
+            return {
+                centerDifference: Math.abs(zoom.top + zoom.height / 2 - (close.top + close.height / 2)),
+                horizontalGap: close.left - zoom.right,
+            };
+        });
+
+        expect(alignment).not.toBeNull();
+        expect(alignment?.centerDifference).toBeLessThanOrEqual(1);
+        expect(alignment?.horizontalGap).toBeGreaterThanOrEqual(32);
+
+        const zoomSlider = zoomControls.getByRole('slider', { name: 'CV preview zoom' });
+        const transformBeforeZoom = await page.locator('.cv-multi-page-container').first().evaluate((element) => getComputedStyle(element).transform);
+        await zoomSlider.fill('125');
+        await expect.poll(() => page.locator('.cv-multi-page-container').first().evaluate((element) => getComputedStyle(element).transform)).not.toBe(transformBeforeZoom);
+        await expect(page.locator('#cv-to-export [data-testid="cv-zoom-controls"]')).toHaveCount(0);
+
         const generateButton = page.locator('button', { hasText: /Generat/i }).first();
         const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
 
@@ -273,9 +311,7 @@ test.describe('CV Preview & Pagination Regression', () => {
         await expect(generateButton).toBeDisabled();
 
         const errorDialog = await errorDialogPromise;
-        expect(errorDialog.message()).toBe(
-            'An error occurred while generating the PDF. Please try again.',
-        );
+        expect(errorDialog.message()).toBe('An error occurred while generating the PDF. Please try again.');
         await errorDialog.accept();
 
         await expect(progressDialog).toBeHidden({ timeout: 5000 });
@@ -297,7 +333,7 @@ test.describe('CV Preview & Pagination Regression', () => {
             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
         }, fixtureData);
 
-        await page.goto('/generate-cv');
+        await page.goto('/generate-cv?margin=1');
 
         const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
         await previewButton.click();

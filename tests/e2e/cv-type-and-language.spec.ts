@@ -90,7 +90,13 @@ test.describe('CV type sections and Languages', () => {
         await page.getByLabel('Issue Date').last().fill('2026-01');
         await page.getByRole('button', { name: 'Preview CV' }).first().click();
         await expect(preview).toContainText('English — IELTS');
+        const languageAndTest = preview.getByText('English — IELTS', { exact: true });
+        expect(Number(await languageAndTest.evaluate((element) => getComputedStyle(element).fontWeight))).toBeGreaterThanOrEqual(700);
+
         await expect(preview).toContainText('British Council · Score: 8.0');
+        const languageMetadata = preview.getByText('British Council · Score: 8.0', { exact: true });
+        expect(Number(await languageMetadata.evaluate((element) => getComputedStyle(element).fontWeight))).toBeLessThan(600);
+
         await expect(preview).toContainText('No Expiration Date');
         await page.getByRole('button', { name: 'Close Preview' }).first().click();
 
@@ -157,5 +163,27 @@ test.describe('CV type sections and Languages', () => {
             await expect(page.locator('.cv-multi-page-container').first()).toContainText('Native / Bilingual');
             await context.close();
         }
+    });
+
+    test('certification organization and credential ID use normal weight', async ({ page }) => {
+        await page.addInitScript(
+            ({ data, addOns }) => {
+                window.localStorage.setItem('cvFormData', JSON.stringify(data));
+                window.localStorage.setItem('cvAddOnSections', JSON.stringify(addOns));
+            },
+            {
+                data: fixture.cvFormData,
+                addOns: { ...fixture.cvAddOnSections, certifications: true },
+            },
+        );
+        await page.goto('/generate-cv');
+        await page.getByRole('button', { name: 'Preview CV' }).first().click();
+
+        const preview = page.locator('.cv-multi-page-container').first();
+        const title = preview.getByText('Certified Senior Solution Architect', { exact: true }).first();
+        const metadata = preview.getByText('Cloud Native Architecture Academy (ID: CERT-8899-ARCH-2023)', { exact: true }).first();
+
+        expect(Number(await title.evaluate((element) => getComputedStyle(element).fontWeight))).toBeGreaterThanOrEqual(600);
+        expect(Number(await metadata.evaluate((element) => getComputedStyle(element).fontWeight))).toBeLessThan(600);
     });
 });
