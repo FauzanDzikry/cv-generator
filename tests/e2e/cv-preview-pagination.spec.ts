@@ -189,13 +189,31 @@ test.describe('CV Preview & Pagination Regression', () => {
         const exportPageCount = await exportPages.count();
         expect(exportPageCount).toBe(previewPageCount);
 
-        const [download] = await Promise.all([
-            page.waitForEvent('download', { timeout: 30000 }),
-            page
-                .getByRole('button', { name: /Generate PDF/i })
-                .first()
-                .click(),
-        ]);
+        const generateButton = page.locator('button', { hasText: /Generat/i }).first();
+        const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+
+        await generateButton.click();
+
+        const progressDialog = page.getByRole('dialog', { name: 'Generating PDF' });
+        await expect(progressDialog).toBeVisible();
+        await expect(generateButton).toBeDisabled();
+
+        const progressBar = progressDialog.getByRole('progressbar', {
+            name: 'PDF generation progress',
+        });
+        await expect(progressBar).toBeVisible();
+
+        const progressValue = Number(await progressBar.getAttribute('aria-valuenow'));
+        expect(progressValue).toBeGreaterThanOrEqual(5);
+        expect(progressValue).toBeLessThanOrEqual(100);
+
+        const download = await downloadPromise;
+
+        await expect(progressBar).toHaveAttribute('aria-valuenow', '100', {
+            timeout: 5000,
+        });
+        await expect(progressDialog).toBeHidden({ timeout: 5000 });
+        await expect(generateButton).toBeEnabled();
 
         expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
 

@@ -1,4 +1,5 @@
 import CV from '@/components/cv-format';
+import { PdfGenerationDialog } from '@/components/pdf-generation-dialog';
 import FormProgress from '@/components/percentage';
 import AppLayout from '@/layouts/layouts';
 import { PAGE_WIDTH_MM } from '@/lib/cv-page-layout';
@@ -208,6 +209,11 @@ type FormGenerateProps = {
     cvId?: string;
 };
 
+type PdfGenerationProgress = {
+    percentage: number;
+    message: string;
+};
+
 function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
     const customFields = (cv.custom_fields as Record<string, unknown>) ?? {};
     const additionalInfo =
@@ -365,7 +371,8 @@ export default function CvForm() {
         },
     };
     const [formTouched, setFormTouched] = useState(false);
-    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [pdfGenerationProgress, setPdfGenerationProgress] = useState<PdfGenerationProgress | null>(null);
+    const isGeneratingPDF = pdfGenerationProgress !== null;
 
     const cvRef = useRef<HTMLDivElement>(null);
 
@@ -689,7 +696,10 @@ export default function CvForm() {
             return;
         }
 
-        setIsGeneratingPDF(true);
+        setPdfGenerationProgress({
+            percentage: 5,
+            message: 'Starting PDF generation...',
+        });
 
         try {
             if (typeof document !== 'undefined' && 'fonts' in document) {
@@ -700,24 +710,45 @@ export default function CvForm() {
                 }
             }
 
+            setPdfGenerationProgress({
+                percentage: 20,
+                message: 'Preparing fonts...',
+            });
+
             const images = Array.from(cvRef.current.querySelectorAll('img'));
             await Promise.all(
                 images.map(async (img) => {
-                    if (!img.complete) {
-                        await new Promise((resolve) => {
-                            img.onload = resolve;
-                            img.onerror = resolve;
-                        });
+                    if (img.complete && img.naturalWidth > 0) {
+                        if ('decode' in img) {
+                            try {
+                                await img.decode();
+                            } catch (e) {
+                                // ignore decode errors for already loaded images
+                            }
+                        }
+                        return;
                     }
-                    if (img.decode) {
+
+                    await new Promise<void>((resolve) => {
+                        const done = () => resolve();
+                        img.addEventListener('load', done, { once: true });
+                        img.addEventListener('error', done, { once: true });
+                    });
+
+                    if ('decode' in img) {
                         try {
                             await img.decode();
                         } catch (e) {
-                            // ignore decode errors
+                            // ignore image decode errors
                         }
                     }
                 }),
             );
+
+            setPdfGenerationProgress({
+                percentage: 40,
+                message: 'Loading images...',
+            });
 
             await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -746,17 +777,43 @@ export default function CvForm() {
                 },
             };
 
+            setPdfGenerationProgress({
+                percentage: 55,
+                message: 'Preparing document...',
+            });
+
             const html2pdfModule = await import('html2pdf.js');
+
+            setPdfGenerationProgress({
+                percentage: 70,
+                message: 'Loading PDF generator...',
+            });
+
             const html2pdf = html2pdfModule.default || html2pdfModule;
+
+            setPdfGenerationProgress({
+                percentage: 90,
+                message: 'Generating PDF file...',
+            });
+
             await html2pdf().set(opt).from(cvRef.current).save();
+
+            setPdfGenerationProgress({
+                percentage: 100,
+                message: 'PDF generated successfully.',
+            });
+
             if (typeof window.gtag === 'function') {
                 window.gtag('event', 'generate_pdf');
             }
+
+            await new Promise((resolve) => window.setTimeout(resolve, 400));
+            setPdfGenerationProgress(null);
         } catch (error) {
             console.error('Error generating PDF:', error);
+            setPdfGenerationProgress(null);
+            await new Promise((resolve) => window.setTimeout(resolve, 0));
             alert('An error occurred while generating the PDF. Please try again.');
-        } finally {
-            setIsGeneratingPDF(false);
         }
     };
 
@@ -780,14 +837,18 @@ export default function CvForm() {
 
     const handleSaveUpdate = () => {
         if (!cvId) return;
-        router.post(route('cvs.update', cvId), { ...buildSavePayload(), _method: 'put' }, { 
-            forceFormData: true,
-            onSuccess: () => {
-                if (typeof window.gtag === 'function') {
-                    window.gtag('event', 'save_cv');
-                }
-            }
-        });
+        router.post(
+            route('cvs.update', cvId),
+            { ...buildSavePayload(), _method: 'put' },
+            {
+                forceFormData: true,
+                onSuccess: () => {
+                    if (typeof window.gtag === 'function') {
+                        window.gtag('event', 'save_cv');
+                    }
+                },
+            },
+        );
     };
 
     const handleSaveNewCV = () => {
@@ -913,6 +974,11 @@ export default function CvForm() {
     return (
         <AppLayout>
             <Head title={isEdit ? `Edit CV - ${formData.name || 'CV'}` : 'Form - CV Generator'} />
+            <PdfGenerationDialog
+                open={isGeneratingPDF}
+                percentage={pdfGenerationProgress?.percentage ?? 0}
+                message={pdfGenerationProgress?.message ?? ''}
+            />
 
             <div className="bg-gray-50 py-8 md:py-16 dark:bg-gray-800">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
