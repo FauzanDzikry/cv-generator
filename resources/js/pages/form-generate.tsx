@@ -16,6 +16,8 @@ import { objectToFormData, type FormDataConvertible } from '@inertiajs/core';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChangeEvent, Children, FormEvent, isValidElement, ReactNode, useEffect, useRef, useState } from 'react';
 
+const SKILL_TWO_COLUMN_MAX_LENGTH = 32;
+
 type OrderedSectionKey = CVSectionKey | 'add_ons';
 
 function OrderedSections({ order, children }: { order: OrderedSectionKey[]; children: ReactNode }) {
@@ -1708,42 +1710,54 @@ export default function CvForm() {
                                                 </span>
                                             </h2>
 
-                                            {formData.skills.map((skill, index) => (
-                                                <div key={index} className="mb-4 flex items-center space-x-4">
-                                                    <div className="flex-grow">
-                                                        <input
-                                                            type="text"
-                                                            name="name"
-                                                            value={skill.name}
-                                                            placeholder="eg: JavaScript"
-                                                            onChange={(e) => handleArrayChange(e, index, 'skills')}
-                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                                            required
-                                                        />
-                                                    </div>
+                                            <div data-testid="skills-grid" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                {formData.skills.map((skill, index) => {
+                                                    const usesFullRow = skill.name.trim().length > SKILL_TWO_COLUMN_MAX_LENGTH;
 
-                                                    {formData.skills.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeArrayItem('skills', index)}
-                                                            className="text-red-600 hover:text-red-800"
+                                                    return (
+                                                        <div
+                                                            key={index}
+                                                            data-skill-layout={usesFullRow ? 'full' : 'half'}
+                                                            className={`flex min-w-0 items-center gap-4 ${usesFullRow ? 'md:col-span-2' : ''}`}
                                                         >
-                                                            <svg
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                className="h-5 w-5"
-                                                                viewBox="0 0 20 20"
-                                                                fill="currentColor"
-                                                            >
-                                                                <path
-                                                                    fillRule="evenodd"
-                                                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                                                    clipRule="evenodd"
+                                                            <div className="min-w-0 flex-1">
+                                                                <input
+                                                                    type="text"
+                                                                    name="name"
+                                                                    value={skill.name}
+                                                                    placeholder="eg: JavaScript"
+                                                                    onChange={(e) => handleArrayChange(e, index, 'skills')}
+                                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-red-500 focus:ring-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                                                    required
                                                                 />
-                                                            </svg>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                            </div>
+
+                                                            {formData.skills.length > 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeArrayItem('skills', index)}
+                                                                    className="shrink-0 text-red-600 hover:text-red-800"
+                                                                    aria-label={`Remove skill ${index + 1}`}
+                                                                >
+                                                                    <svg
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                        className="h-5 w-5"
+                                                                        viewBox="0 0 20 20"
+                                                                        fill="currentColor"
+                                                                        aria-hidden="true"
+                                                                    >
+                                                                        <path
+                                                                            fillRule="evenodd"
+                                                                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                                                            clipRule="evenodd"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
 
                                             <button
                                                 type="button"
