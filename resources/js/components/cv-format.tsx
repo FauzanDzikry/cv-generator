@@ -837,9 +837,27 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections, zoomL
     const updateZoomLevel = onZoomLevelChange ?? setInternalZoomLevel;
     const [showDebugMargin, setShowDebugMargin] = useState(false);
     const [pageKeys, setPageKeys] = useState<string[][]>([]);
+    const [excessHeight, setExcessHeight] = useState<number>(0);
     const cvContentRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
     const lastSignatureRef = useRef<string>('');
+
+    useEffect(() => {
+        if (isPdfMode || !cvContentRef.current) return;
+
+        const scale = (activeZoomLevel / 100) * 0.65;
+
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                setExcessHeight(entry.contentRect.height * (1 - scale));
+            }
+        });
+
+        observer.observe(cvContentRef.current);
+        setExcessHeight(cvContentRef.current.offsetHeight * (1 - scale));
+
+        return () => observer.disconnect();
+    }, [activeZoomLevel, isPdfMode, pageKeys]);
 
     useEffect(() => {
         const styleElement = document.createElement('style');
@@ -1023,7 +1041,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections, zoomL
 
     return (
         <div
-            className={`cv-container relative mx-auto flex flex-col items-center justify-center ${!isPdfMode ? 'bg-gray-100' : ''}`}
+            className={`cv-container relative mx-auto flex flex-col items-center justify-center ${!isPdfMode ? 'bg-gray-100 py-8' : ''}`}
             style={{ maxWidth: '100%' }}
         >
             <style dangerouslySetInnerHTML={{ __html: pageBreakStyle }} />
@@ -1069,7 +1087,8 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections, zoomL
                 style={{
                     transform: !isPdfMode ? `scale(${(activeZoomLevel / 100) * 0.65})` : 'none',
                     transformOrigin: 'top center',
-                    transition: 'transform 0.2s ease',
+                    transition: 'transform 0.2s ease, margin-bottom 0.2s ease',
+                    marginBottom: !isPdfMode ? `-${excessHeight}px` : undefined,
                 }}
                 ref={cvContentRef}
             >
