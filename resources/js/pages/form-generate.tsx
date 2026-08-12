@@ -428,19 +428,6 @@ export default function CvForm() {
         }
     };
 
-    const cleanupAllOverlays = () => {
-        try {
-            const allOverlays = document.querySelectorAll('[id*="pdf-loading-overlay"]');
-            allOverlays.forEach((overlay) => {
-                if (overlay.parentNode) {
-                    overlay.parentNode.removeChild(overlay);
-                }
-            });
-        } catch (error) {
-            console.error('Error cleaning up overlays:', error);
-        }
-    };
-
     useEffect(() => {
         setTimeout(() => setPageLoaded(true), 100);
 
@@ -455,8 +442,6 @@ export default function CvForm() {
         ) {
             setFormTouched(true);
         }
-
-        return () => cleanupAllOverlays();
     }, []);
 
     useEffect(() => {
@@ -550,27 +535,6 @@ export default function CvForm() {
         const t = setTimeout(() => setSaveMessage(null), 4000);
         return () => clearTimeout(t);
     }, [saveMessage]);
-
-    useEffect(() => {
-        const handleBeforeUnload = () => {
-            cleanupAllOverlays();
-        };
-
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                cleanupAllOverlays();
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            cleanupAllOverlays();
-        };
-    }, []);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;

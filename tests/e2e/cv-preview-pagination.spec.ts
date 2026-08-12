@@ -228,6 +228,69 @@ test.describe('CV Preview & Pagination Regression', () => {
         }
     });
 
+    test('PDF generation failure closes progress dialog and re-enables Generate PDF', async ({ page }) => {
+        await page.addInitScript((data) => {
+            window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
+            window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
+        }, fixtureData);
+
+        await page.goto('/generate-cv');
+
+        const previewButton = page.getByRole('button', { name: 'Preview CV' }).first();
+        await previewButton.click();
+
+        const previewPages = page.locator('.cv-multi-page-container').first().locator('.cv-page');
+        await expect(previewPages.first()).toBeVisible();
+        await page.waitForTimeout(300);
+
+        await page.evaluate(() => {
+            const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+            const windowWithRestore = window as Window & {
+                __restorePdfTestCanvas?: () => void;
+            };
+
+            windowWithRestore.__restorePdfTestCanvas = () => {
+                HTMLCanvasElement.prototype.toDataURL = originalToDataURL;
+            };
+
+            HTMLCanvasElement.prototype.toDataURL = function () {
+                throw new Error('Forced PDF export failure');
+            };
+        });
+
+        let downloadStarted = false;
+        page.on('download', () => {
+            downloadStarted = true;
+        });
+
+        const errorDialogPromise = page.waitForEvent('dialog');
+        const generateButton = page.locator('button', { hasText: /Generat/i }).first();
+
+        await generateButton.click();
+
+        const progressDialog = page.getByRole('dialog', { name: 'Generating PDF' });
+        await expect(progressDialog).toBeVisible();
+        await expect(generateButton).toBeDisabled();
+
+        const errorDialog = await errorDialogPromise;
+        expect(errorDialog.message()).toBe(
+            'An error occurred while generating the PDF. Please try again.',
+        );
+        await errorDialog.accept();
+
+        await expect(progressDialog).toBeHidden({ timeout: 5000 });
+        await expect(generateButton).toBeEnabled();
+        expect(downloadStarted).toBe(false);
+
+        await page.evaluate(() => {
+            const windowWithRestore = window as Window & {
+                __restorePdfTestCanvas?: () => void;
+            };
+
+            windowWithRestore.__restorePdfTestCanvas?.();
+        });
+    });
+
     test('Phase 7: Attribution and margin guides render correctly on preview and export pages', async ({ page }) => {
         await page.addInitScript((data) => {
             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
