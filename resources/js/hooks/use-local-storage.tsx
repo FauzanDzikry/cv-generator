@@ -72,7 +72,7 @@ export function useLocalStorage<T>(
  * @param initialFormData - Data form awal
  * @param debounceMs - Delay untuk debouncing (default: 500ms)
  */
-export function useFormLocalStorage<T extends Record<string, any>>(key: string, initialFormData: T, debounceMs: number = 500) {
+export function useFormLocalStorage<T extends Record<string, unknown>>(key: string, initialFormData: T, debounceMs: number = 500) {
     const [formData, setFormData, status] = useLocalStorage(key, initialFormData, debounceMs);
 
     // Fungsi helper untuk mengupdate field tertentu
@@ -136,7 +136,7 @@ export const localStorageUtils = {
 
         let total = 0;
         for (const key in localStorage) {
-            if (localStorage.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
                 total += localStorage[key].length + key.length;
             }
         }
@@ -167,7 +167,7 @@ export const localStorageUtils = {
 
         const backup: Record<string, string> = {};
         for (const key in localStorage) {
-            if (localStorage.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
                 backup[key] = localStorage[key];
             }
         }

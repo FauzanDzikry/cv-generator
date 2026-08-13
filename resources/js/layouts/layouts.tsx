@@ -9,7 +9,7 @@ interface AppLayoutProps {
     navItems?: Array<{ title: string; href: string; isExternal?: boolean }>;
 }
 
-export default function AppLayout({ children, breadcrumbs, navItems = [], ...props }: AppLayoutProps) {
+export default function AppLayout({ children, navItems = [] }: AppLayoutProps) {
     return (
         <div className="flex min-h-screen flex-col bg-transparent dark:bg-gray-900">
             <Navbar items={navItems} />

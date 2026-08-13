@@ -890,7 +890,7 @@ const CV: React.FC<CVProps> = ({ data, isPdfMode = false, enabledSections, zoomL
             if (typeof document !== 'undefined' && 'fonts' in document) {
                 try {
                     await document.fonts.ready;
-                } catch (e) {
+                } catch {
                     // Ignore font ready errors
                 }
             }

@@ -13,6 +13,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ percentage }) => {
 };
 
 interface FormProgressProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     formData: any;
     fieldGroups: {
         [key: string]: {
@@ -68,6 +69,7 @@ const FormProgress: React.FC<FormProgressProps> = ({ formData, fieldGroups, addO
             if (group.isArray) {
                 // Jika field adalah array (seperti work_experience, education, dll)
                 if (Array.isArray(formData[key]) && formData[key].length > 0) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     formData[key].forEach((item: any) => {
                         const fieldsToCheck =
                             key === 'languages'

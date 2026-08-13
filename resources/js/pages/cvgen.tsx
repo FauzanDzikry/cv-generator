@@ -1,27 +1,27 @@
 import { useEffect, useState } from 'react';
 
-export default function CvGen() {
-    // Konstanta teks
-    const textParts = {
-        text1: 'Create ',
-        text2: 'a ',
-        text3: 'professional ',
-        text4: 'CV ',
-        text5: 'in ',
-        text6: 'minutes',
-        text7: '.',
-    };
+const textParts = {
+    text1: 'Create ',
+    text2: 'a ',
+    text3: 'professional ',
+    text4: 'CV ',
+    text5: 'in ',
+    text6: 'minutes',
+    text7: '.',
+};
 
+const features = ['free', 'easy', 'fast', 'professional'];
+
+export default function CvGen() {
     // State
     const [typedText, setTypedText] = useState('');
     const [showFeatures, setShowFeatures] = useState(false);
-    const features = ['free', 'easy', 'fast', 'professional'];
     const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
     const [hoveredTextPart, setHoveredTextPart] = useState<string | null>(null);
     const [isTypingComplete, setIsTypingComplete] = useState(false);
     const [isTypingFeaturesComplete, setIsTypingFeaturesComplete] = useState(false);
     const [featuresVisible, setFeaturesVisible] = useState<boolean[]>([false, false, false, false]);
-    const [themeChanged, setThemeChanged] = useState(0);
+    const [, setThemeChanged] = useState(0);
     const [imageVisible, setImageVisible] = useState(false);
     const [buttonVisible, setButtonVisible] = useState(false);
 
@@ -97,7 +97,6 @@ export default function CvGen() {
 
     // Fungsi untuk render bagian teks
     const renderTextPart = (part: string, index: number, key: string) => {
-        const position = getTextPosition(index);
         const prevPosition = index > 0 ? getTextPosition(index) : 0;
         const isVisible = typedText.length > prevPosition;
 

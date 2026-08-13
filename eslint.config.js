@@ -41,7 +41,7 @@ export default [
         },
     },
     {
-        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js'],
+        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'old_cv.tsx', 'old_cv.txt', 'old_cv_utf8.txt', 'old_test_utf8.txt'],
     },
     prettier, // Turn off all rules that might conflict with Prettier
 ];
