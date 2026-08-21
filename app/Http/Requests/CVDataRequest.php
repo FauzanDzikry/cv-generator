@@ -32,7 +32,7 @@ class CVDataRequest extends FormRequest
                     if (array_key_exists($f, $item)) {
                         if ($item[$f] === '' || $item[$f] === null) {
                             $item[$f] = null;
-                        } elseif (in_array($f, ['start_date', 'end_date', 'issue_date', 'expiration_date']) && is_string($item[$f])) {
+                        } elseif (in_array($f, ['start_date', 'end_date', 'issue_date', 'expiration_date', 'start_year', 'end_year']) && is_string($item[$f])) {
                             $strVal = trim($item[$f]);
                             if (preg_match('/^\d{4}-\d{2}$/', $strVal)) {
                                 $item[$f] = $strVal.'-01';
@@ -121,8 +121,8 @@ class CVDataRequest extends FormRequest
             'certifications' => ['nullable', 'array'],
             'certifications.*.name' => ['nullable', 'string', 'max:255'],
             'certifications.*.organization' => ['nullable', 'string', 'max:255'],
-            'certifications.*.start_year' => ['nullable', 'integer'],
-            'certifications.*.end_year' => ['nullable', 'integer'],
+            'certifications.*.start_year' => ['nullable', 'date'],
+            'certifications.*.end_year' => ['nullable', 'date'],
             'certifications.*.is_time_limited' => ['nullable', 'boolean'],
             'certifications.*.description' => ['nullable', 'string'],
             'certifications.*.credential_id' => ['nullable', 'string', 'max:255'],
@@ -131,11 +131,11 @@ class CVDataRequest extends FormRequest
             'languages.*.language' => ['nullable', 'string', 'max:255'],
             'languages.*.level' => ['nullable', 'string', 'max:255'],
             'languages.*.has_certification' => ['nullable', 'boolean'],
-            'languages.*.test_name' => ['nullable', 'string', 'max:255'],
-            'languages.*.issuing_organization' => ['nullable', 'string', 'max:255'],
-            'languages.*.score' => ['nullable', 'string', 'max:100'],
-            'languages.*.issue_date' => ['nullable', 'date'],
-            'languages.*.expiration_date' => ['nullable', 'date'],
+            'languages.*.test_name' => ['required_if:languages.*.has_certification,true', 'nullable', 'string', 'max:255'],
+            'languages.*.issuing_organization' => ['required_if:languages.*.has_certification,true', 'nullable', 'string', 'max:255'],
+            'languages.*.score' => ['required_if:languages.*.has_certification,true', 'nullable', 'string', 'max:100'],
+            'languages.*.issue_date' => ['required_if:languages.*.has_certification,true', 'nullable', 'date'],
+            'languages.*.expiration_date' => ['required_if:languages.*.is_time_limited,true', 'nullable', 'date', 'after_or_equal:languages.*.issue_date'],
             'languages.*.is_time_limited' => ['nullable', 'boolean'],
 
             'accomplishments' => ['nullable', 'array'],
@@ -162,33 +162,7 @@ class CVDataRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-                foreach ($this->input('languages', []) as $index => $language) {
-                    if (! is_array($language) || empty($language['has_certification'])) {
-                        continue;
-                    }
-
-                    foreach (['test_name', 'issuing_organization', 'score', 'issue_date'] as $field) {
-                        if (! filled($language[$field] ?? null)) {
-                            $validator->errors()->add("languages.{$index}.{$field}", "The {$field} field is required for a certified language.");
-                        }
-                    }
-
-                    if (empty($language['is_time_limited'])) {
-                        continue;
-                    }
-
-                    $expiration = $language['expiration_date'] ?? null;
-                    if (! filled($expiration)) {
-                        $validator->errors()->add("languages.{$index}.expiration_date", 'The expiration date field is required.');
-
-                        continue;
-                    }
-
-                    $issue = $language['issue_date'] ?? null;
-                    if (filled($issue) && strtotime($expiration) < strtotime($issue)) {
-                        $validator->errors()->add("languages.{$index}.expiration_date", 'The expiration date must be after or equal to the issue date.');
-                    }
-                }
+                // Additional custom validation logic can be placed here if needed.
             },
         ];
     }

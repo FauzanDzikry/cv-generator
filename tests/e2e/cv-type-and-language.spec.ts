@@ -14,6 +14,124 @@ const addOnLabels = async (page: import('@playwright/test').Page) =>
         .then((labels) => labels.map((label) => label.trim()));
 
 test.describe('CV type sections and Languages', () => {
+    test('authenticated save keeps repeated rows grouped and certification months intact', async ({ page }) => {
+        test.setTimeout(60000);
+
+        const invalidInputWarnings: string[] = [];
+        page.on('console', (message) => {
+            if (message.text().includes('should not be null') || message.text().includes('does not conform to the required format')) {
+                invalidInputWarnings.push(message.text());
+            }
+        });
+
+        const timestamp = Date.now();
+        await page.goto('/register');
+        await page.getByLabel('Name').fill('Language Save Test');
+        await page.getByLabel('Email address').fill(`language-save-${timestamp}@example.test`);
+        await page.getByLabel('Password', { exact: true }).fill('password123');
+        await page.getByLabel('Confirm password').fill('password123');
+        await page.getByRole('button', { name: 'Create account' }).click();
+        await page.waitForURL(/\/(?:cvs|verify-email)/);
+
+        await page.evaluate(
+            ({ data, email, addOns }) => {
+                window.localStorage.setItem(
+                    'cvFormData',
+                    JSON.stringify({
+                        ...data,
+                        email,
+                        work_experience: data.work_experience.map((experience: Record<string, unknown>) => ({
+                            ...experience,
+                            end_date: null,
+                            is_current: true,
+                        })),
+                        certifications: data.certifications.map((certification: Record<string, unknown>) => ({
+                            ...certification,
+                            start_year: '2025-03',
+                            end_year: '2028-03',
+                        })),
+                        languages: [
+                            {
+                                language: 'English',
+                                level: '',
+                                has_certification: true,
+                                test_name: 'TOEIC Listening & Reading',
+                                issuing_organization: 'ETS',
+                                score: '865 / 990',
+                                issue_date: '2024-10',
+                                expiration_date: '2026-10',
+                                is_time_limited: true,
+                            },
+                            {
+                                language: 'Japanese',
+                                level: '',
+                                has_certification: false,
+                                test_name: '',
+                                issuing_organization: '',
+                                score: '',
+                                issue_date: '',
+                                expiration_date: '',
+                                is_time_limited: false,
+                            },
+                        ],
+                    }),
+                );
+                window.localStorage.setItem('cvAddOnSections', JSON.stringify(addOns));
+            },
+            {
+                data: fixture.cvFormData,
+                email: `language-save-${timestamp}@example.test`,
+                addOns: {
+                    portfolios: false,
+                    certifications: true,
+                    accomplishments: false,
+                    organizations: true,
+                    languages: true,
+                    additional_info: false,
+                },
+            },
+        );
+        await page.goto('/generate-cv');
+        await expect(page.getByRole('heading', { name: 'Language #2' })).toBeVisible();
+        await expect(page.locator('input[name="start_date"]').nth(0)).toHaveValue('2020-01');
+        await expect(page.locator('input[name="end_date"]').nth(0)).toHaveValue('');
+        await expect(page.locator('input[name="start_date"]').nth(1)).toHaveValue('2015-08');
+        await expect(page.locator('input[name="start_date"]').nth(2)).toHaveValue('2021-03');
+        const [saveResponse] = await Promise.all([
+            page.waitForResponse((response) => response.url().endsWith('/cvs') && response.request().method() === 'POST'),
+            page.getByRole('button', { name: 'Save CV' }).first().click(),
+        ]);
+
+        expect(saveResponse.status()).toBe(201);
+        await expect(page.getByText('CV saved to your account.')).toBeVisible({ timeout: 15000 });
+        await page.waitForURL(/\/cvs\/[0-9a-f-]+$/);
+        const showUrl = page.url();
+        expect(showUrl).not.toContain('/edit');
+
+        const generatePdfButton = page.getByRole('button', { name: 'Generate PDF' });
+        await expect(generatePdfButton).toBeVisible({ timeout: 5000 });
+        const [download] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), generatePdfButton.click()]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(
+            fs
+                .readFileSync(downloadedPath as string)
+                .subarray(0, 4)
+                .toString(),
+        ).toBe('%PDF');
+        expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+        expect(page.url()).toBe(showUrl);
+
+        await page.goto(`${showUrl}/edit`);
+        await expect(page.locator('input[name="start_date"]').nth(0)).toHaveValue('2020-01');
+        await expect(page.locator('input[name="end_date"]').nth(0)).toHaveValue('');
+        await expect(page.locator('input[name="start_date"]').nth(1)).toHaveValue('2015-08');
+        await expect(page.locator('input[name="start_date"]').nth(2)).toHaveValue('2021-03');
+        await expect(page.locator('input[name="start_year"]').first()).toHaveValue('2025-03');
+        await expect(page.locator('input[name="end_year"]').first()).toHaveValue('2028-03');
+        expect(invalidInputWarnings).toEqual([]);
+    });
+
     test('Professional orders the form and add-ons using its preset', async ({ page }) => {
         await page.goto('/generate-cv');
 

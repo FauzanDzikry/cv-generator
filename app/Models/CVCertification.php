@@ -20,8 +20,8 @@ class CVCertification extends CVSection
 
     protected $casts = [
         'is_time_limited' => 'boolean',
-        'start_year' => 'integer',
-        'end_year' => 'integer',
+        'start_year' => 'date:Y-m',
+        'end_year' => 'date:Y-m',
         'sort_order' => 'integer',
     ];
 }

@@ -1,10 +1,13 @@
 import CV from '@/components/cv-format';
+import { PdfGenerationDialog } from '@/components/pdf-generation-dialog';
+import { useCvPdfGeneration } from '@/hooks/use-cv-pdf-generation';
 import AppLayout from '@/layouts/layouts';
+import { PAGE_WIDTH_MM } from '@/lib/cv-page-layout';
 import { getEnabledSections } from '@/lib/cv-sections';
 import type { CVCustomFields, CVType } from '@/types/cv';
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, Pencil, Printer, Trash2 } from 'lucide-react';
-import React, { useState } from 'react';
+import { ArrowLeft, FileDown, Pencil, Trash2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
 
 interface CvShowProps {
     addOnSections?: Record<string, boolean>;
@@ -35,10 +38,13 @@ interface CvShowProps {
 
 export default function CvShow({ cv, addOnSections }: CvShowProps) {
     const [isDeleting, setIsDeleting] = useState(false);
+    const { generatePDF, isGeneratingPDF, pdfGenerationProgress } = useCvPdfGeneration();
+    const cvRef = useRef<HTMLDivElement>(null);
 
     const customFields = cv.custom_fields ?? {};
     const isUsePhoto = Boolean(customFields.is_use_photo);
     const photoPreview = cv.has_photo ? (cv.photo_url ?? null) : null;
+    const enabledSections = getEnabledSections(addOnSections ?? customFields.enabled_sections);
 
     const additionalInfo =
         typeof cv.additional_info === 'string'
@@ -69,6 +75,11 @@ export default function CvShow({ cv, addOnSections }: CvShowProps) {
     return (
         <AppLayout>
             <Head title={`CV: ${cv.cv_name || cv.name || 'Untitled CV'}`} />
+            <PdfGenerationDialog
+                open={isGeneratingPDF}
+                percentage={pdfGenerationProgress?.percentage ?? 0}
+                message={pdfGenerationProgress?.message ?? ''}
+            />
             <div className="bg-gray-50 py-8 md:py-16 dark:bg-gray-800">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="mb-6 flex flex-wrap items-center gap-4">
@@ -86,13 +97,15 @@ export default function CvShow({ cv, addOnSections }: CvShowProps) {
                             <Pencil className="h-4 w-4" />
                             Edit
                         </Link>
-                        <Link
-                            href={route('cvs.edit', cv.id)}
-                            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                        <button
+                            type="button"
+                            onClick={() => generatePDF(cvRef.current, cv.cv_name || cv.name || 'cv')}
+                            disabled={isGeneratingPDF}
+                            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                         >
-                            <Printer className="h-4 w-4" />
-                            Print
-                        </Link>
+                            <FileDown className="h-4 w-4" />
+                            {isGeneratingPDF ? 'Generating...' : 'Generate PDF'}
+                        </button>
                         <button
                             type="button"
                             onClick={handleDelete}
@@ -106,10 +119,37 @@ export default function CvShow({ cv, addOnSections }: CvShowProps) {
                     <div className="overflow-auto rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                         <CV
                             data={viewData as unknown as React.ComponentProps<typeof CV>['data']}
-                            enabledSections={getEnabledSections(addOnSections ?? customFields.enabled_sections)}
+                            enabledSections={enabledSections}
                             isPdfMode={false}
                         />
                     </div>
+                </div>
+            </div>
+
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute',
+                    top: '-99999px',
+                    left: '-99999px',
+                    width: `${PAGE_WIDTH_MM}mm`,
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                }}
+            >
+                <div
+                    ref={cvRef}
+                    id="cv-to-export"
+                    className="cv-for-pdf pdf-export-mode"
+                    style={{
+                        backgroundColor: 'white',
+                        width: `${PAGE_WIDTH_MM}mm`,
+                        padding: 0,
+                        margin: 0,
+                        boxSizing: 'border-box',
+                    }}
+                >
+                    <CV data={viewData as unknown as React.ComponentProps<typeof CV>['data']} enabledSections={enabledSections} isPdfMode={true} />
                 </div>
             </div>
         </AppLayout>

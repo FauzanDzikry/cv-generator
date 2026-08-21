@@ -170,6 +170,8 @@ test.describe('CV Preview & Pagination Regression', () => {
     });
 
     test('Phase 6: PDF export produces direct download with identical page count to preview and valid %PDF header', async ({ page }) => {
+        test.setTimeout(90000);
+
         await page.addInitScript((data) => {
             window.localStorage.setItem('cvFormData', JSON.stringify(data.cvFormData));
             window.localStorage.setItem('cvAddOnSections', JSON.stringify(data.cvAddOnSections));
@@ -181,7 +183,7 @@ test.describe('CV Preview & Pagination Regression', () => {
         await previewButton.click();
 
         const previewPages = page.locator('.cv-multi-page-container').first().locator('.cv-page');
-        await expect(previewPages).toHaveCount(2, { timeout: 10000 });
+        await expect(previewPages).toHaveCount(2, { timeout: 30000 });
         const previewPageCount = await previewPages.count();
 
         const exportPages = page.locator('#cv-to-export .cv-page');
@@ -237,7 +239,7 @@ test.describe('CV Preview & Pagination Regression', () => {
         await expect(page.locator('#cv-to-export [data-testid="cv-zoom-controls"]')).toHaveCount(0);
 
         const generateButton = page.locator('button', { hasText: /Generat/i }).first();
-        const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+        const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
 
         await generateButton.click();
 

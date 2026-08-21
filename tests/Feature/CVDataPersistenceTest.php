@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class CVDataPersistenceTest extends TestCase
@@ -13,6 +14,9 @@ class CVDataPersistenceTest extends TestCase
     public function test_it_persists_and_retrieves_aggregate_json_payload_with_all_nested_arrays(): void
     {
         $user = User::factory()->create();
+
+        $this->assertSame('date', Schema::getColumnType('certifications', 'start_year'));
+        $this->assertSame('date', Schema::getColumnType('certifications', 'end_year'));
 
         $payload = [
             'cv_name' => 'Full Legacy CV',
@@ -56,8 +60,8 @@ class CVDataPersistenceTest extends TestCase
                 [
                     'name' => 'Cert Laravel',
                     'organization' => 'Laravel Org',
-                    'start_year' => '2022',
-                    'end_year' => '2025',
+                    'start_year' => '2022-03',
+                    'end_year' => '2025-11',
                     'is_time_limited' => true,
                     'description' => 'Certified Dev',
                     'credential_id' => 'CRED-123',
@@ -88,6 +92,11 @@ class CVDataPersistenceTest extends TestCase
         $response->assertStatus(201);
         $id = $response->json('id');
         $this->assertNotNull($id);
+        $this->assertDatabaseHas('certifications', [
+            'cv_data_id' => $id,
+            'start_year' => '2022-03-01',
+            'end_year' => '2025-11-01',
+        ]);
 
         $showResponse = $this->actingAs($user)->get("/cvs/{$id}");
         $showResponse->assertOk();
@@ -101,6 +110,8 @@ class CVDataPersistenceTest extends TestCase
                 ->where('skills.2.name', 'PostgreSQL')
                 ->where('portfolios.0.title', 'Project A')
                 ->where('certifications.0.credential_id', 'CRED-123')
+                ->where('certifications.0.start_year', '2022-03')
+                ->where('certifications.0.end_year', '2025-11')
                 ->where('languages.0.language', 'Indonesia')
                 ->where('accomplishments.0.description', 'Winner of Hackathon 2023')
                 ->where('organizations.0.name', 'Dev Community')

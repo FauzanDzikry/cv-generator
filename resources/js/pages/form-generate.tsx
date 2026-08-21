@@ -4,6 +4,7 @@
 import CV, { CVZoomControls } from '@/components/cv-format';
 import { PdfGenerationDialog } from '@/components/pdf-generation-dialog';
 import FormProgress from '@/components/percentage';
+import { useCvPdfGeneration } from '@/hooks/use-cv-pdf-generation';
 import AppLayout from '@/layouts/layouts';
 import { PAGE_WIDTH_MM } from '@/lib/cv-page-layout';
 import {
@@ -13,18 +14,10 @@ import {
     hasMeaningfulSectionData,
     SECTION_ORDER_BY_CV_TYPE,
 } from '@/lib/cv-sections';
-import { sanitizeOklchColors } from '@/lib/utils';
 import type { CVData, CVSectionKey, CVType } from '@/types/cv';
 import { objectToFormData, type FormDataConvertible } from '@inertiajs/core';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChangeEvent, Children, FormEvent, isValidElement, ReactNode, useEffect, useRef, useState } from 'react';
-
-const PDF_PROGRESS_START = 70;
-const PDF_PROGRESS_CAP = 95;
-const PDF_PROGRESS_TICK_MS = 100;
-const PDF_ESTIMATE_BASE_MS = 1000;
-const PDF_ESTIMATE_PER_PAGE_MS = 800;
-const PDF_ESTIMATE_PER_IMAGE_MS = 400;
 
 const SKILL_TWO_COLUMN_MAX_LENGTH = 32;
 
@@ -126,6 +119,13 @@ const defaultAddOnSections = {
     additional_info: false,
 };
 
+function monthInputValue(value: unknown): string {
+    if (typeof value !== 'string') return '';
+    if (/^\d{4}$/.test(value)) return `${value}-01`;
+
+    return value.match(/^\d{4}-(?:0[1-9]|1[0-2])/)?.[0] ?? '';
+}
+
 function getInitialFormData() {
     try {
         const saved = localStorage.getItem('cvFormData');
@@ -139,11 +139,18 @@ function getInitialFormData() {
             ...parsed,
             cv_type: parsed.cv_type ?? 'professional',
             work_experience: (parsed.work_experience?.length ? parsed.work_experience : defaultFormData.work_experience).map(
-                (item: typeof workDefault) => ({ ...workDefault, ...item }),
+                (item: typeof workDefault) => ({
+                    ...workDefault,
+                    ...item,
+                    start_date: monthInputValue(item?.start_date),
+                    end_date: monthInputValue(item?.end_date),
+                }),
             ),
             education: (parsed.education?.length ? parsed.education : defaultFormData.education).map((item: typeof eduDefault) => ({
                 ...eduDefault,
                 ...item,
+                start_date: monthInputValue(item?.start_date),
+                end_date: monthInputValue(item?.end_date),
             })),
             skills: (parsed.skills?.length ? parsed.skills : defaultFormData.skills).map((s: { name: string }) => ({ name: s?.name ?? '' })),
             portfolios: (parsed.portfolios?.length ? parsed.portfolios : defaultFormData.portfolios).map(
@@ -154,7 +161,12 @@ function getInitialFormData() {
                 }),
             ),
             certifications: (parsed.certifications?.length ? parsed.certifications : defaultFormData.certifications).map(
-                (c: (typeof defaultFormData.certifications)[0]) => ({ ...defaultFormData.certifications[0], ...c }),
+                (c: (typeof defaultFormData.certifications)[0]) => ({
+                    ...defaultFormData.certifications[0],
+                    ...c,
+                    start_year: monthInputValue(c?.start_year),
+                    end_year: monthInputValue(c?.end_year),
+                }),
             ),
             languages: (parsed.languages?.length ? parsed.languages : defaultFormData.languages).map((l: any) => ({
                 language: l?.language ?? '',
@@ -163,15 +175,20 @@ function getInitialFormData() {
                 test_name: l?.test_name ?? '',
                 issuing_organization: l?.issuing_organization ?? '',
                 score: l?.score ?? '',
-                issue_date: l?.issue_date ?? '',
-                expiration_date: l?.expiration_date ?? '',
+                issue_date: monthInputValue(l?.issue_date),
+                expiration_date: monthInputValue(l?.expiration_date),
                 is_time_limited: l?.is_time_limited ?? false,
             })),
             accomplishments: (parsed.accomplishments?.length ? parsed.accomplishments : defaultFormData.accomplishments).map(
                 (a: { description: string }) => ({ description: a?.description ?? '' }),
             ),
             organizations: (parsed.organizations?.length ? parsed.organizations : defaultFormData.organizations).map(
-                (o: (typeof defaultFormData.organizations)[0]) => ({ ...defaultFormData.organizations[0], ...o }),
+                (o: (typeof defaultFormData.organizations)[0]) => ({
+                    ...defaultFormData.organizations[0],
+                    ...o,
+                    start_date: monthInputValue(o?.start_date),
+                    end_date: monthInputValue(o?.end_date),
+                }),
             ),
         };
     } catch {
@@ -201,7 +218,7 @@ function getInitialPhotoPreview(): string | null {
 const PENDING_CV_SAVE_KEY = 'pendingCvSave';
 
 function multipart(payload: Record<string, unknown>): FormData {
-    return objectToFormData(payload as Record<string, FormDataConvertible>);
+    return objectToFormData(payload as Record<string, FormDataConvertible>, new FormData(), null, 'indices');
 }
 
 async function dataUrlToFile(dataUrl: string): Promise<File> {
@@ -219,11 +236,6 @@ type FormGenerateProps = {
     addOnSections?: Record<string, boolean>;
     isEdit?: boolean;
     cvId?: string;
-};
-
-type PdfGenerationProgress = {
-    percentage: number;
-    message: string;
 };
 
 function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
@@ -248,11 +260,21 @@ function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
         is_use_photo: Boolean(customFields.is_use_photo),
         work_experience:
             Array.isArray(cv.work_experience) && (cv.work_experience as unknown[]).length
-                ? (cv.work_experience as typeof defaultFormData.work_experience)
+                ? (cv.work_experience as Array<Partial<(typeof defaultFormData.work_experience)[number]>>).map((experience) => ({
+                      ...defaultFormData.work_experience[0],
+                      ...experience,
+                      start_date: monthInputValue(experience.start_date),
+                      end_date: monthInputValue(experience.end_date),
+                  }))
                 : defaultFormData.work_experience,
         education:
             Array.isArray(cv.education) && (cv.education as unknown[]).length
-                ? (cv.education as typeof defaultFormData.education)
+                ? (cv.education as Array<Partial<(typeof defaultFormData.education)[number]>>).map((education) => ({
+                      ...defaultFormData.education[0],
+                      ...education,
+                      start_date: monthInputValue(education.start_date),
+                      end_date: monthInputValue(education.end_date),
+                  }))
                 : defaultFormData.education,
         skills: Array.isArray(cv.skills) && (cv.skills as unknown[]).length ? (cv.skills as typeof defaultFormData.skills) : defaultFormData.skills,
         portfolios:
@@ -261,15 +283,20 @@ function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
                 : defaultFormData.portfolios,
         certifications:
             Array.isArray(cv.certifications) && (cv.certifications as unknown[]).length
-                ? (cv.certifications as typeof defaultFormData.certifications)
+                ? (cv.certifications as Array<Partial<(typeof defaultFormData.certifications)[number]>>).map((certification) => ({
+                      ...defaultFormData.certifications[0],
+                      ...certification,
+                      start_year: monthInputValue(certification.start_year),
+                      end_year: monthInputValue(certification.end_year),
+                  }))
                 : defaultFormData.certifications,
         languages:
             Array.isArray(cv.languages) && (cv.languages as unknown[]).length
                 ? (cv.languages as Array<Partial<(typeof defaultFormData.languages)[number]>>).map((language) => ({
                       ...defaultFormData.languages[0],
                       ...language,
-                      issue_date: typeof language.issue_date === 'string' ? language.issue_date.slice(0, 7) : '',
-                      expiration_date: typeof language.expiration_date === 'string' ? language.expiration_date.slice(0, 7) : '',
+                      issue_date: monthInputValue(language.issue_date),
+                      expiration_date: monthInputValue(language.expiration_date),
                   }))
                 : defaultFormData.languages,
         accomplishments:
@@ -278,7 +305,12 @@ function formDataFromCv(cv: Record<string, unknown>): typeof defaultFormData {
                 : defaultFormData.accomplishments,
         organizations:
             Array.isArray(cv.organizations) && (cv.organizations as unknown[]).length
-                ? (cv.organizations as typeof defaultFormData.organizations)
+                ? (cv.organizations as Array<Partial<(typeof defaultFormData.organizations)[number]>>).map((organization) => ({
+                      ...defaultFormData.organizations[0],
+                      ...organization,
+                      start_date: monthInputValue(organization.start_date),
+                      end_date: monthInputValue(organization.end_date),
+                  }))
                 : defaultFormData.organizations,
         additional_info: additionalInfo,
     };
@@ -385,10 +417,10 @@ export default function CvForm() {
         },
     };
     const [formTouched, setFormTouched] = useState(false);
-    const [pdfGenerationProgress, setPdfGenerationProgress] = useState<PdfGenerationProgress | null>(null);
-    const isGeneratingPDF = pdfGenerationProgress !== null;
+    const { generatePDF, isGeneratingPDF, pdfGenerationProgress } = useCvPdfGeneration();
 
     const cvRef = useRef<HTMLDivElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
 
     const formatDate = (dateString: string) => {
         if (!dateString) return '';
@@ -528,7 +560,7 @@ export default function CvForm() {
                         setSaveMessage({ type: 'success', text: 'CV saved to your account.' });
 
                         if (data && data.id) {
-                            router.visit(route('cvs.edit', data.id));
+                            router.visit(route('cvs.show', data.id));
                         }
                     } else {
                         localStorage.removeItem(PENDING_CV_SAVE_KEY);
@@ -668,181 +700,7 @@ export default function CvForm() {
         });
     };
 
-    const handleGeneratePDF = async () => {
-        if (!cvRef.current) {
-            alert('CV not ready for export. Please try again.');
-            return;
-        }
-
-        let progressTimer: number | null = null;
-
-        setPdfGenerationProgress({
-            percentage: 5,
-            message: 'Starting PDF generation...',
-        });
-
-        try {
-            if (typeof document !== 'undefined' && 'fonts' in document) {
-                try {
-                    await document.fonts.ready;
-                } catch (e) {
-                    // ignore font ready errors
-                }
-            }
-
-            setPdfGenerationProgress({
-                percentage: 20,
-                message: 'Preparing fonts...',
-            });
-
-            const images = Array.from(cvRef.current.querySelectorAll('img'));
-            await Promise.all(
-                images.map(async (img) => {
-                    if (img.complete && img.naturalWidth > 0) {
-                        if ('decode' in img) {
-                            try {
-                                await img.decode();
-                            } catch (e) {
-                                // ignore decode errors for already loaded images
-                            }
-                        }
-                        return;
-                    }
-
-                    await new Promise<void>((resolve) => {
-                        const done = () => resolve();
-                        img.addEventListener('load', done, { once: true });
-                        img.addEventListener('error', done, { once: true });
-                    });
-
-                    if ('decode' in img) {
-                        try {
-                            await img.decode();
-                        } catch (e) {
-                            // ignore image decode errors
-                        }
-                    }
-                }),
-            );
-
-            setPdfGenerationProgress({
-                percentage: 40,
-                message: 'Loading images...',
-            });
-
-            await new Promise((resolve) => setTimeout(resolve, 300));
-
-            const rawName = formData.cv_name || formData.name || 'cv';
-            const safeName =
-                rawName
-                    .replace(/[^a-z0-9_\-.]/gi, '_')
-                    .replace(/_+/g, '_')
-                    .replace(/^_|_$/g, '') || 'cv';
-            const filename = `${safeName}.pdf`;
-
-            const opt = {
-                margin: 0,
-                filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff',
-                    onclone: sanitizeOklchColors,
-                },
-                jsPDF: {
-                    unit: 'mm',
-                    format: 'a4',
-                    orientation: 'portrait',
-                },
-            };
-
-            setPdfGenerationProgress({
-                percentage: 55,
-                message: 'Preparing document...',
-            });
-
-            const html2pdfModule = await import('html2pdf.js');
-
-            setPdfGenerationProgress({
-                percentage: 70,
-                message: 'Loading PDF generator...',
-            });
-
-            const html2pdf = html2pdfModule.default || html2pdfModule;
-
-            const expectedPageCount = cvRef.current.querySelectorAll('.cv-page').length;
-            if (expectedPageCount === 0) {
-                throw new Error('CV export contains no pages.');
-            }
-
-            setPdfGenerationProgress({
-                percentage: PDF_PROGRESS_START,
-                message: 'Generating PDF file...',
-            });
-
-            const estimatedDurationMs =
-                PDF_ESTIMATE_BASE_MS + expectedPageCount * PDF_ESTIMATE_PER_PAGE_MS + images.length * PDF_ESTIMATE_PER_IMAGE_MS;
-            const progressStartedAt = performance.now();
-
-            progressTimer = window.setInterval(() => {
-                const elapsed = performance.now() - progressStartedAt;
-                const ratio = Math.min(1, elapsed / estimatedDurationMs);
-                const estimatedPercentage = Math.min(
-                    PDF_PROGRESS_CAP,
-                    PDF_PROGRESS_START + Math.floor((PDF_PROGRESS_CAP - PDF_PROGRESS_START) * ratio),
-                );
-
-                setPdfGenerationProgress((current) => {
-                    if (!current || current.percentage >= 100) return current;
-                    return {
-                        percentage: Math.max(current.percentage, estimatedPercentage),
-                        message: 'Generating PDF file...',
-                    };
-                });
-            }, PDF_PROGRESS_TICK_MS);
-
-            const pdfWorker = html2pdf().set(opt).from(cvRef.current).toPdf();
-            const pdf = await pdfWorker.get('pdf');
-            const generatedPageCount = pdf.internal.getNumberOfPages();
-
-            if (generatedPageCount < expectedPageCount) {
-                throw new Error(`PDF generated ${generatedPageCount} of ${expectedPageCount} expected pages.`);
-            }
-
-            for (let pageNumber = generatedPageCount; pageNumber > expectedPageCount; pageNumber -= 1) {
-                pdf.deletePage(pageNumber);
-            }
-
-            await pdfWorker.save();
-
-            if (progressTimer !== null) {
-                window.clearInterval(progressTimer);
-                progressTimer = null;
-            }
-
-            setPdfGenerationProgress({
-                percentage: 100,
-                message: 'PDF generated successfully.',
-            });
-
-            if (typeof window.gtag === 'function') {
-                window.gtag('event', 'generate_pdf');
-            }
-
-            await new Promise((resolve) => window.setTimeout(resolve, 400));
-            setPdfGenerationProgress(null);
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            setPdfGenerationProgress(null);
-            await new Promise((resolve) => window.setTimeout(resolve, 0));
-            alert('An error occurred while generating the PDF. Please try again.');
-        } finally {
-            if (progressTimer !== null) {
-                window.clearInterval(progressTimer);
-            }
-        }
-    };
+    const handleGeneratePDF = () => generatePDF(cvRef.current, formData.cv_name || formData.name || 'cv');
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -862,8 +720,29 @@ export default function CvForm() {
         };
     };
 
+    const formatValidationError = (msg: string) => {
+        const arrayMatch = msg.match(/([a-zA-Z_]+)\.(\d+)\.([a-zA-Z_]+)/);
+        if (arrayMatch) {
+            const section = arrayMatch[1].replace(/_/g, ' ');
+            const row = parseInt(arrayMatch[2]) + 1;
+            const field = arrayMatch[3].replace(/_/g, ' ');
+            return `Mohon periksa isian '${field}' pada baris ke-${row} di bagian '${section}'.`;
+        }
+        if (msg.includes('is required')) {
+            return 'Ada kolom wajib yang belum diisi. Mohon periksa kembali form Anda.';
+        }
+        if (msg.includes('must be an integer') || msg.includes('must be a number')) {
+            return 'Terdapat isian yang harus berupa angka. Mohon periksa kembali.';
+        }
+        if (msg.includes('expiration date must be after')) {
+            return 'Tanggal berakhir harus lebih besar atau sama dengan tanggal mulai.';
+        }
+        return 'Harap periksa kembali isian form Anda.';
+    };
+
     const handleSaveUpdate = () => {
         if (!cvId) return;
+        if (formRef.current && !formRef.current.reportValidity()) return;
         router.post(
             route('cvs.update', cvId),
             { ...buildSavePayload(), _method: 'put' },
@@ -873,12 +752,22 @@ export default function CvForm() {
                     if (typeof window.gtag === 'function') {
                         window.gtag('event', 'save_cv');
                     }
+                    setSaveMessage({ type: 'success', text: 'CV updated successfully.' });
+                },
+                onError: (errors) => {
+                    if (!import.meta.env.PROD) {
+                        console.error('Validation errors:', errors);
+                    }
+                    const firstError = Object.values(errors)[0];
+                    const errMsg = firstError ? formatValidationError(firstError) : 'Harap periksa kembali isian form Anda.';
+                    setSaveMessage({ type: 'error', text: errMsg });
                 },
             },
         );
     };
 
     const handleSaveNewCV = () => {
+        if (formRef.current && !formRef.current.reportValidity()) return;
         const payload = buildSavePayload();
 
         const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.getAttribute('content');
@@ -905,14 +794,37 @@ export default function CvForm() {
                     }
 
                     if (data && data.id) {
-                        router.visit(route('cvs.edit', data.id));
+                        router.visit(route('cvs.show', data.id));
                     }
+                } else if (res.status === 422) {
+                    const errorData = await res.json().catch(() => null);
+                    if (!import.meta.env.PROD) {
+                        console.error('Validation errors:', errorData);
+                    }
+
+                    let errMsg = 'Harap periksa kembali isian form Anda.';
+                    if (errorData && errorData.errors) {
+                        const firstError = Object.values(errorData.errors)[0];
+                        if (Array.isArray(firstError)) {
+                            errMsg = formatValidationError(firstError[0] as string);
+                        }
+                    } else if (errorData && errorData.message) {
+                        errMsg = formatValidationError(errorData.message);
+                    }
+                    setSaveMessage({ type: 'error', text: errMsg });
                 } else {
-                    setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
+                    if (!import.meta.env.PROD) {
+                        const errorText = await res.text().catch(() => '');
+                        console.error('System error:', res.status, errorText);
+                    }
+                    setSaveMessage({ type: 'error', text: 'Terjadi kesalahan sistem.' });
                 }
             })
-            .catch(() => {
-                setSaveMessage({ type: 'error', text: 'Failed to save CV. Please try again.' });
+            .catch((err) => {
+                if (!import.meta.env.PROD) {
+                    console.error('Fetch error:', err);
+                }
+                setSaveMessage({ type: 'error', text: 'Terjadi kesalahan sistem.' });
             });
     };
 
@@ -1063,7 +975,7 @@ export default function CvForm() {
                                     />
                                 )}
 
-                                <form onSubmit={handleSubmit}>
+                                <form ref={formRef} onSubmit={handleSubmit}>
                                     <div className="mb-6">
                                         <label htmlFor="cv_name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             CV Name
